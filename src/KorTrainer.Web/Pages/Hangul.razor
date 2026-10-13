@@ -1,0 +1,116 @@
+@page "/hangul"
+@inject ApiClient Api
+
+<PageTitle>Хангыль — KorTrainer</PageTitle>
+
+<header class="page-header">
+    <h1>Хангыль</h1>
+    <p class="muted">Уровень 1 — базовые буквы, 2 — все гласные и три ряда согласных, 3 — патчим и 연음.</p>
+</header>
+
+<div class="segmented" role="tablist" aria-label="Уровень">
+    @for (int l = 1; l <= 3; l++)
+    {
+        int value = l;
+        <button type="button" role="tab" aria-selected="@(_level == value)" class="@(_level == value ? "active" : string.Empty)" @onclick="() => _level = value">
+            Уровень @value
+        </button>
+    }
+</div>
+
+<div class="mode-grid">
+    <a class="mode-card feature" href="/hangul/guide?level=@_level">
+        <span class="mode-glyph" lang="ko">가</span>
+        <strong>Памятка</strong>
+        <span class="muted">Буквы уровня с озвучкой</span>
+    </a>
+    @foreach (var mode in Modes.Where(m => m.MinLevel <= _level && (m.MaxLevel ?? 3) >= _level))
+    {
+        <a class="mode-card" href="/hangul/@mode.Type?level=@_level">
+            <span class="mode-glyph" lang="ko">@mode.Glyph</span>
+            <strong>@mode.Title</strong>
+            <span class="muted">@mode.Description</span>
+        </a>
+    }
+    <a class="mode-card" href="/hangul/reading?level=@_level">
+        <span class="mode-glyph" lang="ko">읽기</span>
+        <strong>Чтение на время</strong>
+        <span class="muted">Скорость в мс на слог</span>
+    </a>
+</div>
+
+<section class="card analyzer" aria-labelledby="analyzer-heading">
+    <h2 id="analyzer-heading">Разбор слова</h2>
+    <p class="muted">Введите слово на хангыле: тренажёр разложит слоги на буквы и покажет, как оно читается.</p>
+    <form class="inline-form" @onsubmit="AnalyzeAsync">
+        <input type="text" lang="ko" maxlength="40" placeholder="например, 한국어" @bind="_text" aria-label="Слово на хангыле" />
+        <button type="submit" class="btn primary">Разобрать</button>
+    </form>
+    @if (_analysisError is not null)
+    {
+        <p class="notice error small">@_analysisError</p>
+    }
+    @if (_analysis is { } a)
+    {
+        <div class="analysis">
+            <p class="pronounced"><HangulText Text="@a.Text" Size="lg" /> → <HangulText Text="@($"[{a.Pronounced}]")" Size="lg" /> <SpeakButton Text="@a.Text" ShowKeyHint="false" /></p>
+            <div class="syllable-row">
+                @foreach (var s in a.Syllables)
+                {
+                    <div class="syllable-card">
+                        <span class="syllable" lang="ko">@s.Syllable</span>
+                        <span class="jamo" lang="ko">@s.Initial + @s.Medial@(s.Final is null ? string.Empty : $" + {s.Final}")</span>
+                        <span class="muted small">@(s.Final is null ? "без патчима" : "патчим " + s.Final)</span>
+                    </div>
+                }
+            </div>
+            @if (a.Changes.Count > 0)
+            {
+                <ul class="rules">
+                    @foreach (var c in a.Changes)
+                    {
+                        <li>@c.Description</li>
+                    }
+                </ul>
+            }
+            else
+            {
+                <p class="muted">Читается так же, как пишется.</p>
+            }
+        </div>
+    }
+</section>
+
+@code {
+    private sealed record Mode(string Type, string Title, string Description, string Glyph, int MinLevel, int? MaxLevel = null);
+
+    private static readonly Mode[] Modes =
+    [
+        new(ExerciseTypes.LetterToSound, "Буква → звук", "Узнать звучание буквы", "ㅓ", 1, 2),
+        new(ExerciseTypes.SoundToLetter, "Звук → буква", "Найти букву по звуку", "ㅗ", 1, 2),
+        new(ExerciseTypes.Compose, "Сборка слога", "ㅎ + ㅏ + ㄴ = ?", "한", 1),
+        new(ExerciseTypes.Decompose, "Разбор слога", "Из каких букв слог", "글", 1),
+        new(ExerciseTypes.ConsonantSeries, "Три ряда на слух", "가 / 카 / 까", "까", 2),
+        new(ExerciseTypes.FinalSound, "Звук патчима", "7 конечных звуков", "꽃", 3),
+        new(ExerciseTypes.SoundChange, "Чтение по правилам", "연음 и ассимиляция", "음악", 3),
+    ];
+
+    private int _level = 1;
+    private string _text = string.Empty;
+    private HangulAnalysisDto? _analysis;
+    private string? _analysisError;
+
+    private async Task AnalyzeAsync()
+    {
+        _analysisError = null;
+        try
+        {
+            _analysis = await Api.AnalyzeAsync(_text.Trim());
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException)
+        {
+            _analysis = null;
+            _analysisError = ex.Message;
+        }
+    }
+}

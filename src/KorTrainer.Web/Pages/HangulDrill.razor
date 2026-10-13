@@ -1,0 +1,30 @@
+@page "/hangul/{Type}"
+@inject ApiClient Api
+
+<PageTitle>Хангыль — KorTrainer</PageTitle>
+
+@if (!ExerciseTypes.HangulChoice.Contains(Type))
+{
+    <p class="notice error">Неизвестное упражнение. <a href="/hangul">Вернуться к хангылю</a></p>
+}
+else
+{
+    @* The key forces a fresh drill when the type or level in the URL changes. *@
+    <ChoiceDrill @key="@($"{Type}:{EffectiveLevel}")" Load="LoadAsync" BackHref="/hangul" Subtitle="@($"Уровень {EffectiveLevel}")" />
+}
+
+@code {
+    private const int SetSize = 20;
+
+    [Parameter]
+    public string Type { get; set; } = string.Empty;
+
+    [SupplyParameterFromQuery]
+    public int? Level { get; set; }
+
+    private int EffectiveLevel => Type is ExerciseTypes.FinalSound or ExerciseTypes.SoundChange
+        ? 3
+        : Math.Clamp(Level ?? 1, 1, 3);
+
+    private Task<ExerciseSetDto> LoadAsync() => Api.GetHangulExercisesAsync(Type, EffectiveLevel, SetSize);
+}

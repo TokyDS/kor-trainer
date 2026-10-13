@@ -1,0 +1,52 @@
+@inherits LayoutComponentBase
+@inject AppState State
+
+<div class="shell">
+    <aside class="sidebar" aria-label="Разделы">
+        <a class="brand" href="/"><span class="brand-mark" lang="ko">한</span> KorTrainer</a>
+        <nav>
+            @foreach (var item in NavItems)
+            {
+                <NavLink class="nav-link" href="@item.Href" Match="@(item.Href == "/" ? NavLinkMatch.All : NavLinkMatch.Prefix)">@item.Title</NavLink>
+            }
+        </nav>
+    </aside>
+
+    <main class="content">
+        @if (State.LoadError is not null)
+        {
+            <div class="notice error" role="alert">Сервер недоступен: @State.LoadError</div>
+        }
+        @Body
+    </main>
+
+    <nav class="tabbar" aria-label="Разделы">
+        <NavLink class="tab" href="/" Match="NavLinkMatch.All"><span class="tab-icon" lang="ko">오늘</span>Сегодня</NavLink>
+        <NavLink class="tab" href="/hangul"><span class="tab-icon" lang="ko">한</span>Хангыль</NavLink>
+        <NavLink class="tab" href="/vocab"><span class="tab-icon" lang="ko">말</span>Слова</NavLink>
+        <NavLink class="tab" href="/more"><span class="tab-icon">⋯</span>Ещё</NavLink>
+    </nav>
+</div>
+
+@code {
+    private static readonly (string Title, string Href)[] NavItems =
+    [
+        ("Сегодня", "/"),
+        ("Хангыль", "/hangul"),
+        ("Слова", "/vocab"),
+        ("Грамматика", "/grammar"),
+        ("Числа", "/numbers"),
+        ("TOPIK", "/topik"),
+        ("Статистика", "/stats"),
+        ("План", "/plan"),
+        ("Настройки", "/settings"),
+    ];
+
+    protected override async Task OnInitializedAsync()
+    {
+        State.Changed += OnStateChanged;
+        await State.InitializeAsync();
+    }
+
+    private void OnStateChanged() => InvokeAsync(StateHasChanged);
+}

@@ -1,0 +1,38 @@
+@page "/grammar"
+@page "/grammar/{Section}"
+@page "/numbers"
+@page "/numbers/{Section}"
+@page "/topik"
+@page "/topik/{Section}"
+@page "/stats"
+@inject NavigationManager Navigation
+
+<PageTitle>Скоро — KorTrainer</PageTitle>
+
+<header class="page-header">
+    <a class="back" href="/">← Сегодня</a>
+    <h1>Раздел в разработке</h1>
+</header>
+
+<div class="card">
+    <p>Модуль <strong>«@ModuleName»</strong> появится в следующей итерации. Ответы и время занятий уже копятся — статистика их подхватит.</p>
+    <p class="muted">Пока можно повторять слова и тренировать хангыль.</p>
+    <div class="actions">
+        <a class="btn primary" href="/vocab/review">Повторение слов</a>
+        <a class="btn" href="/hangul">Хангыль</a>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public string? Section { get; set; }
+
+    private string ModuleName => new Uri(Navigation.Uri).Segments.ElementAtOrDefault(1)?.Trim('/') switch
+    {
+        "grammar" => "Грамматика",
+        "numbers" => "Числа",
+        "topik" => "Подготовка к TOPIK",
+        "stats" => "Статистика",
+        _ => "Раздел",
+    };
+}

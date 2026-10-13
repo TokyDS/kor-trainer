@@ -1,0 +1,61 @@
+# CLAUDE.md — KorTrainer
+
+Korean self-study trainer (Russian UI) following a fixed plan towards TOPIK in spring 2027.
+Personal tool and a C# portfolio project: clean architecture, tests and an English README matter.
+
+## Stack
+
+.NET 10 (LTS) · ASP.NET Core Minimal API · EF Core 10 + SQLite · Blazor WebAssembly (hosted by the API)
+· xUnit v3 on Microsoft.Testing.Platform · AwesomeAssertions · Docker/Podman.
+
+The SDK may be installed per-user: `export PATH=$HOME/.dotnet:$PATH`.
+
+## Commands
+
+```bash
+dotnet build                                   # TreatWarningsAsErrors is on for every project
+dotnet test                                    # all tests; MTP runner is configured in global.json
+dotnet test --project tests/KorTrainer.Domain.Tests
+dotnet test -- --coverage --coverage-output-format cobertura
+dotnet run --project src/KorTrainer.Api        # API + client on http://localhost:5116
+dotnet tool restore && dotnet ef migrations add <Name> -p src/KorTrainer.Infrastructure -s src/KorTrainer.Api -o Persistence/Migrations
+docker compose up --build                      # http://localhost:8080, data in volume kortrainer-data
+```
+
+Static web assets are only served from `dotnet run` in the Development environment or after publish.
+
+## Layout and dependency rule
+
+`Domain` (no dependencies) ← `Contracts` ← `Application` ← `Infrastructure` ← `Api`; `Web` references
+`Contracts` and `Domain` only. Never reference EF or ASP.NET from Domain.
+
+- Domain: `Hangul/` (Syllable, Batchim, Pronunciation, Romanizer, JamoCatalog), `Srs/`, `Plan/`
+  (StudyPlan, PlanContent with Russian lesson texts, Streak), `Exercises/` (generators), `Entities/`.
+- Application: one service per feature; validation via `Validator` → `ValidationFailedException` (400),
+  `NotFoundException` (404). Time comes from `StudyClock` (wraps `TimeProvider`, uses the learner's time zone).
+- Infrastructure: `AppDbContext` implements `IAppDbContext`; deck in `Seed/words.json` (embedded).
+- Web: pages in `Pages/`, shared drill UI in `Components/ChoiceDrill.razor`, keyboard via
+  `KeyboardComponentBase`, browser glue in `wwwroot/js/app.js`.
+
+## Conventions
+
+- Code, identifiers and comments in English; all user-facing text in Russian.
+- Romanization is hidden unless `ShowRomanization` is on — never show Latin by default.
+- Hangul logic uses Unicode arithmetic (`0xAC00`, `% 28`, `/ 588`), never tables of syllables.
+- Domain logic is pure and deterministic: inject `Random`/`TimeProvider`, prefer immutable records.
+- Activity entities store `LocalDate` (learner's day) at write time; group statistics by it.
+- Write tests first for domain rules; keep Application tests on a migrated in-memory SQLite DB
+  (`TestDatabase`), API tests via `KorTrainerApiFactory`.
+- Exercise type ids live in `ExerciseTypes`; plan tasks reference them for automatic progress.
+- Deck format: `[korean, russian, pos, irregularity?]`. `DeckKey` = `korean#n` (n-th occurrence), so
+  append new homonyms after existing ones; translations can be edited in place.
+- Commits: Conventional Commits (`feat:`, `fix:`, `test:`, `docs:`…).
+
+## Iterations
+
+1. ✅ MVP: Today, Hangul (all drills, guide, timed reading, analyzer), vocabulary SRS, settings,
+   export/import, Docker.
+2. Grammar generators (이에요/예요, 은/는, 이/가, 을/를, -아/어요, -습니다, past; level-2 endings).
+   Routes `/grammar/{type}` and plan tasks already exist — see `ExerciseTypes` and `PlanContent`.
+3. Numbers (sino/native, counters, time, money) — routes `/numbers/{type}`.
+4. TOPIK writing timer (51–54, `WritingDraft` entity exists) and statistics page.

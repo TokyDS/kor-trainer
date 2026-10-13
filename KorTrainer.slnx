@@ -1,0 +1,15 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/KorTrainer.Api/KorTrainer.Api.csproj" />
+    <Project Path="src/KorTrainer.Application/KorTrainer.Application.csproj" />
+    <Project Path="src/KorTrainer.Contracts/KorTrainer.Contracts.csproj" />
+    <Project Path="src/KorTrainer.Domain/KorTrainer.Domain.csproj" />
+    <Project Path="src/KorTrainer.Infrastructure/KorTrainer.Infrastructure.csproj" />
+    <Project Path="src/KorTrainer.Web/KorTrainer.Web.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/KorTrainer.Api.Tests/KorTrainer.Api.Tests.csproj" />
+    <Project Path="tests/KorTrainer.Application.Tests/KorTrainer.Application.Tests.csproj" />
+    <Project Path="tests/KorTrainer.Domain.Tests/KorTrainer.Domain.Tests.csproj" />
+  </Folder>
+</Solution>

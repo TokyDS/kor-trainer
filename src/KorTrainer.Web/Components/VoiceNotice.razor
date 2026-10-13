@@ -1,0 +1,51 @@
+@* Explains how to install a Korean voice when the browser has none. *@
+@implements IDisposable
+@inject AppState State
+
+@if (State.Speech is { } speech && (!speech.Supported || !speech.HasKoreanVoice))
+{
+    <div class="notice warning" role="status">
+        @if (!speech.Supported)
+        {
+            <strong>Браузер не поддерживает озвучку (Web Speech API).</strong>
+            <p>Откройте тренажёр в Chrome, Edge или Safari.</p>
+        }
+        else
+        {
+            <strong>Корейский голос не найден — упражнения на слух работать не будут.</strong>
+            <br />
+            @if (!Compact || _expanded)
+            {
+                <p>@InstructionFor(speech.Platform)</p>
+                <p class="muted">После установки голоса перезапустите браузер и обновите страницу.</p>
+            }
+            else
+            {
+                <button type="button" class="link-button" @onclick="() => _expanded = true">Как установить?</button>
+            }
+        }
+    </div>
+}
+
+@code {
+    private bool _expanded;
+
+    [Parameter]
+    public bool Compact { get; set; }
+
+    protected override void OnInitialized() => State.Changed += OnStateChanged;
+
+    public void Dispose() => State.Changed -= OnStateChanged;
+
+    private void OnStateChanged() => InvokeAsync(StateHasChanged);
+
+    private static string InstructionFor(string platform) => platform switch
+    {
+        "android" => "Android: Настройки → Система → Язык и ввод → Синтез речи → «Синтезатор речи Google» → ⚙ → Установить голосовые данные → Корейский. Пользуйтесь Chrome.",
+        "ios" => "iPhone/iPad: Настройки → Универсальный доступ → Устное содержимое → Голоса → Корейский → скачайте голос (например, Yuna).",
+        "windows" => "Windows: Параметры → Время и язык → Речь → Добавить голоса → Корейский. В Edge также есть онлайн-голоса «Microsoft … (Korean)».",
+        "macos" => "macOS: Системные настройки → Универсальный доступ → Устное содержимое → Системный голос → Управлять голосами → Корейский (Yuna).",
+        "linux" => "Linux: проще всего открыть тренажёр в Google Chrome — там есть онлайн-голос «Google 한국의». Firefox использует speech-dispatcher: установите корейский голос (например, пакет espeak-ng), но качество будет заметно хуже.",
+        _ => "Установите корейский голос синтеза речи в настройках системы или откройте тренажёр в Google Chrome.",
+    };
+}

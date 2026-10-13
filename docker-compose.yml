@@ -1,0 +1,14 @@
+services:
+  kortrainer:
+    build: .
+    image: kortrainer:latest
+    container_name: kortrainer
+    ports:
+      # Reachable from a phone on the same network: http://<computer-ip>:8080
+      - "8080:8080"
+    volumes:
+      - kortrainer-data:/data
+    restart: unless-stopped
+
+volumes:
+  kortrainer-data:

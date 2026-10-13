@@ -1,0 +1,317 @@
+@* Multiple-choice drill shared by all modules: keyboard control, instant feedback, retry of misses. *@
+@inherits KeyboardComponentBase
+@inject ApiClient Api
+@inject AppState State
+
+<section class="drill">
+    <header class="page-header">
+        <a class="back" href="@BackHref">← Назад</a>
+        <h1>@(_set?.Title ?? Heading)</h1>
+        @if (Subtitle is not null)
+        {
+            <p class="muted">@Subtitle</p>
+        }
+    </header>
+
+    <VoiceNotice Compact="true" />
+    <StatusViews IsLoading="_loading" Error="@_error" OnRetry="LoadAsync" />
+
+    @if (!_loading && _error is null && _set is not null)
+    {
+        @if (_finished)
+        {
+            <div class="card summary">
+                <h2>Подход завершён</h2>
+                <p class="big-number">@_firstTryCorrect / @_uniqueCount</p>
+                <p class="muted">правильно с первого раза · @AccuracyText</p>
+                <div class="actions">
+                    <button type="button" class="btn primary" @onclick="LoadAsync">Ещё подход <kbd>Enter</kbd></button>
+                    <a class="btn" href="/">К задачам дня</a>
+                </div>
+            </div>
+        }
+        else if (Current is { } item)
+        {
+            <div class="progress-track" aria-hidden="true"><div class="progress-fill" style="width: @ProgressPercent%"></div></div>
+            <p class="counter muted">@(_position + 1) из @_items.Count</p>
+
+            <div class="card prompt">
+                <div class="prompt-main">
+                    <HangulText Text="@item.Prompt" Romanization="@item.PromptRomanization" Size="xl" />
+                    @if (item.SpeakText is not null && (item.AutoSpeak || _selected is not null))
+                    {
+                        <SpeakButton Text="@item.SpeakText" />
+                    }
+                </div>
+                @if (item.PromptNote is not null)
+                {
+                    <p class="muted">@item.PromptNote</p>
+                }
+            </div>
+
+            <div class="options" role="group" aria-label="Варианты ответа">
+                @for (int i = 0; i < item.Options.Count; i++)
+                {
+                    int index = i;
+                    var option = item.Options[i];
+                    <button type="button" class="option @OptionClass(item, index)" disabled="@(_selected is not null)" @onclick="() => AnswerAsync(index)">
+                        <span class="key">@(index + 1)</span>
+                        <span class="option-body">
+                            <HangulText Text="@option.Text" Romanization="@option.Romanization" Size="lg" />
+                            @if (option.Hint is not null)
+                            {
+                                <small class="muted">@option.Hint</small>
+                            }
+                        </span>
+                    </button>
+                }
+            </div>
+
+            @if (_selected is { } selected)
+            {
+                bool correct = selected == item.CorrectIndex;
+                <div class="feedback @(correct ? "ok" : "bad")" role="status">
+                    <strong>@(correct ? "Верно!" : "Неверно.")</strong>
+                    <p>@item.Explanation</p>
+                    <button type="button" class="btn primary" @onclick="NextAsync">Дальше <kbd>Enter</kbd></button>
+                </div>
+            }
+
+            @if (_syncError is not null)
+            {
+                <p class="notice error small">Ответ не сохранился: @_syncError</p>
+            }
+
+            <p class="keys-hint">
+                <kbd>1</kbd>–<kbd>@item.Options.Count</kbd> ответ · <kbd>Enter</kbd> дальше · <kbd>Пробел</kbd> озвучить
+            </p>
+        }
+    }
+</section>
+
+@code {
+    private const int MaxCountedResponseMs = 60_000;
+
+    private readonly System.Diagnostics.Stopwatch _itemTimer = new();
+    private readonly HashSet<string> _retried = [];
+    private List<ChoiceExerciseDto> _items = [];
+    private ExerciseSetDto? _set;
+    private int _position;
+    private int? _selected;
+    private bool _loading = true;
+    private bool _reloading;
+    private bool _finished;
+    private bool _speakPending;
+    private string? _error;
+    private string? _syncError;
+    private int _uniqueCount;
+    private int _firstTryCorrect;
+    private DateTime _sessionStartUtc;
+    private long _activeMs;
+    private bool _sessionSaved;
+
+    [Parameter, EditorRequired]
+    public Func<Task<ExerciseSetDto>> Load { get; set; } = default!;
+
+    [Parameter]
+    public string Heading { get; set; } = "Упражнение";
+
+    [Parameter]
+    public string? Subtitle { get; set; }
+
+    [Parameter]
+    public string BackHref { get; set; } = "/";
+
+    private ChoiceExerciseDto? Current => _position < _items.Count ? _items[_position] : null;
+
+    private int ProgressPercent => _items.Count == 0 ? 0 : _position * 100 / _items.Count;
+
+    private string AccuracyText => _uniqueCount == 0 ? "—" : $"{_firstTryCorrect * 100 / _uniqueCount}%";
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await base.OnAfterRenderAsync(firstRender);
+        if (_speakPending && Current is { AutoSpeak: true } item)
+        {
+            _speakPending = false;
+            await State.SpeakAsync(item.SpeakText);
+        }
+    }
+
+    protected override async Task HandleKeyAsync(string key)
+    {
+        if (_finished)
+        {
+            if (key == "Enter")
+            {
+                await LoadAsync();
+            }
+
+            return;
+        }
+
+        if (Current is not { } item)
+        {
+            return;
+        }
+
+        if (key == "Space")
+        {
+            // Before answering, only listening drills may be voiced; otherwise audio would give the answer away.
+            if (item.AutoSpeak || _selected is not null)
+            {
+                await State.SpeakAsync(item.SpeakText);
+            }
+        }
+        else if (key == "Enter" && _selected is not null)
+        {
+            await NextAsync();
+        }
+        else if (DigitOf(key) is { } digit && _selected is null && digit <= item.Options.Count)
+        {
+            await AnswerAsync(digit - 1);
+        }
+    }
+
+    private async Task LoadAsync()
+    {
+        if (_reloading)
+        {
+            return;
+        }
+
+        _reloading = true;
+        await SaveSessionAsync();
+        _loading = true;
+        _error = null;
+        try
+        {
+            _set = await Load();
+            _items = [.. _set.Items];
+            _retried.Clear();
+            _position = 0;
+            _selected = null;
+            _finished = false;
+            _uniqueCount = _items.Count;
+            _firstTryCorrect = 0;
+            _sessionStartUtc = DateTime.UtcNow;
+            _activeMs = 0;
+            _sessionSaved = false;
+            ShowCurrent();
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _loading = false;
+            _reloading = false;
+        }
+    }
+
+    private async Task AnswerAsync(int index)
+    {
+        if (Current is not { } item || _selected is not null)
+        {
+            return;
+        }
+
+        _itemTimer.Stop();
+        int elapsed = (int)Math.Min(_itemTimer.ElapsedMilliseconds, int.MaxValue);
+        _activeMs += Math.Min(elapsed, MaxCountedResponseMs);
+        _selected = index;
+        bool correct = index == item.CorrectIndex;
+
+        bool firstTry = !_retried.Contains(item.ItemKey);
+        if (firstTry && correct)
+        {
+            _firstTryCorrect++;
+        }
+
+        // A missed item comes back once at the end of the set.
+        if (firstTry && !correct)
+        {
+            _retried.Add(item.ItemKey);
+            _items.Add(item);
+        }
+
+        if (!item.AutoSpeak && item.SpeakText is not null)
+        {
+            await State.SpeakAsync(item.SpeakText);
+        }
+
+        try
+        {
+            await Api.RecordAttemptsAsync([new AttemptDto(_set!.Module, item.Type, item.ItemKey, correct, elapsed)]);
+            _syncError = null;
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException)
+        {
+            _syncError = ex.Message;
+        }
+    }
+
+    private async Task NextAsync()
+    {
+        await Browser.BlurActiveAsync();
+        _position++;
+        _selected = null;
+        if (_position >= _items.Count)
+        {
+            _finished = true;
+            await SaveSessionAsync();
+            return;
+        }
+
+        ShowCurrent();
+    }
+
+    private void ShowCurrent()
+    {
+        _itemTimer.Restart();
+        _speakPending = true;
+    }
+
+    private async Task SaveSessionAsync()
+    {
+        int seconds = (int)(_activeMs / 1000);
+        if (_sessionSaved || seconds < 1 || _set is null)
+        {
+            return;
+        }
+
+        _sessionSaved = true;
+        try
+        {
+            await Api.RecordSessionAsync(new SessionDto(_set.Module, _sessionStartUtc, seconds));
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException)
+        {
+            _syncError = ex.Message;
+        }
+    }
+
+    private string OptionClass(ChoiceExerciseDto item, int index)
+    {
+        if (_selected is not { } selected)
+        {
+            return string.Empty;
+        }
+
+        if (index == item.CorrectIndex)
+        {
+            return "correct";
+        }
+
+        return index == selected ? "wrong" : "dimmed";
+    }
+
+    public override async ValueTask DisposeAsync()
+    {
+        await SaveSessionAsync();
+        await base.DisposeAsync();
+    }
+}

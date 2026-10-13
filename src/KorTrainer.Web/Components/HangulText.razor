@@ -1,0 +1,33 @@
+@* Korean (or mixed) text; romanization appears underneath only when enabled in settings. *@
+@implements IDisposable
+@inject AppState State
+
+<span class="hangul-text @SizeClass">
+    <span class="text" lang="@(IsKorean ? "ko" : null)">@Text</span>
+    @if (State.RomanizationFor(Text, Romanization) is { } romanization)
+    {
+        <span class="romanization">@romanization</span>
+    }
+</span>
+
+@code {
+    [Parameter, EditorRequired]
+    public string Text { get; set; } = string.Empty;
+
+    /// <summary>Precomputed romanization (e.g. for a single letter); otherwise derived from the text.</summary>
+    [Parameter]
+    public string? Romanization { get; set; }
+
+    [Parameter]
+    public string Size { get; set; } = "md";
+
+    private bool IsKorean => Text.Any(KorTrainer.Domain.Hangul.Syllable.IsSyllable) || Text.Any(c => c is >= 'ㄱ' and <= 'ㆎ');
+
+    private string SizeClass => $"size-{Size}";
+
+    protected override void OnInitialized() => State.Changed += OnStateChanged;
+
+    public void Dispose() => State.Changed -= OnStateChanged;
+
+    private void OnStateChanged() => InvokeAsync(StateHasChanged);
+}

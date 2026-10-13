@@ -1,0 +1,138 @@
+// Browser glue for KorTrainer: speech synthesis, keyboard shortcuts and theme.
+
+const VOICE_WAIT_MS = 1500;
+let koreanVoice = null;
+
+function pickKoreanVoice(voices) {
+    const korean = voices.filter(v => (v.lang || '').toLowerCase().replace('_', '-').startsWith('ko'));
+    // Prefer higher quality network/Google voices when present.
+    return korean.find(v => /google|natural|online/i.test(v.name)) ?? korean[0] ?? null;
+}
+
+function loadVoices() {
+    if (!('speechSynthesis' in window)) {
+        return Promise.resolve([]);
+    }
+    const voices = window.speechSynthesis.getVoices();
+    if (voices.length > 0) {
+        return Promise.resolve(voices);
+    }
+    // Chrome loads voices asynchronously and announces them with "voiceschanged".
+    return new Promise(resolve => {
+        const done = () => resolve(window.speechSynthesis.getVoices());
+        window.speechSynthesis.addEventListener('voiceschanged', done, { once: true });
+        setTimeout(done, VOICE_WAIT_MS);
+    });
+}
+
+export async function speechInfo() {
+    const supported = 'speechSynthesis' in window && 'SpeechSynthesisUtterance' in window;
+    if (!supported) {
+        return { supported: false, hasKoreanVoice: false, voiceName: null, platform: platformName() };
+    }
+    koreanVoice = pickKoreanVoice(await loadVoices());
+    return {
+        supported: true,
+        hasKoreanVoice: koreanVoice !== null,
+        voiceName: koreanVoice ? koreanVoice.name : null,
+        platform: platformName(),
+    };
+}
+
+export function speak(text, rate) {
+    if (!('speechSynthesis' in window) || !text) {
+        return false;
+    }
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'ko-KR';
+    utterance.rate = rate || 0.9;
+    if (koreanVoice) {
+        utterance.voice = koreanVoice;
+    }
+    window.speechSynthesis.speak(utterance);
+    return true;
+}
+
+function platformName() {
+    const ua = navigator.userAgent || '';
+    if (/android/i.test(ua)) return 'android';
+    if (/iphone|ipad|ipod/i.test(ua)) return 'ios';
+    if (/windows/i.test(ua)) return 'windows';
+    if (/mac os/i.test(ua)) return 'macos';
+    if (/linux/i.test(ua)) return 'linux';
+    return 'other';
+}
+
+// --- Keyboard ---------------------------------------------------------------
+
+const handlers = new Map();
+let nextHandlerId = 1;
+
+function isTyping(target) {
+    if (!target) return false;
+    const tag = (target.tagName || '').toLowerCase();
+    return tag === 'input' || tag === 'textarea' || tag === 'select' || target.isContentEditable;
+}
+
+function normalizeKey(event) {
+    if (event.code === 'Space' || event.key === ' ') return 'Space';
+    if (event.key === 'Enter') return 'Enter';
+    if (event.key === 'Escape') return 'Escape';
+    if (/^Digit[1-9]$/.test(event.code)) return event.code.substring(5);
+    if (/^Numpad[1-9]$/.test(event.code)) return event.code.substring(6);
+    if (/^Key[A-Z]$/.test(event.code)) return event.code.substring(3).toLowerCase();
+    return null;
+}
+
+export function registerKeys(dotNetRef) {
+    const handler = event => {
+        // Holding a key must not answer, advance or reload several times.
+        if (event.repeat || event.ctrlKey || event.altKey || event.metaKey || isTyping(event.target)) {
+            return;
+        }
+        const key = normalizeKey(event);
+        if (key === null) {
+            return;
+        }
+        // Space would scroll and Enter would re-click the focused button.
+        if (key === 'Space' || key === 'Enter') {
+            event.preventDefault();
+        }
+        dotNetRef.invokeMethodAsync('OnKey', key);
+    };
+    const id = nextHandlerId++;
+    handlers.set(id, handler);
+    document.addEventListener('keydown', handler);
+    return id;
+}
+
+export function unregisterKeys(id) {
+    const handler = handlers.get(id);
+    if (handler) {
+        document.removeEventListener('keydown', handler);
+        handlers.delete(id);
+    }
+}
+
+// --- Theme ------------------------------------------------------------------
+
+export function applyTheme(theme) {
+    const root = document.documentElement;
+    if (theme === 'Light' || theme === 'Dark') {
+        root.dataset.theme = theme.toLowerCase();
+    } else {
+        delete root.dataset.theme;
+    }
+    try {
+        localStorage.setItem('kortrainer-theme', theme);
+    } catch {
+        // Storage can be unavailable (private mode); the theme still applies for this visit.
+    }
+}
+
+export function blurActive() {
+    if (document.activeElement instanceof HTMLElement) {
+        document.activeElement.blur();
+    }
+}

@@ -1,0 +1,27 @@
+@* Loading spinner or error message with a retry button. *@
+@if (Error is not null)
+{
+    <div class="notice error" role="alert">
+        <strong>Не получилось загрузить данные.</strong>
+        <p>@Error</p>
+        @if (OnRetry.HasDelegate)
+        {
+            <button type="button" class="btn" @onclick="OnRetry">Повторить</button>
+        }
+    </div>
+}
+else if (IsLoading)
+{
+    <div class="loading" role="status" aria-live="polite"><span class="spinner"></span> Загрузка…</div>
+}
+
+@code {
+    [Parameter]
+    public bool IsLoading { get; set; }
+
+    [Parameter]
+    public string? Error { get; set; }
+
+    [Parameter]
+    public EventCallback OnRetry { get; set; }
+}
