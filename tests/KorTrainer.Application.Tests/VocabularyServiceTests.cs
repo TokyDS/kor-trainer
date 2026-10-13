@@ -154,11 +154,11 @@ public sealed class VocabularyServiceTests
 
         var unlocked = await t.Vocabulary.ListWordsAsync(null, null, WordStatus.New, null, 1, 100, Ct);
         var locked = await t.Vocabulary.ListWordsAsync(null, PlanStage.Level1, WordStatus.Locked, null, 1, 5, Ct);
-        var search = await t.Vocabulary.ListWordsAsync(null, null, null, "ШКОЛА", 1, 10, Ct);
+        var search = await t.Vocabulary.ListWordsAsync(null, null, null, "КАРАНДАШ", 1, 10, Ct);
 
         unlocked.Total.Should().Be(10);
         locked.Items.Should().HaveCount(5).And.OnlyContain(w => w.Status == WordStatus.Locked);
-        search.Items.Should().ContainSingle().Which.Korean.Should().Be("학교");
+        search.Items.Should().ContainSingle().Which.Korean.Should().Be("연필");
     }
 
     [Fact]

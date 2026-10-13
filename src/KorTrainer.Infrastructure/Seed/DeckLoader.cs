@@ -15,27 +15,54 @@ public sealed record DeckEntry(
     int? LessonDay,
     int Rank);
 
-/// <summary>Reads the bundled vocabulary deck (embedded <c>Seed/words.json</c>).</summary>
+/// <summary>
+/// Reads the bundled vocabulary decks: the curated beginner deck first, then the frequency deck
+/// generated from the NIKL learner list. Order matters: homonym keys (눈#1, 눈#2) count across files.
+/// </summary>
 public static class DeckLoader
 {
-    private const string ResourceName = "KorTrainer.Infrastructure.Seed.words.json";
+    private static readonly string[] ResourceNames =
+    [
+        "KorTrainer.Infrastructure.Seed.words.json",
+        "KorTrainer.Infrastructure.Seed.words-nikl.json",
+    ];
 
     private static readonly JsonSerializerOptions Options = new() { PropertyNameCaseInsensitive = true };
 
     public static IReadOnlyList<DeckEntry> LoadBundled()
     {
-        using var stream = typeof(DeckLoader).Assembly.GetManifestResourceStream(ResourceName)
-            ?? throw new InvalidOperationException($"Embedded deck '{ResourceName}' was not found.");
-        return Parse(stream);
+        var streams = ResourceNames
+            .Select(name => typeof(DeckLoader).Assembly.GetManifestResourceStream(name)
+                ?? throw new InvalidOperationException($"Embedded deck '{name}' was not found."))
+            .ToList();
+        try
+        {
+            return Parse(streams);
+        }
+        finally
+        {
+            streams.ForEach(s => s.Dispose());
+        }
     }
 
-    public static IReadOnlyList<DeckEntry> Parse(Stream json)
-    {
-        var deck = JsonSerializer.Deserialize<DeckFile>(json, Options)
-            ?? throw new InvalidDataException("The deck file is empty.");
+    public static IReadOnlyList<DeckEntry> Parse(Stream json) => Parse([json]);
 
+    public static IReadOnlyList<DeckEntry> Parse(IEnumerable<Stream> decks)
+    {
         var occurrences = new Dictionary<string, int>();
         var entries = new List<DeckEntry>();
+        foreach (var json in decks)
+        {
+            var deck = JsonSerializer.Deserialize<DeckFile>(json, Options)
+                ?? throw new InvalidDataException("The deck file is empty.");
+            AddSections(deck, occurrences, entries);
+        }
+
+        return entries;
+    }
+
+    private static void AddSections(DeckFile deck, Dictionary<string, int> occurrences, List<DeckEntry> entries)
+    {
         foreach (var section in deck.Sections)
         {
             var stage = Enum.Parse<PlanStage>(section.Stage);
@@ -62,8 +89,6 @@ public static class DeckLoader
                     entries.Count + 1));
             }
         }
-
-        return entries;
     }
 
     private static PartOfSpeech ParsePartOfSpeech(string value) =>

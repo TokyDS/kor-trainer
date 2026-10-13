@@ -11,6 +11,7 @@
 
   <ItemGroup>
     <EmbeddedResource Include="Seed\words.json" />
+    <EmbeddedResource Include="Seed\words-nikl.json" />
   </ItemGroup>
 
   <PropertyGroup>

@@ -33,7 +33,9 @@ Static web assets are only served from `dotnet run` in the Development environme
   (StudyPlan, PlanContent with Russian lesson texts, Streak), `Exercises/` (generators), `Entities/`.
 - Application: one service per feature; validation via `Validator` → `ValidationFailedException` (400),
   `NotFoundException` (404). Time comes from `StudyClock` (wraps `TimeProvider`, uses the learner's time zone).
-- Infrastructure: `AppDbContext` implements `IAppDbContext`; deck in `Seed/words.json` (embedded).
+- Infrastructure: `AppDbContext` implements `IAppDbContext`; decks embedded from `Seed/words.json`
+  (curated, loaded first) and `Seed/words-nikl.json` (generated — never edit by hand; rebuild with
+  `dotnet run tools/deck/BuildNiklDeck.cs` from `tools/deck/*.tsv`).
 - Web: pages in `Pages/`, shared drill UI in `Components/ChoiceDrill.razor`, keyboard via
   `KeyboardComponentBase`, browser glue in `wwwroot/js/app.js`.
 

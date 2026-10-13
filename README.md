@@ -24,7 +24,8 @@ Romanization is **off by default** — the point is to learn to read Hangul with
   - timed reading with milliseconds-per-syllable statistics;
   - a word analyzer that splits syllables into letters and explains how a word is pronounced.
 - **Vocabulary with spaced repetition** — an Anki-style SM-2 scheduler (learning steps, ease,
-  lapses), a ~350-word starter deck unlocked lesson by lesson according to the plan.
+  lapses) over a ~3,000-word deck: ~350 hand-picked words for the first lessons plus the levels A and B
+  of the official NIKL learner vocabulary list, introduced by frequency as the plan reaches each stage.
 - **Keyboard first** — `1`–`4` to answer, `Enter` to continue, `Space` to hear the word.
 - Responsive layout (phone tab bar / desktop sidebar), light and dark themes.
 - Progress export/import as JSON; data stored in SQLite.
@@ -56,9 +57,16 @@ Romanization is **off by default** — the point is to learn to read Hangul with
 
 ![TOPIK writing](docs/screenshots/topik-writing.png)
 
-> ⚠️ **The Russian translations in the starter deck were machine-generated and should be reviewed.**
-> Deck entries can be corrected in `src/KorTrainer.Infrastructure/Seed/words.json`; the next start
-> updates them in place without losing progress.
+> ⚠️ **The Russian translations in both decks were machine-generated and should be reviewed.**
+> Fix them in `src/KorTrainer.Infrastructure/Seed/words.json` or `tools/deck/nikl.ru.tsv` (then run
+> `dotnet run tools/deck/BuildNiklDeck.cs`); the next start updates words in place without losing progress.
+
+### Data sources
+
+- **«한국어 학습용 어휘 목록»** — Korean Learner's Vocabulary List, National Institute of Korean Language
+  (국립국어원), 2003: headwords, parts of speech, hanja, levels and frequency ranks. Used under
+  [KOGL Type 1](https://www.kogl.or.kr/info/licenseType1.do) (공공누리 제1유형, attribution). See
+  [`tools/deck`](tools/deck/README.md) for the export and the build script.
 
 ## Quick start
 

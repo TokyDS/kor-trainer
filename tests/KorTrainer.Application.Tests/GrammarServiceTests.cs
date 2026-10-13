@@ -3,6 +3,7 @@ using KorTrainer.Application.Common;
 using KorTrainer.Domain.Common;
 using KorTrainer.Domain.Grammar;
 using KorTrainer.Domain.Plan;
+using Microsoft.EntityFrameworkCore;
 
 namespace KorTrainer.Application.Tests;
 
@@ -32,6 +33,23 @@ public sealed class GrammarServiceTests
 
         var firstPhraseTopics = GrammarCatalog.Topics.Where(x => x.Stage == PlanStage.FirstPhrases).Select(x => x.Type);
         set.Items.Select(i => i.Type).Should().OnlyContain(type => firstPhraseTopics.Contains(type));
+    }
+
+    [Fact]
+    public async Task GetExercises_EarlyInThePlan_UsesOnlyStageOneWords()
+    {
+        await using var t = await TestDatabase.CreateAsync();
+        await t.SetPlanDayAsync(6);
+        // Homonyms can sit in several stages (들다 has senses in A and B), so only words absent from early stages count.
+        var early = (await t.Db.Words.Where(w => w.Stage <= PlanStage.Level1).Select(w => w.Korean).ToListAsync(Ct)).ToHashSet();
+        var advanced = (await t.Db.Words.Where(w => w.Stage > PlanStage.Level1).Select(w => w.Korean).ToListAsync(Ct))
+            .Where(k => !early.Contains(k))
+            .ToHashSet();
+
+        var set = await t.Grammar.GetExercisesAsync(ExerciseTypes.PolitePresent, 50, Ct);
+
+        advanced.Should().NotBeEmpty();
+        set.Items.Should().OnlyContain(i => !advanced.Contains(i.Prompt));
     }
 
     [Fact]

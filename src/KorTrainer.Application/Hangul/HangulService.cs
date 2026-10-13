@@ -35,7 +35,8 @@ public sealed class HangulService(IAppDbContext db, SettingsService settingsServ
             .Require(count is >= 1 and <= MaxCount, nameof(count), $"Количество: от 1 до {MaxCount}.")
             .ThrowIfInvalid();
 
-        var words = await db.Words.Select(w => w.Korean).ToListAsync(cancellationToken);
+        var maxStage = await MaxWordStageAsync(cancellationToken);
+        var words = await db.Words.Where(w => w.Stage <= maxStage).Select(w => w.Korean).ToListAsync(cancellationToken);
         var generator = new HangulExerciseGenerator(random);
         var items = generator.Generate(type, (HangulLevel)level, count, words).Select(ExerciseMapper.ToDto).ToList();
         return new ExerciseSetDto(StudyModule.Hangul, type, TitleOf(type), items);
@@ -48,7 +49,9 @@ public sealed class HangulService(IAppDbContext db, SettingsService settingsServ
             .Require(count is >= 1 and <= MaxCount, nameof(count), $"Количество: от 1 до {MaxCount}.")
             .ThrowIfInvalid();
 
+        var maxStage = await MaxWordStageAsync(cancellationToken);
         var words = await db.Words
+            .Where(w => w.Stage <= maxStage)
             .Select(w => new { w.Korean, w.Russian })
             .ToListAsync(cancellationToken);
         var generator = new HangulExerciseGenerator(random);
@@ -78,6 +81,13 @@ public sealed class HangulService(IAppDbContext db, SettingsService settingsServ
             correct.Count == 0 ? 0 : Math.Round((double)correct.Sum(t => t.ElapsedMs) / correct.Sum(t => t.SyllableCount)),
             Math.Round((double)correct.Count / trials.Count, 3),
             todayCorrect.Count == 0 ? null : Math.Round((double)todayCorrect.Sum(t => t.ElapsedMs) / todayCorrect.Sum(t => t.SyllableCount)));
+    }
+
+    private async Task<PlanStage> MaxWordStageAsync(CancellationToken cancellationToken)
+    {
+        var settings = await settingsService.GetEntityAsync(cancellationToken);
+        var stage = new StudyPlan(settings.StartDate, settings.NewWordsPerDay).StageOn(clock.Today(settings));
+        return StudyScope.MaxWordStage(stage);
     }
 
     public static HangulAnalysisDto Analyze(string? text)

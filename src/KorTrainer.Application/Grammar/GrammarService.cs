@@ -32,8 +32,11 @@ public sealed class GrammarService(IAppDbContext db, SettingsService settingsSer
             .Require(count is >= 1 and <= MaxCount, nameof(count), $"Количество: от 1 до {MaxCount}.")
             .ThrowIfInvalid();
 
-        var topics = topic is not null ? [topic] : GrammarCatalog.AvailableAt(await CurrentStageAsync(cancellationToken));
+        var stage = await CurrentStageAsync(cancellationToken);
+        var topics = topic is not null ? [topic] : GrammarCatalog.AvailableAt(stage);
+        var maxWordStage = StudyScope.MaxWordStage(stage);
         var words = await db.Words
+            .Where(w => w.Stage <= maxWordStage)
             .Where(w => w.PartOfSpeech == PartOfSpeech.Noun || w.PartOfSpeech == PartOfSpeech.Verb || w.PartOfSpeech == PartOfSpeech.Adjective)
             .Select(w => new { w.Korean, w.Russian, w.PartOfSpeech, w.Irregularity })
             .ToListAsync(cancellationToken);

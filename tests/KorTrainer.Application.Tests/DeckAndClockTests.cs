@@ -15,11 +15,28 @@ public sealed class DeckAndClockTests
     private static readonly IReadOnlyList<DeckEntry> Deck = DeckLoader.LoadBundled();
 
     [Fact]
-    public void BundledDeck_HasAboutThreeHundredWordsWithUniqueKeys()
+    public void BundledDeck_CombinesCuratedAndFrequencyWordsWithUniqueKeys()
     {
-        Deck.Count.Should().BeInRange(300, 400);
+        Deck.Count.Should().BeGreaterThan(3000);
+        Deck.Count(e => e.Topic.StartsWith("Частотные", StringComparison.Ordinal)).Should().BeGreaterThan(2500);
         Deck.Select(e => e.DeckKey).Should().OnlyHaveUniqueItems();
         Deck.Select(e => e.Rank).Should().OnlyHaveUniqueItems();
+    }
+
+    [Fact]
+    public void BundledDeck_KeepsCuratedWordsFirstSoTheirKeysNeverShift()
+    {
+        Deck.Take(10).Should().OnlyContain(e => e.Topic == "Приветствия");
+        Deck.Single(e => e.DeckKey == "학교#1").Russian.Should().Be("школа");
+    }
+
+    [Fact]
+    public void BundledDeck_OpensFrequencyWordsByPlanStage()
+    {
+        var frequency = Deck.Where(e => e.Topic.StartsWith("Частотные", StringComparison.Ordinal)).ToList();
+
+        frequency.Where(e => e.Topic.Contains(" A ", StringComparison.Ordinal)).Should().OnlyContain(e => e.Stage == PlanStage.Level1);
+        frequency.Select(e => e.Stage).Distinct().Should().BeEquivalentTo([PlanStage.Level1, PlanStage.Level2, PlanStage.TopikPrep]);
     }
 
     [Fact]
