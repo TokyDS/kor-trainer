@@ -118,7 +118,7 @@ public sealed class StudyPlan
         CommonTasks.ReviewDue,
         CommonTasks.NewWords(NewWordsPerDay),
         new("grammar", "Грамматика: 20 упражнений", TaskTarget.Answers(StudyModule.Grammar, 20), "/grammar/mixed"),
-        new("numbers", "Числа: 10 упражнений", TaskTarget.Answers(StudyModule.Numbers, 10), "/numbers"),
+        new("numbers", "Числа: 10 упражнений", TaskTarget.Answers(StudyModule.Numbers, 10), "/numbers/mixed"),
         CommonTasks.Reading(10),
     ];
 
@@ -127,7 +127,7 @@ public sealed class StudyPlan
         CommonTasks.ReviewDue,
         CommonTasks.NewWords(NewWordsPerDay),
         new("grammar", "Грамматика уровня 2: 25 упражнений", TaskTarget.Answers(StudyModule.Grammar, 25), "/grammar/mixed"),
-        new("numbers", "Время и деньги: 10 упражнений", TaskTarget.Answers(StudyModule.Numbers, 10), "/numbers"),
+        new("numbers", "Время и деньги: 10 упражнений", TaskTarget.Answers(StudyModule.Numbers, 10), "/numbers/mixed"),
         CommonTasks.Reading(10),
     ];
 

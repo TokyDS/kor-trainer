@@ -29,7 +29,7 @@ Static web assets are only served from `dotnet run` in the Development environme
 `Domain` (no dependencies) ← `Contracts` ← `Application` ← `Infrastructure` ← `Api`; `Web` references
 `Contracts` and `Domain` only. Never reference EF or ASP.NET from Domain.
 
-- Domain: `Hangul/` (Syllable, Batchim, Pronunciation, Romanizer, JamoCatalog), `Grammar/`, `Srs/`, `Plan/`
+- Domain: `Hangul/` (Syllable, Batchim, Pronunciation, Romanizer, JamoCatalog), `Grammar/`, `Numbers/`, `Srs/`, `Plan/`
   (StudyPlan, PlanContent with Russian lesson texts, Streak), `Exercises/` (generators), `Entities/`.
 - Application: one service per feature; validation via `Validator` → `ValidationFailedException` (400),
   `NotFoundException` (404). Time comes from `StudyClock` (wraps `TimeProvider`, uses the learner's time zone).
@@ -57,5 +57,6 @@ Static web assets are only served from `dotnet run` in the Development environme
    export/import, Docker.
 2. ✅ Grammar: `Domain/Grammar` (Particles, Conjugator with irregular classes and CommonMistakes,
    GrammarCatalog), `GrammarExerciseGenerator`, `/grammar` hub and `/grammar/{type|mixed}` drills.
-3. Numbers (sino/native, counters, time, money) — routes `/numbers/{type}`.
+3. ✅ Numbers: `Domain/Numbers` (KoreanNumbers, Counters), `NumberExerciseGenerator`, `/numbers` hub with
+   converter and `/numbers/{type|mixed}` drills.
 4. TOPIK writing timer (51–54, `WritingDraft` entity exists) and statistics page.

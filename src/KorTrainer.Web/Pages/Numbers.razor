@@ -1,0 +1,67 @@
+@page "/numbers"
+@using KorTrainer.Domain.Numbers
+
+<PageTitle>Числа — KorTrainer</PageTitle>
+
+<header class="page-header">
+    <h1>Числа</h1>
+    <p class="muted">Две системы счёта: сино-корейская (даты, деньги, минуты, номера) и корейская (предметы, возраст, часы).</p>
+</header>
+
+<div class="mode-grid">
+    <a class="mode-card feature" href="/numbers/@ExerciseTypes.Mixed">
+        <span class="mode-glyph" lang="ko">섞기</span>
+        <strong>Вперемешку</strong>
+        <span>Все виды упражнений</span>
+    </a>
+    @foreach (var mode in Modes)
+    {
+        <a class="mode-card" href="/numbers/@mode.Type">
+            <span class="mode-glyph" lang="ko">@mode.Glyph</span>
+            <strong>@mode.Title</strong>
+            <span class="muted">@mode.Description</span>
+        </a>
+    }
+</div>
+
+<section class="card analyzer" aria-labelledby="converter-heading">
+    <h2 id="converter-heading">Как прочитать число</h2>
+    <form class="inline-form" @onsubmit:preventDefault>
+        <input type="number" min="0" max="99999999" @bind="_number" @bind:event="oninput" aria-label="Число" />
+    </form>
+    @if (_number is >= 0 and <= 99_999_999 and var n)
+    {
+        <dl class="readings">
+            <div>
+                <dt>Сино-корейское</dt>
+                <dd><HangulText Text="@KoreanNumbers.Sino(n)" Size="lg" /> <SpeakButton Text="@KoreanNumbers.Sino(n)" ShowKeyHint="false" /></dd>
+            </div>
+            @if (n is >= 1 and <= KoreanNumbers.MaxNative)
+            {
+                <div>
+                    <dt>Корейское</dt>
+                    <dd>
+                        <HangulText Text="@KoreanNumbers.Native((int)n)" Size="lg" />
+                        <SpeakButton Text="@KoreanNumbers.Native((int)n)" ShowKeyHint="false" />
+                        <span class="muted">перед счётным словом: <span lang="ko">@KoreanNumbers.Native((int)n, attributive: true)</span></span>
+                    </dd>
+                </div>
+            }
+        </dl>
+    }
+</section>
+
+@code {
+    private sealed record Mode(string Type, string Title, string Description, string Glyph);
+
+    private static readonly Mode[] Modes =
+    [
+        new(ExerciseTypes.SinoNumbers, "Сино-корейские", "일 이 삼 … 만", "삼십"),
+        new(ExerciseTypes.NativeNumbers, "Корейские", "하나 둘 셋 … 아흔아홉", "셋"),
+        new(ExerciseTypes.Counters, "Счётные слова", "사과 세 개, 학생 두 명", "개"),
+        new(ExerciseTypes.Time, "Время", "세 시 삼십 분", "시"),
+        new(ExerciseTypes.Money, "Деньги", "만 오천 원", "원"),
+    ];
+
+    private long? _number = 15000;
+}

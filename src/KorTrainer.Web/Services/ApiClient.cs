@@ -48,6 +48,9 @@ public sealed class ApiClient(HttpClient http)
     public Task<ExerciseSetDto> GetGrammarExercisesAsync(string type, int count) =>
         GetAsync<ExerciseSetDto>($"api/grammar/exercises/{Uri.EscapeDataString(type)}?count={count}");
 
+    public Task<ExerciseSetDto> GetNumberExercisesAsync(string type, int count) =>
+        GetAsync<ExerciseSetDto>($"api/numbers/exercises/{Uri.EscapeDataString(type)}?count={count}");
+
     public Task<VocabularyQueueDto> GetQueueAsync(int limit = 50) => GetAsync<VocabularyQueueDto>($"api/vocab/queue?limit={limit}");
 
     public Task<ReviewResultDto> ReviewAsync(ReviewRequest request) => SendAsync<ReviewResultDto>(HttpMethod.Post, "api/vocab/reviews", request);

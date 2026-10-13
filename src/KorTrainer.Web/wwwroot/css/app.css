@@ -677,3 +677,7 @@ input[type="range"] { accent-color: var(--accent); }
 
 .mode-card.upcoming { opacity: 0.72; }
 .mode-card .badge { justify-self: start; }
+
+.readings { display: grid; gap: var(--space-3); margin: var(--space-4) 0 0; }
+.readings dt { font-size: 0.8rem; color: var(--ink-soft); }
+.readings dd { margin: 0; display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }

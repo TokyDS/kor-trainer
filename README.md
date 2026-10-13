@@ -38,7 +38,14 @@ Romanization is **off by default** — the point is to learn to read Hangul with
 - Distractors are the typical learner mistakes (먹아요, 듣어요, 이워요, 먹읍니다), every answer
   explains the rule that decided it; the "mixed" drill only uses topics the plan has opened.
 
-**Roadmap:** numbers (Sino-Korean/native, time, money), TOPIK II writing timer (tasks 51–54) and statistics.
+**Iteration 3 — numbers**
+
+- Sino-Korean (no 일 before 십/백/천/만, groups by 만/억) and native numbers (한/두/세/네/스무 before counters),
+  counters (개, 명, 살, 권, 잔, 마리, 층, 번 …), clock time (native hours + Sino minutes) and money, in both
+  directions; distractors are the classic mistakes (일십오, 일만 원, 사과 삼 개, 삼 시 삼십 분).
+- An instant "how to read this number" converter running in the browser on the shared Domain code.
+
+**Roadmap:** TOPIK II writing timer (tasks 51–54) and statistics.
 
 > ⚠️ **The Russian translations in the starter deck were machine-generated and should be reviewed.**
 > Deck entries can be corrected in `src/KorTrainer.Infrastructure/Seed/words.json`; the next start
@@ -120,6 +127,7 @@ for romanization).
 | GET | `/api/hangul/analyze?text=` | syllable breakdown and pronunciation |
 | GET | `/api/vocab/queue` · POST `/api/vocab/reviews` | SRS queue and answers |
 | GET | `/api/grammar/topics` · `/api/grammar/exercises/{type\|mixed}?count=` | grammar topics and drills |
+| GET | `/api/numbers/exercises/{sino\|native\|counter\|time\|money\|mixed}?count=` | number drills |
 | GET | `/api/vocab/summary` · `/api/vocab/words` · `/api/vocab/topics` | vocabulary browser |
 | POST | `/api/attempts` · `/api/sessions` | activity log |
 | GET/POST | `/api/progress/export` · `/api/progress/import` | JSON backup |
@@ -131,7 +139,7 @@ In Development the OpenAPI document is at `/openapi/v1.json`.
 
 ```bash
 dotnet build                                        # warnings are errors
-dotnet test                                         # 348 tests (xUnit v3, Microsoft.Testing.Platform)
+dotnet test                                         # 410 tests (xUnit v3, Microsoft.Testing.Platform)
 dotnet test -- --coverage --coverage-output-format cobertura
 dotnet tool restore
 dotnet ef migrations add <Name> -p src/KorTrainer.Infrastructure -s src/KorTrainer.Api -o Persistence/Migrations

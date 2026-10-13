@@ -83,6 +83,17 @@ public sealed class ApiTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task NumberExercises_ReturnMixedDrillAndRejectUnknownType()
+    {
+        var set = await _client.GetFromJsonAsync<ExerciseSetDto>("/api/numbers/exercises/mixed?count=12", Json, Ct);
+        var unknown = await _client.GetAsync("/api/numbers/exercises/roman", Ct);
+
+        set!.Module.Should().Be(StudyModule.Numbers);
+        set.Items.Should().HaveCount(12);
+        unknown.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
     public async Task InvalidInput_ReturnsValidationProblem()
     {
         var response = await _client.GetAsync("/api/hangul/exercises/unknown?level=9", Ct);

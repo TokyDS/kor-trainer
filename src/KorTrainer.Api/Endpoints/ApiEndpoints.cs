@@ -1,6 +1,7 @@
 using System.Text.Json;
 using KorTrainer.Application.Activity;
 using KorTrainer.Application.Grammar;
+using KorTrainer.Application.Numbers;
 using KorTrainer.Application.Hangul;
 using KorTrainer.Application.Progress;
 using KorTrainer.Application.Settings;
@@ -15,9 +16,11 @@ namespace KorTrainer.Api.Endpoints;
 
 public static class ApiEndpoints
 {
+    public const string RateLimitPolicy = "api";
+
     public static IEndpointRouteBuilder MapKorTrainerApi(this IEndpointRouteBuilder app)
     {
-        var api = app.MapGroup("/api");
+        var api = app.MapGroup("/api").RequireRateLimiting(RateLimitPolicy);
 
         api.MapGet("/health", () => Results.Ok(new { status = "ok" })).WithName("Health");
 
@@ -26,6 +29,8 @@ public static class ApiEndpoints
         MapHangul(api.MapGroup("/hangul").WithTags("Hangul"));
         MapVocabulary(api.MapGroup("/vocab").WithTags("Vocabulary"));
         MapGrammar(api.MapGroup("/grammar").WithTags("Grammar"));
+        api.MapGroup("/numbers").WithTags("Numbers")
+            .MapGet("/exercises/{type}", (string type, int? count, NumbersService service) => service.GetExercises(type, count ?? 20));
         MapActivity(api.MapGroup(string.Empty).WithTags("Activity"));
         MapProgress(api.MapGroup("/progress").WithTags("Progress"));
 
