@@ -51,6 +51,17 @@ public sealed class ApiClient(HttpClient http)
     public Task<ExerciseSetDto> GetNumberExercisesAsync(string type, int count) =>
         GetAsync<ExerciseSetDto>($"api/numbers/exercises/{Uri.EscapeDataString(type)}?count={count}");
 
+    public Task<WritingGuideDto> GetWritingGuideAsync() => GetAsync<WritingGuideDto>("api/topik/writing");
+
+    public Task<IReadOnlyList<WritingDraftDto>> GetDraftsAsync(int? task = null) =>
+        GetAsync<IReadOnlyList<WritingDraftDto>>(task is { } t ? $"api/topik/drafts?task={t}" : "api/topik/drafts");
+
+    public Task<WritingDraftDto> SaveDraftAsync(SaveDraftRequest request) => SendAsync<WritingDraftDto>(HttpMethod.Post, "api/topik/drafts", request);
+
+    public Task<StatsOverviewDto> GetStatsOverviewAsync() => GetAsync<StatsOverviewDto>("api/stats/overview");
+
+    public Task<IReadOnlyList<DailyStatDto>> GetDailyStatsAsync(int days) => GetAsync<IReadOnlyList<DailyStatDto>>($"api/stats/daily?days={days}");
+
     public Task<VocabularyQueueDto> GetQueueAsync(int limit = 50) => GetAsync<VocabularyQueueDto>($"api/vocab/queue?limit={limit}");
 
     public Task<ReviewResultDto> ReviewAsync(ReviewRequest request) => SendAsync<ReviewResultDto>(HttpMethod.Post, "api/vocab/reviews", request);

@@ -102,6 +102,19 @@ public sealed class GrammarExerciseGeneratorTests
     }
 
     [Fact]
+    public void Generate_SkipsTopicsWithoutWordsAndFailsOnlyWhenNothingIsLeft()
+    {
+        var generator = new GrammarExerciseGenerator(new Random(6));
+        var topics = new[] { ExerciseTypes.Copula, ExerciseTypes.PolitePresent }.Select(t => GrammarCatalog.Find(t)!).ToList();
+
+        var exercises = generator.Generate(topics, 20, [], Verbs);
+        var act = () => generator.Generate([GrammarCatalog.Find(ExerciseTypes.Copula)!], 5, [], Verbs);
+
+        exercises.Should().OnlyContain(e => e.Type == ExerciseTypes.PolitePresent);
+        act.Should().Throw<InvalidOperationException>();
+    }
+
+    [Fact]
     public void AvailableAt_FollowsThePlan()
     {
         GrammarCatalog.AvailableAt(PlanStage.Hangul).Select(t => t.Type).Should().Contain(ExerciseTypes.Copula);

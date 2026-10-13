@@ -35,6 +35,13 @@ public sealed class GrammarExerciseGenerator(Random random)
 
         var usableNouns = nouns.Where(n => n.Korean.All(Syllable.IsSyllable)).ToList();
         var usableVerbs = verbs.Where(v => v.Korean.Length >= 2 && v.Korean.All(Syllable.IsSyllable) && v.Korean[^1] == '다').ToList();
+
+        // Topics without words to practise on are skipped instead of failing the whole set.
+        topics = topics.Where(t => t.Particle is not null ? usableNouns.Count > 0 : VerbPool(t, usableVerbs).Count > 0).ToList();
+        if (topics.Count == 0)
+        {
+            throw new InvalidOperationException("The deck has no words for the requested grammar topics.");
+        }
         var result = new List<ChoiceExercise>(count);
         var seen = new HashSet<string>();
         for (int i = 0; i < count; i++)
@@ -111,23 +118,17 @@ public sealed class GrammarExerciseGenerator(Random random)
     {
         if (topic.Particle is not null)
         {
-            if (nouns.Count == 0)
-            {
-                throw new InvalidOperationException("No nouns available for particle drills.");
-            }
-
             return ParticleExercise(topic, nouns.Pick(random));
         }
 
+        return VerbExercise(topic, VerbPool(topic, verbs).Pick(random));
+    }
+
+    private static List<GrammarVerb> VerbPool(GrammarTopic topic, IReadOnlyList<GrammarVerb> verbs)
+    {
         bool actionOnly = topic.Ending is Ending.Want or Ending.Can or Ending.Must;
-        var pool = verbs
+        return verbs
             .Where(v => !actionOnly || (v.PartOfSpeech == PartOfSpeech.Verb && !StateVerbs.Contains(v.Korean)))
             .ToList();
-        if (pool.Count == 0)
-        {
-            throw new InvalidOperationException("No verbs available for conjugation drills.");
-        }
-
-        return VerbExercise(topic, pool.Pick(random));
     }
 }

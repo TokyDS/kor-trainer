@@ -104,11 +104,12 @@ public sealed class NumberExerciseGenerator(Random random)
         string sinoHour = minute == 0 ? $"{KoreanNumbers.Sino(hour)} 시" : $"{KoreanNumbers.Sino(hour)} 시 {KoreanNumbers.Sino(minute)} 분";
         string nativeMinute = minute == 0 ? $"{KoreanNumbers.Native(hour)} 시" : $"{KoreanNumbers.Native(hour, true)} 시 {KoreanNumbers.Native(minute)} 분";
         int otherHour = hour % 12 + 1;
+        int previousHour = (hour + 10) % 12 + 1;
         return toWords
             ? Build(ExerciseTypes.Time, $"time:{digits}", digits, "Который час? Как это сказать?", words,
-                [sinoHour, nativeMinute, Counters.Time(otherHour, minute)], explanation, words)
+                [sinoHour, nativeMinute, Counters.Time(otherHour, minute), Counters.Time(previousHour, minute)], explanation, words)
             : Build(ExerciseTypes.Time, $"time-digits:{digits}", words, "Сколько времени?", digits,
-                [$"{otherHour}:{minute:00}", $"{hour}:{(minute + 10) % 60:00}", $"{hour}:{(60 - minute) % 60:00}"], explanation, words);
+                [$"{otherHour}:{minute:00}", $"{hour}:{(minute + 10) % 60:00}", $"{hour}:{(60 - minute) % 60:00}", $"{previousHour}:{minute:00}"], explanation, words);
     }
 
     public ChoiceExercise Money(long amount, bool toWords)

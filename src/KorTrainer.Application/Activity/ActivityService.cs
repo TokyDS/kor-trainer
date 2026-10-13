@@ -57,14 +57,14 @@ public sealed class ActivityService(IAppDbContext db, SettingsService settingsSe
     {
         ArgumentNullException.ThrowIfNull(session);
         var now = clock.UtcNow;
+        var started = UtcTime.Normalize(session.StartedUtc);
         new Validator()
             .Require(Enum.IsDefined(session.Module), nameof(session.Module), "Неизвестный модуль.")
             .Require(session.DurationSeconds is >= 1 and <= MaxSessionSeconds, nameof(session.DurationSeconds), "Длительность занятия: от 1 секунды до 4 часов.")
-            .Require(session.StartedUtc <= now.AddMinutes(5) && session.StartedUtc >= now.AddDays(-2), nameof(session.StartedUtc), "Время начала занятия вне допустимого диапазона.")
+            .Require(started <= now.AddMinutes(5) && started >= now.AddDays(-2), nameof(session.StartedUtc), "Время начала занятия вне допустимого диапазона.")
             .ThrowIfInvalid();
 
         var settings = await settingsService.GetEntityAsync(cancellationToken);
-        var started = DateTime.SpecifyKind(session.StartedUtc, DateTimeKind.Utc);
         db.StudySessions.Add(new StudySession
         {
             Module = session.Module,

@@ -25,7 +25,7 @@ public sealed class TodayService(
         var day = plan.GetDay(today);
         var vocabulary = await vocabularyService.GetSummaryAsync(cancellationToken);
         var activity = await LoadActivityAsync(today, cancellationToken);
-        var activeDays = await LoadActiveDaysAsync(cancellationToken);
+        var activeDays = await db.ActiveDaysAsync(cancellationToken);
 
         var tasks = day.Tasks.Select(t => ToDto(t, activity, vocabulary)).ToList();
         return new TodayDto(
@@ -95,17 +95,6 @@ public sealed class TodayService(
         var manual = await db.TaskCompletions.Where(c => c.Date == today).Select(c => c.TaskKey).ToListAsync(cancellationToken);
 
         return new DayActivity(answers, reading, writingSeconds, manual.ToHashSet());
-    }
-
-    private async Task<HashSet<DateOnly>> LoadActiveDaysAsync(CancellationToken cancellationToken)
-    {
-        var days = new HashSet<DateOnly>();
-        days.UnionWith(await db.ReviewLogs.Select(r => r.LocalDate).Distinct().ToListAsync(cancellationToken));
-        days.UnionWith(await db.ExerciseAttempts.Select(r => r.LocalDate).Distinct().ToListAsync(cancellationToken));
-        days.UnionWith(await db.ReadingTrials.Select(r => r.LocalDate).Distinct().ToListAsync(cancellationToken));
-        days.UnionWith(await db.WritingDrafts.Select(r => r.LocalDate).Distinct().ToListAsync(cancellationToken));
-        days.UnionWith(await db.TaskCompletions.Select(r => r.Date).Distinct().ToListAsync(cancellationToken));
-        return days;
     }
 
     private static DailyTaskDto ToDto(DailyTask task, DayActivity activity, VocabularySummaryDto vocabulary)

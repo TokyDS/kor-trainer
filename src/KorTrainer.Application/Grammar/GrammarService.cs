@@ -43,7 +43,15 @@ public sealed class GrammarService(IAppDbContext db, SettingsService settingsSer
             .Select(w => new GrammarVerb(w.Korean, w.Russian, w.PartOfSpeech, w.Irregularity))
             .ToList();
 
-        var items = new GrammarExerciseGenerator(random).Generate(topics, count, nouns, verbs).Select(ExerciseMapper.ToDto).ToList();
+        List<ChoiceExerciseDto> items;
+        try
+        {
+            items = new GrammarExerciseGenerator(random).Generate(topics, count, nouns, verbs).Select(ExerciseMapper.ToDto).ToList();
+        }
+        catch (InvalidOperationException)
+        {
+            throw ValidationFailedException.For(nameof(type), "В колоде нет подходящих слов для этой темы.");
+        }
         string title = topic is null ? "Грамматика вперемешку" : $"Грамматика: {topic.Title}";
         return new ExerciseSetDto(StudyModule.Grammar, type, title, items);
     }

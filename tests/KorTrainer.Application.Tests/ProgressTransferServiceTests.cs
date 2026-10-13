@@ -86,6 +86,22 @@ public sealed class ProgressTransferServiceTests
     }
 
     [Fact]
+    public async Task Import_RejectsOutOfRangeDurations()
+    {
+        await using var t = await TestDatabase.CreateAsync();
+        var snapshot = await t.Progress.ExportAsync(Ct);
+        var now = DateTime.UtcNow;
+
+        var act = () => t.Progress.ImportAsync(snapshot with
+        {
+            WritingDrafts = [new WritingDraftExport(54, now, int.MaxValue, "글", new DateOnly(2026, 10, 13))],
+            ReadingTrials = [new ReadingTrialExport("나무", 2, int.MaxValue, true, now, new DateOnly(2026, 10, 13))],
+        }, Ct);
+
+        (await act.Should().ThrowAsync<ValidationFailedException>()).Which.Errors.Keys.Should().BeEquivalentTo("WritingDrafts", "ReadingTrials");
+    }
+
+    [Fact]
     public async Task Import_RejectsUnsupportedSchemaVersion()
     {
         await using var t = await TestDatabase.CreateAsync();

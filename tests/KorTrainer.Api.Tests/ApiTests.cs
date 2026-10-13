@@ -94,6 +94,24 @@ public sealed class ApiTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task TopikDraftsAndStats_RoundTrip()
+    {
+        var guide = await _client.GetFromJsonAsync<WritingGuideDto>("/api/topik/writing", Json, Ct);
+        var save = await _client.PostAsJsonAsync("/api/topik/drafts", new SaveDraftRequest(54, _factory.Time.GetUtcNow().UtcDateTime, 600, "최근 관심이 높아지고 있다."), Json, Ct);
+        var drafts = await _client.GetFromJsonAsync<WritingDraftDto[]>("/api/topik/drafts?task=54", Json, Ct);
+        var overview = await _client.GetFromJsonAsync<StatsOverviewDto>("/api/stats/overview", Json, Ct);
+        var daily = await _client.GetFromJsonAsync<DailyStatDto[]>("/api/stats/daily?days=14", Json, Ct);
+
+        guide!.Tasks.Should().HaveCount(4);
+        save.StatusCode.Should().Be(HttpStatusCode.OK);
+        drafts.Should().ContainSingle();
+        overview!.TotalStudyMinutes.Should().Be(10);
+        overview.WritingDrafts.Should().Be(1);
+        daily!.Should().HaveCount(14);
+        daily[^1].StudyMinutes.Should().Be(10);
+    }
+
+    [Fact]
     public async Task InvalidInput_ReturnsValidationProblem()
     {
         var response = await _client.GetAsync("/api/hangul/exercises/unknown?level=9", Ct);

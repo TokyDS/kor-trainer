@@ -115,6 +115,11 @@ public static class Conjugator
             mistakes.Add(ending == Ending.Because ? stem + "으니까" : stem + "을 수 있어요");
             mistakes.Add(ending == Ending.Because ? stem + "니까" : (WithFinal(stem, 'ㄹ') ?? stem) + " 수 있어요");
             mistakes.Add(Conjugate(verb, ending, swappedIrregularity).Form);
+
+            // Over-using the -아/어 form or the present attributive -는 is the other classic slip.
+            string aeo = SafeAeo(stem, irregularity);
+            mistakes.Add(ending == Ending.Because ? aeo + "서니까" : aeo + " 수 있어요");
+            mistakes.Add(ending == Ending.Because ? stem + "는니까" : stem + "는 수 있어요");
         }
         else
         {

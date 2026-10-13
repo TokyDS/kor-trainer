@@ -45,7 +45,16 @@ Romanization is **off by default** — the point is to learn to read Hangul with
   directions; distractors are the classic mistakes (일십오, 일만 원, 사과 삼 개, 삼 시 삼십 분).
 - An instant "how to read this number" converter running in the browser on the shared Domain code.
 
-**Roadmap:** TOPIK II writing timer (tasks 51–54) and statistics.
+**Iteration 4 — TOPIK and statistics**
+
+- TOPIK II writing (쓰기, tasks 51–54): format, timing split of the 50-minute section, tips and Korean
+  phrase templates for the graph description (53) and the essay (54); a countdown timer, a 원고지-style
+  character counter with the target range and saved drafts. Past papers are linked on
+  [topik.go.kr](https://www.topik.go.kr), not copied.
+- Statistics: learned and learning words, accuracy per module (overall and last 7 days), study minutes
+  per day (bar chart with hover details and a table view), streak and record, reading speed.
+
+![TOPIK writing](docs/screenshots/topik-writing.png)
 
 > ⚠️ **The Russian translations in the starter deck were machine-generated and should be reviewed.**
 > Deck entries can be corrected in `src/KorTrainer.Infrastructure/Seed/words.json`; the next start
@@ -130,6 +139,8 @@ for romanization).
 | GET | `/api/numbers/exercises/{sino\|native\|counter\|time\|money\|mixed}?count=` | number drills |
 | GET | `/api/vocab/summary` · `/api/vocab/words` · `/api/vocab/topics` | vocabulary browser |
 | POST | `/api/attempts` · `/api/sessions` | activity log |
+| GET | `/api/topik/writing` · GET/POST `/api/topik/drafts` | TOPIK writing guide and drafts |
+| GET | `/api/stats/overview` · `/api/stats/daily?days=` | statistics |
 | GET/POST | `/api/progress/export` · `/api/progress/import` | JSON backup |
 
 Errors are RFC 7807 problem details (`400` with field errors, `404` for unknown routes).
@@ -139,13 +150,13 @@ In Development the OpenAPI document is at `/openapi/v1.json`.
 
 ```bash
 dotnet build                                        # warnings are errors
-dotnet test                                         # 410 tests (xUnit v3, Microsoft.Testing.Platform)
+dotnet test                                         # 431 tests (xUnit v3, Microsoft.Testing.Platform)
 dotnet test -- --coverage --coverage-output-format cobertura
 dotnet tool restore
 dotnet ef migrations add <Name> -p src/KorTrainer.Infrastructure -s src/KorTrainer.Api -o Persistence/Migrations
 ```
 
-Line coverage of the server-side code is about 92% (Domain 96%, Application 89%).
+Line coverage of the server-side code is about 94% (Domain 97%, Application 91%, Infrastructure 98%).
 
 ## Study plan
 

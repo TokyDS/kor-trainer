@@ -2,6 +2,8 @@ using System.Text.Json;
 using KorTrainer.Application.Activity;
 using KorTrainer.Application.Grammar;
 using KorTrainer.Application.Numbers;
+using KorTrainer.Application.Stats;
+using KorTrainer.Application.Topik;
 using KorTrainer.Application.Hangul;
 using KorTrainer.Application.Progress;
 using KorTrainer.Application.Settings;
@@ -31,6 +33,8 @@ public static class ApiEndpoints
         MapGrammar(api.MapGroup("/grammar").WithTags("Grammar"));
         api.MapGroup("/numbers").WithTags("Numbers")
             .MapGet("/exercises/{type}", (string type, int? count, NumbersService service) => service.GetExercises(type, count ?? 20));
+        MapTopik(api.MapGroup("/topik").WithTags("TOPIK"));
+        MapStats(api.MapGroup("/stats").WithTags("Statistics"));
         MapActivity(api.MapGroup(string.Empty).WithTags("Activity"));
         MapProgress(api.MapGroup("/progress").WithTags("Progress"));
 
@@ -88,6 +92,19 @@ public static class ApiEndpoints
         group.MapGet("/topics", (GrammarService service, CancellationToken ct) => service.GetTopicsAsync(ct));
         group.MapGet("/exercises/{type}", (string type, int? count, GrammarService service, CancellationToken ct) =>
             service.GetExercisesAsync(type, count ?? 20, ct));
+    }
+
+    private static void MapTopik(RouteGroupBuilder group)
+    {
+        group.MapGet("/writing", () => TopikService.GetGuide());
+        group.MapGet("/drafts", (int? task, TopikService service, CancellationToken ct) => service.ListDraftsAsync(task, ct));
+        group.MapPost("/drafts", (SaveDraftRequest request, TopikService service, CancellationToken ct) => service.SaveDraftAsync(request, ct));
+    }
+
+    private static void MapStats(RouteGroupBuilder group)
+    {
+        group.MapGet("/overview", (StatsService service, CancellationToken ct) => service.GetOverviewAsync(ct));
+        group.MapGet("/daily", (int? days, StatsService service, CancellationToken ct) => service.GetDailyAsync(days ?? 30, ct));
     }
 
     private static void MapActivity(RouteGroupBuilder group)

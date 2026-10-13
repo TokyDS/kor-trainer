@@ -18,6 +18,7 @@ public sealed class ProgressTransferService(IAppDbContext db, SettingsService se
     private const int MaxKeyLength = 128;
     private const int MaxSessionSeconds = 24 * 60 * 60;
     private const int MaxDraftLength = 4000;
+    private const int MaxResponseMs = 10 * 60 * 1000;
 
     public async Task<ProgressExport> ExportAsync(CancellationToken cancellationToken)
     {
@@ -179,14 +180,14 @@ public sealed class ProgressTransferService(IAppDbContext db, SettingsService se
             IsKey(r.DeckKey) && Enum.IsDefined(r.Grade) && Enum.IsDefined(r.PhaseBefore)
             && r.IntervalBefore is >= 0 and <= MaxIntervalDays && r.IntervalAfter is >= 0 and <= MaxIntervalDays && r.DurationMs >= 0);
         CheckSection(validator, snapshot.Attempts, nameof(snapshot.Attempts), a =>
-            Enum.IsDefined(a.Module) && IsKey(a.ExerciseType) && IsKey(a.ItemKey) && a.ResponseMs >= 0);
+            Enum.IsDefined(a.Module) && IsKey(a.ExerciseType) && IsKey(a.ItemKey) && a.ResponseMs is >= 0 and <= MaxResponseMs);
         CheckSection(validator, snapshot.ReadingTrials, nameof(snapshot.ReadingTrials), r =>
-            IsKey(r.Text) && r.SyllableCount > 0 && r.ElapsedMs > 0);
+            IsKey(r.Text) && r.SyllableCount is > 0 and <= MaxKeyLength && r.ElapsedMs is > 0 and <= MaxResponseMs);
         CheckSection(validator, snapshot.Sessions, nameof(snapshot.Sessions), s =>
             Enum.IsDefined(s.Module) && s.DurationSeconds is > 0 and <= MaxSessionSeconds);
         CheckSection(validator, snapshot.TaskCompletions, nameof(snapshot.TaskCompletions), c => IsKey(c.TaskKey));
         CheckSection(validator, snapshot.WritingDrafts, nameof(snapshot.WritingDrafts), d =>
-            d.TaskNumber is >= 51 and <= 54 && d.DurationSeconds >= 0 && d.Text is { Length: <= MaxDraftLength });
+            d.TaskNumber is >= 51 and <= 54 && d.DurationSeconds is >= 0 and <= MaxSessionSeconds && d.Text is { Length: <= MaxDraftLength });
         validator.ThrowIfInvalid();
     }
 

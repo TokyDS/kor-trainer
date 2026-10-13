@@ -59,4 +59,6 @@ Static web assets are only served from `dotnet run` in the Development environme
    GrammarCatalog), `GrammarExerciseGenerator`, `/grammar` hub and `/grammar/{type|mixed}` drills.
 3. ✅ Numbers: `Domain/Numbers` (KoreanNumbers, Counters), `NumberExerciseGenerator`, `/numbers` hub with
    converter and `/numbers/{type|mixed}` drills.
-4. TOPIK writing timer (51–54, `WritingDraft` entity exists) and statistics page.
+4. ✅ TOPIK writing (`Domain/Topik/WritingTasks`, timer page, drafts) and statistics (`StatsService`, `/stats`).
+
+All planned modules exist; next ideas: more deck words for stages 2–3, listening drills, PWA/offline.

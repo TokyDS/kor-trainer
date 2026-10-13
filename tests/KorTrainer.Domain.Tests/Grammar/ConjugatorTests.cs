@@ -111,6 +111,14 @@ public sealed class ConjugatorTests
         mistakes.Should().NotContain(Conjugator.Conjugate(verb, ending, irregularity).Form);
     }
 
+    [Theory]
+    [InlineData("가다", Ending.Because)]
+    [InlineData("먹다", Ending.Because)]
+    [InlineData("가다", Ending.Can)]
+    [InlineData("먹다", Ending.Can)]
+    public void CommonMistakes_GiveAtLeastThreeDistractorsForRegularVerbs(string verb, Ending ending) =>
+        Conjugator.CommonMistakes(verb, ending).Should().HaveCountGreaterThanOrEqualTo(3);
+
     [Fact]
     public void Conjugate_ExplainsTheRule()
     {

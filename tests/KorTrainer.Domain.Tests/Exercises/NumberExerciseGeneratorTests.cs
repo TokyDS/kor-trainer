@@ -79,6 +79,17 @@ public sealed class NumberExerciseGeneratorTests
         exercise.Options.Select(o => o.Text).Should().Contain(["삼 시 삼십 분", "세 시 서른 분"]);
     }
 
+    [Theory]
+    [InlineData(5, 0, true)]
+    [InlineData(7, 0, false)]
+    [InlineData(10, 30, false)]
+    public void Time_OnTheHourAndHalf_StillHasFourOptions(int hour, int minute, bool toWords)
+    {
+        var exercise = new NumberExerciseGenerator(new Random(9)).Time(hour, minute, toWords);
+
+        exercise.Options.Should().HaveCount(NumberExerciseGenerator.OptionCount);
+    }
+
     [Fact]
     public void Money_ToWords_OffersIlmanMistake()
     {
