@@ -18,6 +18,9 @@ public sealed record ChoiceExerciseDto(
 
 public sealed record ExerciseSetDto(StudyModule Module, string Type, string Title, IReadOnlyList<ChoiceExerciseDto> Items);
 
+/// <param name="IsOpen">The plan has already introduced the topic.</param>
+public sealed record GrammarTopicDto(string Type, string Title, string Description, KorTrainer.Domain.Plan.PlanStage Stage, bool IsOpen);
+
 public sealed record AttemptDto(StudyModule Module, string ExerciseType, string ItemKey, bool IsCorrect, int ResponseMs);
 
 public sealed record SessionDto(StudyModule Module, DateTime StartedUtc, int DurationSeconds);

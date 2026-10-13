@@ -43,6 +43,11 @@ public sealed class ApiClient(HttpClient http)
 
     public Task<HangulGuideDto> GetGuideAsync(int level) => GetAsync<HangulGuideDto>($"api/hangul/guide/{level}");
 
+    public Task<IReadOnlyList<GrammarTopicDto>> GetGrammarTopicsAsync() => GetAsync<IReadOnlyList<GrammarTopicDto>>("api/grammar/topics");
+
+    public Task<ExerciseSetDto> GetGrammarExercisesAsync(string type, int count) =>
+        GetAsync<ExerciseSetDto>($"api/grammar/exercises/{Uri.EscapeDataString(type)}?count={count}");
+
     public Task<VocabularyQueueDto> GetQueueAsync(int limit = 50) => GetAsync<VocabularyQueueDto>($"api/vocab/queue?limit={limit}");
 
     public Task<ReviewResultDto> ReviewAsync(ReviewRequest request) => SendAsync<ReviewResultDto>(HttpMethod.Post, "api/vocab/reviews", request);

@@ -166,7 +166,7 @@ internal static class PlanContent
         10 =>
         [
             CommonTasks.ReviewDue,
-            new("grammar", "Грамматика вперемешку: 20 упражнений", TaskTarget.Answers(StudyModule.Grammar, 20), "/grammar"),
+            new("grammar", "Грамматика вперемешку: 20 упражнений", TaskTarget.Answers(StudyModule.Grammar, 20), "/grammar/mixed"),
             new("numbers", "Числа вперемешку: 20 упражнений", TaskTarget.Answers(StudyModule.Numbers, 20), "/numbers"),
             CommonTasks.Reading(15),
         ],

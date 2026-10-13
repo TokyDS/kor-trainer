@@ -1,5 +1,6 @@
 using KorTrainer.Application.Activity;
 using KorTrainer.Application.Common;
+using KorTrainer.Application.Grammar;
 using KorTrainer.Application.Hangul;
 using KorTrainer.Application.Progress;
 using KorTrainer.Application.Settings;
@@ -25,6 +26,7 @@ public static class DependencyInjection
         services.AddScoped<VocabularyService>();
         services.AddScoped<ActivityService>();
         services.AddScoped<HangulService>();
+        services.AddScoped<GrammarService>();
         services.AddScoped<TodayService>();
         services.AddScoped<ProgressTransferService>();
         return services;

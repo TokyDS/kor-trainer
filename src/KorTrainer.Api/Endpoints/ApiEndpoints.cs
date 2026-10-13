@@ -1,5 +1,6 @@
 using System.Text.Json;
 using KorTrainer.Application.Activity;
+using KorTrainer.Application.Grammar;
 using KorTrainer.Application.Hangul;
 using KorTrainer.Application.Progress;
 using KorTrainer.Application.Settings;
@@ -24,6 +25,7 @@ public static class ApiEndpoints
         MapToday(api.MapGroup(string.Empty).WithTags("Today"));
         MapHangul(api.MapGroup("/hangul").WithTags("Hangul"));
         MapVocabulary(api.MapGroup("/vocab").WithTags("Vocabulary"));
+        MapGrammar(api.MapGroup("/grammar").WithTags("Grammar"));
         MapActivity(api.MapGroup(string.Empty).WithTags("Activity"));
         MapProgress(api.MapGroup("/progress").WithTags("Progress"));
 
@@ -74,6 +76,13 @@ public static class ApiEndpoints
         group.MapGet("/topics", (VocabularyService service, CancellationToken ct) => service.GetTopicsAsync(ct));
         group.MapGet("/words", (string? topic, PlanStage? stage, WordStatus? status, string? search, int? page, int? pageSize, VocabularyService service, CancellationToken ct) =>
             service.ListWordsAsync(topic, stage, status, search, page ?? 1, pageSize ?? 50, ct));
+    }
+
+    private static void MapGrammar(RouteGroupBuilder group)
+    {
+        group.MapGet("/topics", (GrammarService service, CancellationToken ct) => service.GetTopicsAsync(ct));
+        group.MapGet("/exercises/{type}", (string type, int? count, GrammarService service, CancellationToken ct) =>
+            service.GetExercisesAsync(type, count ?? 20, ct));
     }
 
     private static void MapActivity(RouteGroupBuilder group)

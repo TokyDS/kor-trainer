@@ -29,8 +29,16 @@ Romanization is **off by default** — the point is to learn to read Hangul with
 - Responsive layout (phone tab bar / desktop sidebar), light and dark themes.
 - Progress export/import as JSON; data stored in SQLite.
 
-**Roadmap:** grammar drills generated from rules (particles by batchim, -아/어요, -습니다, past tense),
-numbers (Sino-Korean/native, time, money), TOPIK II writing timer (tasks 51–54) and statistics.
+**Iteration 2 — grammar**
+
+- Drills generated from deck words by rule: 이에요/예요, 이/가 아니에요, 은/는, 이/가, 을/를 by batchim;
+  -아/어요 with vowel harmony and contraction (가요, 봐요, 마셔요, 돼요), ㅡ-drop (써요, 바빠요) and the
+  ㅂ/ㄷ/르/ㅅ/ㅎ irregular classes (더워요, 들어요, 몰라요); -습니다/ㅂ니다 with ㄹ-drop (만듭니다); past -았/었어요;
+  stage 2 endings -고, -아서/어서, -(으)니까, -고 싶다, -(으)ㄹ 수 있다, -아/어야 하다.
+- Distractors are the typical learner mistakes (먹아요, 듣어요, 이워요, 먹읍니다), every answer
+  explains the rule that decided it; the "mixed" drill only uses topics the plan has opened.
+
+**Roadmap:** numbers (Sino-Korean/native, time, money), TOPIK II writing timer (tasks 51–54) and statistics.
 
 > ⚠️ **The Russian translations in the starter deck were machine-generated and should be reviewed.**
 > Deck entries can be corrected in `src/KorTrainer.Infrastructure/Seed/words.json`; the next start
@@ -111,6 +119,7 @@ for romanization).
 | POST | `/api/hangul/reading-trials` | reading result |
 | GET | `/api/hangul/analyze?text=` | syllable breakdown and pronunciation |
 | GET | `/api/vocab/queue` · POST `/api/vocab/reviews` | SRS queue and answers |
+| GET | `/api/grammar/topics` · `/api/grammar/exercises/{type\|mixed}?count=` | grammar topics and drills |
 | GET | `/api/vocab/summary` · `/api/vocab/words` · `/api/vocab/topics` | vocabulary browser |
 | POST | `/api/attempts` · `/api/sessions` | activity log |
 | GET/POST | `/api/progress/export` · `/api/progress/import` | JSON backup |
@@ -122,7 +131,7 @@ In Development the OpenAPI document is at `/openapi/v1.json`.
 
 ```bash
 dotnet build                                        # warnings are errors
-dotnet test                                         # 226 tests (xUnit v3, Microsoft.Testing.Platform)
+dotnet test                                         # 348 tests (xUnit v3, Microsoft.Testing.Platform)
 dotnet test -- --coverage --coverage-output-format cobertura
 dotnet tool restore
 dotnet ef migrations add <Name> -p src/KorTrainer.Infrastructure -s src/KorTrainer.Api -o Persistence/Migrations

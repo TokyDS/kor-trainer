@@ -29,6 +29,13 @@ public static class ExerciseTypes
     public const string PolitePresent = "polite";
     public const string FormalPresent = "formal";
     public const string Past = "past";
+    public const string AndGo = "and";
+    public const string SoAseo = "so";
+    public const string BecauseNikka = "because";
+    public const string Want = "want";
+    public const string Can = "can";
+    public const string Must = "must";
+    public const string Mixed = "mixed";
 
     public const string SinoNumbers = "sino";
     public const string NativeNumbers = "native";

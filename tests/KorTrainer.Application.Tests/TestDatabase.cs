@@ -1,5 +1,6 @@
 using KorTrainer.Application.Activity;
 using KorTrainer.Application.Common;
+using KorTrainer.Application.Grammar;
 using KorTrainer.Application.Hangul;
 using KorTrainer.Application.Progress;
 using KorTrainer.Application.Settings;
@@ -38,6 +39,7 @@ public sealed class TestDatabase : IAsyncDisposable
         Activity = new ActivityService(db, Settings, Clock);
         Today = new TodayService(db, Settings, Vocabulary, Clock);
         Hangul = new HangulService(db, Settings, Clock, new Random(42));
+        Grammar = new GrammarService(db, Settings, Clock, new Random(42));
         Progress = new ProgressTransferService(db, Settings, Clock);
     }
 
@@ -56,6 +58,8 @@ public sealed class TestDatabase : IAsyncDisposable
     public TodayService Today { get; }
 
     public HangulService Hangul { get; }
+
+    public GrammarService Grammar { get; }
 
     public ProgressTransferService Progress { get; }
 

@@ -72,6 +72,17 @@ public sealed class ApiTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task GrammarExercises_ReturnCopulaDrill()
+    {
+        var set = await _client.GetFromJsonAsync<ExerciseSetDto>("/api/grammar/exercises/copula?count=5", Json, Ct);
+        var topics = await _client.GetFromJsonAsync<GrammarTopicDto[]>("/api/grammar/topics", Json, Ct);
+
+        set!.Module.Should().Be(StudyModule.Grammar);
+        set.Items.Should().HaveCount(5).And.OnlyContain(i => i.Options.Count == 2);
+        topics.Should().Contain(t => t.Type == ExerciseTypes.Copula);
+    }
+
+    [Fact]
     public async Task InvalidInput_ReturnsValidationProblem()
     {
         var response = await _client.GetAsync("/api/hangul/exercises/unknown?level=9", Ct);
