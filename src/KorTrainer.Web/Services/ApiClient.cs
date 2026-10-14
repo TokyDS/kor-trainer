@@ -51,6 +51,12 @@ public sealed class ApiClient(HttpClient http)
     public Task<ExerciseSetDto> GetNumberExercisesAsync(string type, int count) =>
         GetAsync<ExerciseSetDto>($"api/numbers/exercises/{Uri.EscapeDataString(type)}?count={count}");
 
+    public Task<IReadOnlyList<string>> GetRecordedWordsAsync() => GetAsync<IReadOnlyList<string>>("api/audio/words");
+
+    public Task<IReadOnlyList<AudioCreditDto>> GetAudioCreditsAsync() => GetAsync<IReadOnlyList<AudioCreditDto>>("api/audio/credits");
+
+    public static string RecordingUrl(string word) => $"api/audio/{Uri.EscapeDataString(word)}";
+
     public Task<WritingGuideDto> GetWritingGuideAsync() => GetAsync<WritingGuideDto>("api/topik/writing");
 
     public Task<IReadOnlyList<WritingDraftDto>> GetDraftsAsync(int? task = null) =>

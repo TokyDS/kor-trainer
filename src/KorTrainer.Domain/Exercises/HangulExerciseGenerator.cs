@@ -32,7 +32,13 @@ public sealed class HangulExerciseGenerator(Random random)
     /// Real words (the deck): syllable drills mostly use their syllables, and the sound-change
     /// drill picks words whose pronunciation differs from the spelling.
     /// </param>
-    public IReadOnlyList<ChoiceExercise> Generate(string type, HangulLevel level, int count, IReadOnlyList<string>? words = null)
+    /// <param name="recordedWords">Words with native-speaker audio; the listening drill then uses only those.</param>
+    public IReadOnlyList<ChoiceExercise> Generate(
+        string type,
+        HangulLevel level,
+        int count,
+        IReadOnlyList<string>? words = null,
+        IReadOnlySet<string>? recordedWords = null)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(count);
         var syllables = RealSyllables(words ?? [], level);
@@ -42,7 +48,7 @@ public sealed class HangulExerciseGenerator(Random random)
             ExerciseTypes.SoundToLetter => () => SoundToLetter(level),
             ExerciseTypes.Compose => () => Compose(level, syllables),
             ExerciseTypes.Decompose => () => Decompose(level, syllables),
-            ExerciseTypes.ConsonantSeries => ConsonantSeries,
+            ExerciseTypes.ConsonantSeries => () => ConsonantSeries(recordedWords),
             ExerciseTypes.FinalSound => FinalSound,
             ExerciseTypes.SoundChange => () => SoundChange(words ?? []),
             _ => throw new ArgumentException($"Unknown Hangul exercise type '{type}'.", nameof(type)),
@@ -142,9 +148,9 @@ public sealed class HangulExerciseGenerator(Random random)
     /// synthesized isolated syllables (가/카/까) sound nearly identical, whole words do not.
     /// Options keep the plain → aspirated → tense order so keys 1–3 always mean the same series.
     /// </summary>
-    public ChoiceExercise ConsonantSeries()
+    public ChoiceExercise ConsonantSeries(IReadOnlySet<string>? recordedWords = null)
     {
-        var set = MinimalPairs.Sets.Pick(random);
+        var set = MinimalPairs.Playable(recordedWords).Pick(random);
         int correct = random.Next(set.Count);
         var options = set
             .Select(w => new ChoiceOption(

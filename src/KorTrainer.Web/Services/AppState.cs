@@ -10,6 +10,9 @@ public sealed class AppState(ApiClient api, BrowserInterop browser)
     private static readonly SettingsDto Fallback = new(
         new DateOnly(2026, 10, 13), UserSettings.DefaultTimeZoneId, false, ThemePreference.System, 10, 200, 0.9);
 
+    private HashSet<string> _recordedWords = [];
+    private Task? _initialization;
+
     public event Action? Changed;
 
     public SettingsDto Settings { get; private set; } = Fallback;
@@ -20,13 +23,11 @@ public sealed class AppState(ApiClient api, BrowserInterop browser)
 
     public string? LoadError { get; private set; }
 
-    public async Task InitializeAsync()
-    {
-        if (IsLoaded)
-        {
-            return;
-        }
+    /// <summary>Loads settings, the recorded-word list and speech info once; concurrent callers share the same load.</summary>
+    public Task InitializeAsync() => _initialization ??= InitializeCoreAsync();
 
+    private async Task InitializeCoreAsync()
+    {
         try
         {
             Settings = await api.GetSettingsAsync();
@@ -38,6 +39,15 @@ public sealed class AppState(ApiClient api, BrowserInterop browser)
         }
 
         IsLoaded = true;
+        try
+        {
+            _recordedWords = (await api.GetRecordedWordsAsync()).ToHashSet(StringComparer.Ordinal);
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException)
+        {
+            // Without the list every word is simply voiced by speech synthesis.
+        }
+
         try
         {
             await browser.ApplyThemeAsync(Settings.Theme.ToString());
@@ -62,9 +72,34 @@ public sealed class AppState(ApiClient api, BrowserInterop browser)
     /// <summary>Speech rate for listening drills: slower speech keeps consonant contrasts audible.</summary>
     public const double ListeningRate = 0.75;
 
-    /// <param name="slow">Listening drill: cap the rate at <see cref="ListeningRate"/>.</param>
-    public ValueTask SpeakAsync(string? text, bool slow = false) =>
-        browser.SpeakAsync(text, slow ? Math.Min(Settings.SpeechRate, ListeningRate) : Settings.SpeechRate);
+    /// <summary>
+    /// Voices Korean text: a native-speaker recording when one exists (Lingua Libre), otherwise speech
+    /// synthesis — also when the recording cannot be played right now.
+    /// </summary>
+    /// <param name="slow">Listening drill: cap the synthesis rate at <see cref="ListeningRate"/>.</param>
+    public async ValueTask SpeakAsync(string? text, bool slow = false)
+    {
+        if (text is not null && HasRecording(text) && await TryPlayRecordingAsync(text.Trim()))
+        {
+            return;
+        }
+
+        await browser.SpeakAsync(text, slow ? Math.Min(Settings.SpeechRate, ListeningRate) : Settings.SpeechRate);
+    }
+
+    private async ValueTask<bool> TryPlayRecordingAsync(string word)
+    {
+        try
+        {
+            return await browser.PlayRecordingAsync(ApiClient.RecordingUrl(word));
+        }
+        catch (Microsoft.JSInterop.JSException)
+        {
+            return false;
+        }
+    }
+
+    public bool HasRecording(string? text) => text is not null && _recordedWords.Contains(text.Trim());
 
     public ValueTask<IReadOnlyList<VoiceInfo>> GetKoreanVoicesAsync() => browser.GetKoreanVoicesAsync();
 

@@ -9,7 +9,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace KorTrainer.Application.Hangul;
 
-public sealed class HangulService(IAppDbContext db, SettingsService settingsService, StudyClock clock, Random random)
+public sealed class HangulService(IAppDbContext db, SettingsService settingsService, StudyClock clock, Random random, IAudioLibrary audio)
 {
     public const int MaxCount = 50;
     public const int MaxAnalyzeLength = 40;
@@ -38,7 +38,7 @@ public sealed class HangulService(IAppDbContext db, SettingsService settingsServ
         var maxStage = await MaxWordStageAsync(cancellationToken);
         var words = await db.Words.Where(w => w.Stage <= maxStage).Select(w => w.Korean).ToListAsync(cancellationToken);
         var generator = new HangulExerciseGenerator(random);
-        var items = generator.Generate(type, (HangulLevel)level, count, words).Select(ExerciseMapper.ToDto).ToList();
+        var items = generator.Generate(type, (HangulLevel)level, count, words, audio.Words).Select(ExerciseMapper.ToDto).ToList();
         return new ExerciseSetDto(StudyModule.Hangul, type, TitleOf(type), items);
     }
 

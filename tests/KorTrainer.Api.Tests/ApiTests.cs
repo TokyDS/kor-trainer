@@ -112,6 +112,22 @@ public sealed class ApiTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Audio_ListsWordsServesRecordingsAndCredits()
+    {
+        var words = await _client.GetFromJsonAsync<string[]>("/api/audio/words", Json, Ct);
+        var credits = await _client.GetFromJsonAsync<AudioCreditDto[]>("/api/audio/credits", Json, Ct);
+        var recording = await _client.GetAsync($"/api/audio/{Uri.EscapeDataString("바다")}", Ct);
+        var missing = await _client.GetAsync($"/api/audio/{Uri.EscapeDataString("없는단어")}", Ct);
+
+        words.Should().Contain("바다").And.HaveCountGreaterThan(900);
+        credits.Should().HaveCount(words!.Length);
+        recording.StatusCode.Should().Be(HttpStatusCode.OK);
+        recording.Content.Headers.ContentType!.MediaType.Should().Be("audio/mpeg");
+        recording.Headers.CacheControl!.MaxAge.Should().BeGreaterThan(TimeSpan.FromDays(1));
+        missing.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
     public async Task InvalidInput_ReturnsValidationProblem()
     {
         var response = await _client.GetAsync("/api/hangul/exercises/unknown?level=9", Ct);

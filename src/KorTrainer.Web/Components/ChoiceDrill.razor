@@ -193,6 +193,7 @@
         }
 
         _reloading = true;
+        await State.InitializeAsync(); // the recorded-word list decides between a recording and synthesis
         await SaveSessionAsync();
         _loading = true;
         _error = null;

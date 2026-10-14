@@ -40,12 +40,15 @@ public sealed class TestDatabase : IAsyncDisposable
         Vocabulary = new VocabularyService(db, Settings, Clock, new SrsScheduler());
         Activity = new ActivityService(db, Settings, Clock);
         Today = new TodayService(db, Settings, Vocabulary, Clock);
-        Hangul = new HangulService(db, Settings, Clock, new Random(42));
+        Hangul = new HangulService(db, Settings, Clock, new Random(42), Audio);
         Grammar = new GrammarService(db, Settings, Clock, new Random(42));
         Topik = new TopikService(db, Settings, Clock);
         Stats = new StatsService(db, Settings, Vocabulary, Clock);
         Progress = new ProgressTransferService(db, Settings, Clock);
     }
+
+    /// <summary>Recorded words used by the listening drill; replace before calling Hangul to test recordings.</summary>
+    public FakeAudioLibrary Audio { get; } = new();
 
     public AppDbContext Db { get; }
 

@@ -1,0 +1,72 @@
+@page "/credits"
+@inject ApiClient Api
+
+<PageTitle>Источники — KorTrainer</PageTitle>
+
+<header class="page-header">
+    <a class="back" href="/settings">← Настройки</a>
+    <h1>Источники</h1>
+</header>
+
+<section class="card">
+    <h2>Словарь</h2>
+    <p>
+        Частотная лексика — «한국어 학습용 어휘 목록», Национальный институт корейского языка (국립국어원), 2003,
+        лицензия <a href="https://www.kogl.or.kr/info/licenseType1.do" target="_blank" rel="noopener noreferrer">KOGL Type 1</a>.
+        Русские переводы сгенерированы и могут содержать неточности.
+    </p>
+</section>
+
+<section class="card">
+    <h2>Записи носителей</h2>
+    <p>
+        Произношение слов — записи проекта <a href="https://lingualibre.org" target="_blank" rel="noopener noreferrer">Lingua Libre</a>,
+        размещённые на Wikimedia Commons. Каждая запись распространяется под своей лицензией; автор — диктор, указанный ниже.
+        Для слов без записи используется синтез речи браузера.
+    </p>
+
+    <StatusViews IsLoading="_credits is null && _error is null" Error="@_error" OnRetry="LoadAsync" />
+
+    @if (_credits is { } credits)
+    {
+        <dl class="stats-row">
+            <div><dt>слов с записью</dt><dd>@credits.Count</dd></div>
+            <div><dt>дикторов</dt><dd>@credits.Select(c => c.Speaker).Distinct().Count()</dd></div>
+        </dl>
+        @foreach (var speaker in credits.GroupBy(c => c.Speaker).OrderByDescending(g => g.Count()))
+        {
+            <details class="credit-group">
+                <summary><strong>@speaker.Key</strong> <span class="muted">— @speaker.Count() записей · @string.Join(", ", speaker.Select(c => c.License).Distinct())</span></summary>
+                <ul class="credit-list">
+                    @foreach (var credit in speaker)
+                    {
+                        <li>
+                            <a href="@credit.Source" target="_blank" rel="noopener noreferrer" lang="ko">@credit.Word</a>
+                            <span class="muted">— <a href="@credit.LicenseUrl" target="_blank" rel="noopener noreferrer">@credit.License</a></span>
+                        </li>
+                    }
+                </ul>
+            </details>
+        }
+    }
+</section>
+
+@code {
+    private IReadOnlyList<AudioCreditDto>? _credits;
+    private string? _error;
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _error = null;
+        try
+        {
+            _credits = await Api.GetAudioCreditsAsync();
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException)
+        {
+            _error = ex.Message;
+        }
+    }
+}

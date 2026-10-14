@@ -22,7 +22,8 @@ FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
 
 ENV ASPNETCORE_HTTP_PORTS=8080 \
-    ConnectionStrings__KorTrainer="Data Source=/data/kortrainer.db"
+    ConnectionStrings__KorTrainer="Data Source=/data/kortrainer.db" \
+    Audio__CacheDirectory=/data/audio
 
 # SQLite lives on a volume owned by the non-root "app" user of the base image.
 RUN mkdir -p /data && chown "$APP_UID" /data

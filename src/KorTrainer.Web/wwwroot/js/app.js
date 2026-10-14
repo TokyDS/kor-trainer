@@ -75,10 +75,45 @@ export async function speechInfo() {
     };
 }
 
+// --- Native recordings ---------------------------------------------------------
+
+const AUDIO_START_TIMEOUT_MS = 8000;
+let player = null;
+
+function stopRecording() {
+    if (player) {
+        player.pause();
+        player.removeAttribute('src');
+        player = null;
+    }
+}
+
+/**
+ * Plays a recording; resolves true once playback starts, false if it fails or takes too long
+ * (the caller then falls back to speech synthesis).
+ * @param {string} url
+ * @returns {Promise<boolean>}
+ */
+export function playRecording(url) {
+    if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+    }
+    stopRecording();
+    const audio = new Audio(url);
+    player = audio;
+    return new Promise(resolve => {
+        const timer = setTimeout(() => resolve(false), AUDIO_START_TIMEOUT_MS);
+        audio.addEventListener('playing', () => { clearTimeout(timer); resolve(true); }, { once: true });
+        audio.addEventListener('error', () => { clearTimeout(timer); resolve(false); }, { once: true });
+        audio.play().catch(() => { clearTimeout(timer); resolve(false); });
+    });
+}
+
 export function speak(text, rate) {
     if (!('speechSynthesis' in window) || !text) {
         return false;
     }
+    stopRecording();
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = 'ko-KR';

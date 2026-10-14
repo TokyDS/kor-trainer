@@ -7,11 +7,14 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.12" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.12" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.12" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.12" />
   </ItemGroup>
 
   <ItemGroup>
     <EmbeddedResource Include="Seed\words.json" />
     <EmbeddedResource Include="Seed\words-nikl.json" />
+    <EmbeddedResource Include="Seed\audio-lingualibre.json" />
   </ItemGroup>
 
   <PropertyGroup>

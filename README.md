@@ -67,6 +67,8 @@ Romanization is **off by default** — the point is to learn to read Hangul with
   (국립국어원), 2003: headwords, parts of speech, hanja, levels and frequency ranks. Used under
   [KOGL Type 1](https://www.kogl.or.kr/info/licenseType1.do) (공공누리 제1유형, attribution). See
   [`tools/deck`](tools/deck/README.md) for the export and the build script.
+- **Lingua Libre** pronunciation recordings via Wikimedia Commons — CC0 and CC BY-SA 4.0, author and
+  license of every file on the in-app `/credits` page.
 
 ## Quick start
 
@@ -86,6 +88,14 @@ Without Docker (requires the .NET 10 SDK):
 ```bash
 dotnet run --project src/KorTrainer.Api      # http://localhost:5116, DB in src/KorTrainer.Api/data/
 ```
+
+### Native-speaker recordings
+
+About 930 words — including the minimal pairs of the plain/aspirated/tense listening drill (바다/파다,
+비/피, 덜다/털다/떨다 …) — are voiced by real native speakers from [Lingua Libre](https://lingualibre.org)
+(CC0 / CC BY-SA, credited on the `/credits` page). The server downloads each file from Wikimedia
+once, caches it in the data volume and prefetches the rest in the background; see
+[`tools/audio`](tools/audio/README.md). Everything else falls back to speech synthesis.
 
 ### Korean voice
 
@@ -149,6 +159,7 @@ for romanization).
 | POST | `/api/attempts` · `/api/sessions` | activity log |
 | GET | `/api/topik/writing` · GET/POST `/api/topik/drafts` | TOPIK writing guide and drafts |
 | GET | `/api/stats/overview` · `/api/stats/daily?days=` | statistics |
+| GET | `/api/audio/words` · `/api/audio/{word}` · `/api/audio/credits` | native-speaker recordings |
 | GET/POST | `/api/progress/export` · `/api/progress/import` | JSON backup |
 
 Errors are RFC 7807 problem details (`400` with field errors, `404` for unknown routes).
@@ -158,7 +169,7 @@ In Development the OpenAPI document is at `/openapi/v1.json`.
 
 ```bash
 dotnet build                                        # warnings are errors
-dotnet test                                         # 431 tests (xUnit v3, Microsoft.Testing.Platform)
+dotnet test                                         # 444 tests (xUnit v3, Microsoft.Testing.Platform)
 dotnet test -- --coverage --coverage-output-format cobertura
 dotnet tool restore
 dotnet ef migrations add <Name> -p src/KorTrainer.Infrastructure -s src/KorTrainer.Api -o Persistence/Migrations

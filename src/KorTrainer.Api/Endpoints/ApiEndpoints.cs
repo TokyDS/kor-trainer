@@ -1,5 +1,6 @@
 using System.Text.Json;
 using KorTrainer.Application.Activity;
+using KorTrainer.Application.Common;
 using KorTrainer.Application.Grammar;
 using KorTrainer.Application.Numbers;
 using KorTrainer.Application.Stats;
@@ -33,6 +34,7 @@ public static class ApiEndpoints
         MapGrammar(api.MapGroup("/grammar").WithTags("Grammar"));
         api.MapGroup("/numbers").WithTags("Numbers")
             .MapGet("/exercises/{type}", (string type, int? count, NumbersService service) => service.GetExercises(type, count ?? 20));
+        MapAudio(api.MapGroup("/audio").WithTags("Audio"));
         MapTopik(api.MapGroup("/topik").WithTags("TOPIK"));
         MapStats(api.MapGroup("/stats").WithTags("Statistics"));
         MapActivity(api.MapGroup(string.Empty).WithTags("Activity"));
@@ -92,6 +94,29 @@ public static class ApiEndpoints
         group.MapGet("/topics", (GrammarService service, CancellationToken ct) => service.GetTopicsAsync(ct));
         group.MapGet("/exercises/{type}", (string type, int? count, GrammarService service, CancellationToken ct) =>
             service.GetExercisesAsync(type, count ?? 20, ct));
+    }
+
+    private static void MapAudio(RouteGroupBuilder group)
+    {
+        group.MapGet("/words", (IAudioLibrary audio) => audio.Words.Order(StringComparer.Ordinal));
+        group.MapGet("/credits", (IAudioLibrary audio) => audio.Credits);
+        group.MapGet("/{word}", async (string word, IAudioLibrary audio, HttpContext http, CancellationToken ct) =>
+        {
+            if (!audio.Words.Contains(word))
+            {
+                return Results.Problem(statusCode: StatusCodes.Status404NotFound, title: "Для этого слова нет записи.");
+            }
+
+            var file = await audio.OpenAsync(word, ct);
+            if (file is null)
+            {
+                return Results.Problem(statusCode: StatusCodes.Status503ServiceUnavailable, title: "Запись пока недоступна (нет связи с Wikimedia).");
+            }
+
+            // Recordings never change for a word: let the browser keep them.
+            http.Response.Headers.CacheControl = "public, max-age=2592000";
+            return Results.Stream(file.Content, file.ContentType, enableRangeProcessing: true);
+        });
     }
 
     private static void MapTopik(RouteGroupBuilder group)

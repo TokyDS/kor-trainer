@@ -33,5 +33,38 @@ public static class MinimalPairs
         [new("사다", "покупать"), new("싸다", "дешёвый")],
         [new("살", "плоть; год (возраст)"), new("쌀", "рис (зерно)")],
         [new("시", "стихи; час"), new("씨", "семя")],
+
+        // Sets fully covered by native-speaker recordings (Lingua Libre).
+        [new("덜다", "уменьшать"), new("털다", "стряхивать"), new("떨다", "дрожать")],
+        [new("갈다", "точить; молоть"), new("깔다", "стелить")],
+        [new("듣다", "слушать"), new("뜯다", "отрывать")],
+        [new("바다", "море"), new("파다", "копать")],
+        [new("비", "дождь"), new("피", "кровь")],
+        [new("비우다", "опустошать"), new("피우다", "курить; разжигать")],
+        [new("튀다", "брызгать; отскакивать"), new("뛰다", "бегать, прыгать")],
+        [new("팔다", "продавать"), new("빨다", "стирать")],
+        [new("도끼", "топор"), new("토끼", "заяц")],
     ];
+
+    /// <summary>Fewest recorded sets worth switching the drill to native recordings.</summary>
+    public const int MinRecordedSets = 5;
+
+    /// <summary>
+    /// Sets to drill. With native recordings available, each set keeps only its recorded words (at least
+    /// two), so a question never mixes a human voice with synthesis — the voice itself would give the
+    /// answer away. Falls back to all sets when too few are recorded.
+    /// </summary>
+    public static IReadOnlyList<IReadOnlyList<ContrastWord>> Playable(IReadOnlySet<string>? recordedWords)
+    {
+        if (recordedWords is null || recordedWords.Count == 0)
+        {
+            return Sets;
+        }
+
+        var recorded = Sets
+            .Select(set => (IReadOnlyList<ContrastWord>)set.Where(w => recordedWords.Contains(w.Korean)).ToList())
+            .Where(set => set.Count >= 2)
+            .ToList();
+        return recorded.Count >= MinRecordedSets ? recorded : Sets;
+    }
 }

@@ -28,7 +28,7 @@
     <div class="letter-grid">
         @foreach (var letter in guide.Letters)
         {
-            <button type="button" class="letter-tile" @onclick="() => State.SpeakAsync(letter.SampleSyllable)">
+            <button type="button" class="letter-tile" @onclick="() => SpeakAsync(letter.SampleSyllable)">
                 <span class="letter" lang="ko">@letter.Jamo</span>
                 <span class="letter-sound">@letter.Sound</span>
                 @if (State.Settings.ShowRomanization)
@@ -83,6 +83,8 @@
     public int? Level { get; set; }
 
     protected override Task OnParametersSetAsync() => LoadAsync();
+
+    private async Task SpeakAsync(string text) => await State.SpeakAsync(text);
 
     private async Task LoadAsync()
     {

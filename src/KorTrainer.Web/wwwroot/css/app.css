@@ -785,3 +785,8 @@ input[type="range"] { accent-color: var(--accent); }
 .voice-select { display: grid; gap: var(--space-1); margin-bottom: var(--space-3); }
 .voice-select > span { font-weight: 600; }
 .voice-select select { max-width: 100%; }
+
+.voice-badge { font: 600 0.68rem var(--font-ui); text-transform: uppercase; letter-spacing: 0.06em; color: var(--celadon); background: var(--celadon-soft); border-radius: 999px; padding: 1px 7px; }
+.credit-group { padding: var(--space-2) 0; border-top: 1px dashed var(--rule); }
+.credit-group summary { cursor: pointer; }
+.credit-list { columns: 2 220px; margin: var(--space-2) 0 0; padding-left: 1.1rem; font-size: 0.9rem; }

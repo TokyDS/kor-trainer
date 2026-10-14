@@ -36,6 +36,13 @@ public sealed class BrowserInterop(IJSRuntime js) : IAsyncDisposable
         await module.InvokeVoidAsync("speak", text, rate);
     }
 
+    /// <summary>Plays a recording; false if it could not start (offline, missing file).</summary>
+    public async ValueTask<bool> PlayRecordingAsync(string url)
+    {
+        var module = await GetModuleAsync();
+        return await module.InvokeAsync<bool>("playRecording", url);
+    }
+
     public async ValueTask<IReadOnlyList<VoiceInfo>> GetKoreanVoicesAsync()
     {
         var module = await GetModuleAsync();
