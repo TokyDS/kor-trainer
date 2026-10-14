@@ -158,7 +158,8 @@ public sealed class VocabularyServiceTests
 
         unlocked.Total.Should().Be(10);
         locked.Items.Should().HaveCount(5).And.OnlyContain(w => w.Status == WordStatus.Locked);
-        search.Items.Should().ContainSingle().Which.Korean.Should().Be("연필");
+        search.Items.Should().Contain(w => w.Korean == "연필");
+        search.Items.Should().OnlyContain(w => w.Russian.Contains("карандаш", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]

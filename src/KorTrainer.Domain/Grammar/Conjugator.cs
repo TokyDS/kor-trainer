@@ -267,6 +267,9 @@ public static class Conjugator
                 return (stem, $"{harmony}; одинаковые гласные сливаются: {stem}");
             case 'ㅗ':
                 return (head + last.WithMedial('ㅘ'), $"{harmony}; ㅗ + ㅏ = ㅘ");
+            case 'ㅜ' when stem == "푸":
+                // The only ㅜ-irregular verb: ㅜ drops instead of merging (푸다 → 퍼요).
+                return ("퍼", "푸다 — особый глагол: ㅜ выпадает → 퍼");
             case 'ㅜ':
                 return (head + last.WithMedial('ㅝ'), $"{harmony}; ㅜ + ㅓ = ㅝ");
             case 'ㅣ':

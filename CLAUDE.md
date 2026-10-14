@@ -63,4 +63,5 @@ Static web assets are only served from `dotnet run` in the Development environme
    converter and `/numbers/{type|mixed}` drills.
 4. ✅ TOPIK writing (`Domain/Topik/WritingTasks`, timer page, drafts) and statistics (`StatsService`, `/stats`).
 
-All planned modules exist; next ideas: more deck words for stages 2–3, listening drills, PWA/offline.
+All planned modules exist; the deck has ~5,900 words (curated + NIKL A/B/C). Next ideas: listening
+drills, example sentences for words, PWA/offline.

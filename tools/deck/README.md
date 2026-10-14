@@ -5,7 +5,7 @@ The app seeds two embedded decks (`src/KorTrainer.Infrastructure/Seed`):
 | File | Words | Source |
 |---|---|---|
 | `words.json` | ~350 | Hand-picked beginner words grouped by the lessons of plan days 4–9 and stage 1 topics. |
-| `words-nikl.json` | ~2700 | Generated from the NIKL learner vocabulary list, levels A and B, ordered by frequency. |
+| `words-nikl.json` | ~5500 | Generated from the NIKL learner vocabulary list, levels A, B and C, ordered by frequency. |
 
 ## NIKL learner vocabulary list
 
@@ -32,5 +32,5 @@ dotnet run tools/deck/BuildNiklDeck.cs
 ```
 
 Words already in `words.json` are skipped. Level A opens in stage 1, the first 1,000 level B words in
-stage 2 and the rest in stage 3; within a stage words are introduced by frequency, in bands of 100.
-Rows without a translation are skipped, so level C can be added by translating it.
+stage 2, the rest of B and all of C in stage 3 (TOPIK II); within a stage words are introduced by
+frequency, in bands of 100. Rows without a translation are skipped.

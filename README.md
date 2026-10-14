@@ -24,8 +24,8 @@ Romanization is **off by default** — the point is to learn to read Hangul with
   - timed reading with milliseconds-per-syllable statistics;
   - a word analyzer that splits syllables into letters and explains how a word is pronounced.
 - **Vocabulary with spaced repetition** — an Anki-style SM-2 scheduler (learning steps, ease,
-  lapses) over a ~3,000-word deck: ~350 hand-picked words for the first lessons plus the levels A and B
-  of the official NIKL learner vocabulary list, introduced by frequency as the plan reaches each stage.
+  lapses) over a ~5,900-word deck: ~350 hand-picked words for the first lessons plus all three levels
+  (A/B/C) of the official NIKL learner vocabulary list, introduced by frequency as the plan reaches each stage.
 - **Keyboard first** — `1`–`4` to answer, `Enter` to continue, `Space` to hear the word.
 - Responsive layout (phone tab bar / desktop sidebar), light and dark themes.
 - Progress export/import as JSON; data stored in SQLite.
