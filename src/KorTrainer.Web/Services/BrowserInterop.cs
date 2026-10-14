@@ -4,6 +4,9 @@ namespace KorTrainer.Web.Services;
 
 public sealed record SpeechInfo(bool Supported, bool HasKoreanVoice, string? VoiceName, string Platform);
 
+/// <param name="Local">Installed on the device (otherwise a network voice that needs internet).</param>
+public sealed record VoiceInfo(string Name, bool Local);
+
 /// <summary>Typed access to <c>wwwroot/js/app.js</c>: speech synthesis, keyboard and theme.</summary>
 public sealed class BrowserInterop(IJSRuntime js) : IAsyncDisposable
 {
@@ -31,6 +34,24 @@ public sealed class BrowserInterop(IJSRuntime js) : IAsyncDisposable
         await GetSpeechInfoAsync();
         var module = await GetModuleAsync();
         await module.InvokeVoidAsync("speak", text, rate);
+    }
+
+    public async ValueTask<IReadOnlyList<VoiceInfo>> GetKoreanVoicesAsync()
+    {
+        var module = await GetModuleAsync();
+        return await module.InvokeAsync<VoiceInfo[]>("koreanVoices");
+    }
+
+    public async ValueTask<string?> ChooseVoiceAsync(string name)
+    {
+        var module = await GetModuleAsync();
+        string? chosen = await module.InvokeAsync<string?>("chooseVoice", name);
+        if (_speech is not null)
+        {
+            _speech = _speech with { VoiceName = chosen, HasKoreanVoice = chosen is not null };
+        }
+
+        return chosen;
     }
 
     public async ValueTask<int> RegisterKeysAsync<T>(DotNetObjectReference<T> target)

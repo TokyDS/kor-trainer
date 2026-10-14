@@ -14,7 +14,6 @@ public sealed class HangulExerciseGenerator(Random random)
     private const int MaxUniqueAttempts = 8;
     private const string CommonFinals = "ㄱㄴㄷㄹㅁㅂㅇㅅㅆㅈㅊㅋㅌㅍㅎㄲ";
     private const string DoubleFinals = "ㄳㄵㄶㄺㄻㄼㅀㅄ";
-    private const string SeriesVowels = "ㅏㅓㅗㅜㅣ";
     private const int DoubleFinalOneIn = 6;
     private const int NoFinalOneIn = 4;
     private const int MinRealSyllables = 10;
@@ -138,26 +137,33 @@ public sealed class HangulExerciseGenerator(Random random)
             PromptRomanization: Romanizer.Romanize(syllable.ToString()));
     }
 
+    /// <summary>
+    /// Listening drill on plain / aspirated / tense consonants using real minimal pairs (불 · 풀 · 뿔):
+    /// synthesized isolated syllables (가/카/까) sound nearly identical, whole words do not.
+    /// Options keep the plain → aspirated → tense order so keys 1–3 always mean the same series.
+    /// </summary>
     public ChoiceExercise ConsonantSeries()
     {
-        var series = JamoCatalog.ConsonantSeries.Pick(random);
-        char vowel = SeriesVowels[random.Next(SeriesVowels.Length)];
-        int correct = random.Next(series.Count);
-        var options = series
-            .Select(c => new Syllable(c, vowel).ToString())
-            .Select((text, i) => new ChoiceOption(text, JamoCatalog.SeriesName(JamoCatalog.Get(series[i]).Kind), Romanizer.Romanize(text)))
+        var set = MinimalPairs.Sets.Pick(random);
+        int correct = random.Next(set.Count);
+        var options = set
+            .Select(w => new ChoiceOption(
+                w.Korean,
+                $"{JamoCatalog.SeriesName(JamoCatalog.Get(w.Consonant).Kind)} · {w.Russian}",
+                Romanizer.Romanize(w.Korean)))
             .ToList();
-        var target = JamoCatalog.Get(series[correct]);
+        var word = set[correct];
+        var target = JamoCatalog.Get(word.Consonant);
 
         return new ChoiceExercise(
             ExerciseTypes.ConsonantSeries,
-            $"series:{options[correct].Text}",
-            "Какой слог прозвучал?",
-            "Пробел — послушать ещё раз.",
+            $"series:{word.Korean}",
+            "Какое слово прозвучало?",
+            "Пробел — послушать ещё раз. После ответа цифрами можно сравнить все варианты.",
             options,
             correct,
-            $"Прозвучал {options[correct].Text}: {JamoCatalog.SeriesName(target.Kind)} {target.Jamo}. {target.Hint}",
-            SpeakText: options[correct].Text,
+            $"Прозвучало {word.Korean} «{word.Russian}»: {JamoCatalog.SeriesName(target.Kind)} {target.Jamo}. {target.Hint}",
+            SpeakText: word.Korean,
             AutoSpeak: true);
     }
 

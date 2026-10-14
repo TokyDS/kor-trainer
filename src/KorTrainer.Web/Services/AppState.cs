@@ -59,7 +59,21 @@ public sealed class AppState(ApiClient api, BrowserInterop browser)
         Changed?.Invoke();
     }
 
-    public ValueTask SpeakAsync(string? text) => browser.SpeakAsync(text, Settings.SpeechRate);
+    /// <summary>Speech rate for listening drills: slower speech keeps consonant contrasts audible.</summary>
+    public const double ListeningRate = 0.75;
+
+    /// <param name="slow">Listening drill: cap the rate at <see cref="ListeningRate"/>.</param>
+    public ValueTask SpeakAsync(string? text, bool slow = false) =>
+        browser.SpeakAsync(text, slow ? Math.Min(Settings.SpeechRate, ListeningRate) : Settings.SpeechRate);
+
+    public ValueTask<IReadOnlyList<VoiceInfo>> GetKoreanVoicesAsync() => browser.GetKoreanVoicesAsync();
+
+    public async Task ChooseVoiceAsync(string name)
+    {
+        await browser.ChooseVoiceAsync(name);
+        Speech = await browser.GetSpeechInfoAsync();
+        Changed?.Invoke();
+    }
 
     /// <summary>Romanization for display, or null when the learner keeps it hidden.</summary>
     public string? RomanizationFor(string? text, string? precomputed = null)

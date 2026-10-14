@@ -130,7 +130,30 @@ public sealed class HangulExerciseGeneratorTests
         {
             exercise.AutoSpeak.Should().BeTrue();
             exercise.SpeakText.Should().Be(exercise.Correct.Text);
-            exercise.Options[0].Hint.Should().Be("обычная");
+            exercise.Options[0].Hint.Should().StartWith("обычная");
+            exercise.Options.Should().OnlyContain(o => MinimalPairs.Sets.SelectMany(s => s).Any(w => w.Korean == o.Text));
+        }
+    }
+
+    [Fact]
+    public void MinimalPairs_DifferOnlyInTheInitialConsonantOfOneSeries()
+    {
+        foreach (var set in MinimalPairs.Sets)
+        {
+            set.Count.Should().BeInRange(2, 3);
+            var first = set[0];
+            foreach (var word in set)
+            {
+                var syllable = Syllable.Decompose(word.Korean[0]);
+                var reference = Syllable.Decompose(first.Korean[0]);
+                word.Korean.Length.Should().Be(first.Korean.Length);
+                word.Korean[1..].Should().Be(first.Korean[1..], "only the first consonant may differ");
+                syllable.Medial.Should().Be(reference.Medial);
+                syllable.Final.Should().Be(reference.Final);
+            }
+
+            var series = JamoCatalog.ConsonantSeries.Single(s => s.Contains(first.Consonant));
+            set.Select(w => series.ToList().IndexOf(w.Consonant)).Should().BeInAscendingOrder().And.OnlyHaveUniqueItems().And.NotContain(-1);
         }
     }
 

@@ -533,8 +533,11 @@ input[type="text"], input[type="search"], input[type="number"], input[type="date
     transition: border-color var(--duration), transform var(--duration), background var(--duration), opacity var(--duration);
 }
 
-.option:hover:not([disabled]) { border-color: var(--ink-faint); transform: translateY(-1px); }
-.option[disabled] { cursor: default; }
+.option:hover:not([aria-disabled="true"]) { border-color: var(--ink-faint); transform: translateY(-1px); }
+.option[aria-disabled="true"] { cursor: default; }
+/* After answering, Korean options replay their sound for side-by-side comparison. */
+.option.playable .key { background: var(--accent-soft); color: var(--accent); }
+.option.dimmed.playable { opacity: 0.8; }
 .option.correct { border-color: var(--celadon); background: var(--celadon-soft); }
 .option.wrong { border-color: var(--danger); background: var(--danger-soft); animation: shake 260ms; }
 .option.dimmed { opacity: 0.5; }
@@ -778,3 +781,7 @@ input[type="range"] { accent-color: var(--accent); }
 .accuracy-track { height: 10px; border-radius: 4px; background: var(--paper-sunken); overflow: hidden; }
 .accuracy-fill { display: block; height: 100%; background: var(--chart); border-radius: 4px; }
 .accuracy-value { grid-column: 2; font-size: 0.85rem; }
+
+.voice-select { display: grid; gap: var(--space-1); margin-bottom: var(--space-3); }
+.voice-select > span { font-weight: 600; }
+.voice-select select { max-width: 100%; }

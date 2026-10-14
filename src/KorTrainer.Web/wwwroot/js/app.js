@@ -3,10 +3,46 @@
 const VOICE_WAIT_MS = 1500;
 let koreanVoice = null;
 
+const VOICE_KEY = 'kortrainer-voice';
+
+function koreanOnly(voices) {
+    return voices.filter(v => (v.lang || '').toLowerCase().replace('_', '-').startsWith('ko'));
+}
+
+function storedVoiceName() {
+    try {
+        return localStorage.getItem(VOICE_KEY);
+    } catch {
+        return null;
+    }
+}
+
 function pickKoreanVoice(voices) {
-    const korean = voices.filter(v => (v.lang || '').toLowerCase().replace('_', '-').startsWith('ko'));
-    // Prefer higher quality network/Google voices when present.
-    return korean.find(v => /google|natural|online/i.test(v.name)) ?? korean[0] ?? null;
+    const korean = koreanOnly(voices);
+    // The learner's choice wins (voices differ per device, so it is stored per browser);
+    // otherwise prefer neural/network voices, which keep 가/카/까-style contrasts clearer.
+    const chosen = storedVoiceName();
+    return korean.find(v => v.name === chosen)
+        ?? korean.find(v => /natural|neural|online|google/i.test(v.name))
+        ?? korean[0]
+        ?? null;
+}
+
+/** Names of all Korean voices installed in this browser. */
+export async function koreanVoices() {
+    return koreanOnly(await loadVoices()).map(v => ({ name: v.name, local: v.localService === true }));
+}
+
+/** Remembers the preferred Korean voice for this browser. */
+export async function chooseVoice(name) {
+    try {
+        localStorage.setItem(VOICE_KEY, name);
+    } catch {
+        // Storage unavailable: the choice applies until the page is reloaded.
+    }
+    const voices = await loadVoices();
+    koreanVoice = koreanOnly(voices).find(v => v.name === name) ?? pickKoreanVoice(voices);
+    return koreanVoice ? koreanVoice.name : null;
 }
 
 function loadVoices() {

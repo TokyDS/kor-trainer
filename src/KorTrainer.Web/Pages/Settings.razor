@@ -73,9 +73,25 @@
 
     <section class="card">
         <h2>Озвучка</h2>
-        @if (State.Speech is { HasKoreanVoice: true } speech)
+        @if (_voices.Count > 0)
         {
-            <p>Найден корейский голос: <strong>@speech.VoiceName</strong>.</p>
+            <label class="voice-select">
+                <span>Корейский голос на этом устройстве</span>
+                <select value="@State.Speech?.VoiceName" @onchange="ChooseVoiceAsync">
+                    @foreach (var voice in _voices)
+                    {
+                        <option value="@voice.Name">@voice.Name@(voice.Local ? string.Empty : " (онлайн)")</option>
+                    }
+                </select>
+            </label>
+            <div class="actions">
+                <button type="button" class="btn" @onclick="CompareSeriesAsync">Сравнить 불 · 풀 · 뿔</button>
+            </div>
+            <p class="muted small">
+                Голоса сильно различаются: в одних 가/카/까 звучат почти одинаково, в других — отчётливо. Лучше всего
+                обычно «нейронные» и онлайн-голоса (Edge: Microsoft … Online (Natural), Chrome: Google 한국의).
+                Выбор запоминается для этого браузера.
+            </p>
         }
         <VoiceNotice />
     </section>
@@ -108,6 +124,9 @@
         "Asia/Seoul", "Europe/Minsk", "Asia/Almaty", "Asia/Tashkent", "UTC",
     ];
 
+    private const int SeriesPauseMs = 1100;
+
+    private IReadOnlyList<VoiceInfo> _voices = [];
     private SettingsModel? _model;
     private bool _saving;
     private bool _isError;
@@ -121,6 +140,33 @@
     {
         await State.InitializeAsync();
         _model = SettingsModel.From(State.Settings);
+        try
+        {
+            _voices = await State.GetKoreanVoicesAsync();
+        }
+        catch (JSException)
+        {
+            _voices = [];
+        }
+    }
+
+    private async Task ChooseVoiceAsync(ChangeEventArgs e)
+    {
+        if (e.Value is string name && name.Length > 0)
+        {
+            await State.ChooseVoiceAsync(name);
+            await State.SpeakAsync("안녕하세요");
+        }
+    }
+
+    // Plays a plain / aspirated / tense minimal triple with pauses, to judge how well the voice separates them.
+    private async Task CompareSeriesAsync()
+    {
+        foreach (string word in new[] { "불", "풀", "뿔" })
+        {
+            await State.SpeakAsync(word, slow: true);
+            await Task.Delay(SeriesPauseMs);
+        }
     }
 
     private async Task SaveAsync()
