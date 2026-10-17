@@ -2,12 +2,17 @@
 @inherits KeyboardComponentBase
 @inject ApiClient Api
 @inject AppState State
+@using KorTrainer.Domain.Hangul
 
 <PageTitle>Повторение слов — KorTrainer</PageTitle>
 
 <header class="page-header">
     <a class="back" href="/vocab">← Словарь</a>
     <h1>Повторение слов</h1>
+    <nav class="segmented" aria-label="Направление">
+        <a class="@(IsReverse ? string.Empty : "active")" href="/vocab/review" aria-current="@(!IsReverse)">한 → RU</a>
+        <a class="@(IsReverse ? "active" : string.Empty)" href="/vocab/review?mode=reverse" aria-current="@IsReverse">RU → 한, ввод</a>
+    </nav>
     @if (_queue is { } q && !_done)
     {
         <p class="muted">К повторению: @q.DueCount · новых сегодня осталось: @q.NewRemainingToday</p>
@@ -38,13 +43,53 @@
     {
         <div class="card flashcard @(_revealed ? "revealed" : string.Empty)">
             <span class="phase-badge">@PhaseLabel(card.Phase)</span>
-            <div class="flash-front">
-                <HangulText Text="@card.Korean" Size="xl" />
-                @if (_revealed)
-                {
+            @if (IsReverse && !_revealed)
+            {
+                <div class="flash-front">
+                    <p class="translation big">@card.Russian</p>
+                </div>
+                <p class="muted small">@card.Topic</p>
+            }
+            else if (IsReverse && _check is { } check)
+            {
+                <div class="flash-front">
+                    <span class="answer-diff" lang="ko">
+                        @foreach (var syllable in check.Syllables)
+                        {
+                            <span class="@(syllable.IsMatch ? "ok" : "bad")">@syllable.Expected</span>
+                        }
+                    </span>
                     <SpeakButton Text="@card.Korean" />
-                }
-            </div>
+                </div>
+                <p class="@(check.IsCorrect ? "notice success" : "notice error") small">
+                    @if (check.IsCorrect)
+                    {
+                        <span>Верно!</span>
+                    }
+                    else
+                    {
+                        <span>Вы написали: <span lang="ko">@_answer</span></span>
+                        @foreach (var note in check.Syllables.Where(x => x.Note is not null))
+                        {
+                            <br /><span lang="ko">@note.Note</span>
+                        }
+                        @if (check.Extra.Length > 0)
+                        {
+                            <br /><span lang="ko">лишнее: @check.Extra</span>
+                        }
+                    }
+                </p>
+            }
+            else
+            {
+                <div class="flash-front">
+                    <HangulText Text="@card.Korean" Size="xl" />
+                    @if (_revealed)
+                    {
+                        <SpeakButton Text="@card.Korean" />
+                    }
+                </div>
+            }
             @if (_revealed)
             {
                 <div class="flash-back">
@@ -58,7 +103,17 @@
             }
         </div>
 
-        @if (!_revealed)
+        @if (!_revealed && IsReverse)
+        {
+            <form class="answer-form" @onsubmit="CheckAnswerAsync">
+                <input type="text" lang="ko" autocomplete="off" autocapitalize="off" spellcheck="false"
+                       placeholder="Напишите по-корейски" aria-label="Ответ на корейском" @bind="_answer" @bind:event="oninput" />
+                <button type="submit" class="btn primary">Проверить</button>
+                <button type="button" class="btn" @onclick="GiveUpAsync">Не помню</button>
+            </form>
+            <p class="keys-hint">Оценка влияет на ту же карточку, что и в режиме 한 → RU.</p>
+        }
+        else if (!_revealed)
         {
             <button type="button" class="btn primary wide" @onclick="RevealAsync">Показать перевод <kbd>Enter</kbd></button>
             <p class="keys-hint">Сначала вспомните перевод, потом откройте ответ.</p>
@@ -68,7 +123,7 @@
             <div class="grades">
                 @foreach (var preview in card.Previews)
                 {
-                    <button type="button" class="grade grade-@preview.Grade.ToString().ToLowerInvariant()" disabled="@_saving" @onclick="() => GradeAsync(preview.Grade)">
+                    <button type="button" class="grade grade-@preview.Grade.ToString().ToLowerInvariant() @(preview.Grade == SuggestedGrade ? "suggested" : string.Empty)" disabled="@_saving" @onclick="() => GradeAsync(preview.Grade)">
                         <span class="key">@((int)preview.Grade)</span>
                         <span>@preview.Label</span>
                         <small>@preview.Interval</small>
@@ -87,6 +142,16 @@
 
 @code {
     private readonly System.Diagnostics.Stopwatch _timer = new();
+    private string _answer = string.Empty;
+    private AnswerCheck? _check;
+
+    [SupplyParameterFromQuery(Name = "mode")]
+    public string? Mode { get; set; }
+
+    private bool IsReverse => Mode == "reverse";
+
+    /// <summary>In typing mode the check suggests a grade: Good when right, Again when wrong.</summary>
+    private Grade? SuggestedGrade => IsReverse && _revealed ? (_check?.IsCorrect == true ? Grade.Good : Grade.Again) : null;
     private readonly Queue<CardDto> _cards = new();
     private VocabularyQueueDto? _queue;
     private CardDto? _card;
@@ -110,7 +175,7 @@
             return;
         }
 
-        if (!_revealed && key is "Enter" or "Space")
+        if (!_revealed && !IsReverse && key is "Enter" or "Space")
         {
             await RevealAsync();
         }
@@ -150,9 +215,35 @@
         }
     }
 
+    private async Task CheckAnswerAsync()
+    {
+        if (_card is null || string.IsNullOrWhiteSpace(_answer))
+        {
+            return;
+        }
+
+        _check = AnswerChecker.Check(_card.Korean, _answer);
+        await RevealAsync();
+        await Browser.BlurActiveAsync(); // number keys now grade the card
+    }
+
+    private async Task GiveUpAsync()
+    {
+        if (_card is null)
+        {
+            return;
+        }
+
+        _check = AnswerChecker.Check(_card.Korean, string.Empty);
+        await RevealAsync();
+        await Browser.BlurActiveAsync();
+    }
+
     private void ShowNext()
     {
         _revealed = false;
+        _answer = string.Empty;
+        _check = null;
         if (_cards.TryDequeue(out var next))
         {
             _card = next;
