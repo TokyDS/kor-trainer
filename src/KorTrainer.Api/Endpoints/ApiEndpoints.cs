@@ -2,6 +2,7 @@ using System.Text.Json;
 using KorTrainer.Application.Activity;
 using KorTrainer.Application.Common;
 using KorTrainer.Application.Grammar;
+using KorTrainer.Application.Listening;
 using KorTrainer.Application.Numbers;
 using KorTrainer.Application.Stats;
 using KorTrainer.Application.Topik;
@@ -35,6 +36,8 @@ public static class ApiEndpoints
         api.MapGroup("/numbers").WithTags("Numbers")
             .MapGet("/exercises/{type}", (string type, int? count, NumbersService service) => service.GetExercises(type, count ?? 20));
         MapAudio(api.MapGroup("/audio").WithTags("Audio"));
+        api.MapGroup("/listening").WithTags("Listening")
+            .MapGet("/exercises/{type}", (string type, int? count, ListeningService service, CancellationToken ct) => service.GetExercisesAsync(type, count ?? 20, ct));
         MapTopik(api.MapGroup("/topik").WithTags("TOPIK"));
         MapStats(api.MapGroup("/stats").WithTags("Statistics"));
         MapActivity(api.MapGroup(string.Empty).WithTags("Activity"));

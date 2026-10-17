@@ -7,6 +7,7 @@ public enum StudyModule
     Grammar = 3,
     Numbers = 4,
     Topik = 5,
+    Listening = 6,
 }
 
 /// <summary>Stable identifiers of exercise kinds, used in routes, attempts and plan targets.</summary>
@@ -36,6 +37,8 @@ public static class ExerciseTypes
     public const string Can = "can";
     public const string Must = "must";
     public const string Mixed = "mixed";
+    public const string ListenMeaning = "listen-meaning";
+    public const string ListenSpelling = "listen-spelling";
 
     public const string SinoNumbers = "sino";
     public const string NativeNumbers = "native";

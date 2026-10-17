@@ -49,6 +49,9 @@ public sealed class ApiClient(HttpClient http)
     public Task<ExerciseSetDto> GetGrammarExercisesAsync(string type, int count) =>
         GetAsync<ExerciseSetDto>($"api/grammar/exercises/{Uri.EscapeDataString(type)}?count={count}");
 
+    public Task<ExerciseSetDto> GetListeningExercisesAsync(string type, int count) =>
+        GetAsync<ExerciseSetDto>($"api/listening/exercises/{Uri.EscapeDataString(type)}?count={count}");
+
     public Task<ExerciseSetDto> GetNumberExercisesAsync(string type, int count) =>
         GetAsync<ExerciseSetDto>($"api/numbers/exercises/{Uri.EscapeDataString(type)}?count={count}");
 

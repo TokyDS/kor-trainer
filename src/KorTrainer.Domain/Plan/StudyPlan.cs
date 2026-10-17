@@ -163,7 +163,7 @@ public sealed class StudyPlan
             CommonTasks.NewWords(NewWordsPerDay),
             writing,
             new("reading", "Чтение: один блок заданий TOPIK II из прошлых вариантов", TaskTarget.Manual(), "/topik"),
-            new("listening", "Аудирование: 20 минут заданий TOPIK II", TaskTarget.Manual(), "/topik"),
+            new("listening", "Аудирование: 20 минут заданий TOPIK II или упражнений на слух", TaskTarget.Manual(), "/listening"),
         ];
     }
 

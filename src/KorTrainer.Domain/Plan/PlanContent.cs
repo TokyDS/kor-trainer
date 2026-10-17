@@ -197,6 +197,7 @@ internal static class PlanContent
             new("Повторение слов", "/vocab/review"),
             new("Грамматика", "/grammar"),
             new("Числа", "/numbers"),
+            new("Аудирование", "/listening"),
             new("Чтение на время", "/hangul/reading?level=3"),
         ],
     };

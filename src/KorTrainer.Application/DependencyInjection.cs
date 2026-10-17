@@ -1,6 +1,7 @@
 using KorTrainer.Application.Activity;
 using KorTrainer.Application.Common;
 using KorTrainer.Application.Grammar;
+using KorTrainer.Application.Listening;
 using KorTrainer.Application.Numbers;
 using KorTrainer.Application.Stats;
 using KorTrainer.Application.Topik;
@@ -31,6 +32,7 @@ public static class DependencyInjection
         services.AddScoped<HangulService>();
         services.AddScoped<GrammarService>();
         services.AddScoped<NumbersService>();
+        services.AddScoped<ListeningService>();
         services.AddScoped<TopikService>();
         services.AddScoped<StatsService>();
         services.AddScoped<TodayService>();
