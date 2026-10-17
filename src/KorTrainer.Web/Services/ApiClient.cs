@@ -65,6 +65,8 @@ public sealed class ApiClient(HttpClient http)
 
     public Task<WritingDraftDto> SaveDraftAsync(SaveDraftRequest request) => SendAsync<WritingDraftDto>(HttpMethod.Post, "api/topik/drafts", request);
 
+    public Task<ForecastDto> GetForecastAsync() => GetAsync<ForecastDto>("api/stats/forecast");
+
     public Task<StatsOverviewDto> GetStatsOverviewAsync() => GetAsync<StatsOverviewDto>("api/stats/overview");
 
     public Task<IReadOnlyList<DailyStatDto>> GetDailyStatsAsync(int days) => GetAsync<IReadOnlyList<DailyStatDto>>($"api/stats/daily?days={days}");

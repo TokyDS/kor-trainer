@@ -34,3 +34,9 @@ public sealed record StatsOverviewDto(
     int LongestStreak,
     double? ReadingMsPerSyllable,
     int WritingDrafts);
+
+public sealed record GoalForecastDto(DateOnly Date, string Title, int Goal, int Projected, double RequiredPace, bool OnTrack);
+
+/// <param name="WordsStudied">Words introduced so far (any SRS state).</param>
+/// <param name="PacePerDay">Average new words per day recently.</param>
+public sealed record ForecastDto(int WordsStudied, double PacePerDay, int NewWordsPerDaySetting, IReadOnlyList<GoalForecastDto> Goals);

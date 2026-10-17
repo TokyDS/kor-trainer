@@ -97,6 +97,30 @@ public sealed class StatsService(IAppDbContext db, SettingsService settingsServi
             .ToList();
     }
 
+    /// <summary>Projects the vocabulary at the plan's goal dates from the recent pace of new words.</summary>
+    public async Task<ForecastDto> GetForecastAsync(CancellationToken cancellationToken)
+    {
+        var settings = await settingsService.GetEntityAsync(cancellationToken);
+        var today = clock.Today(settings);
+        var windowStart = today.AddDays(1 - Forecast.PaceWindowDays);
+
+        int studied = await db.WordProgress.CountAsync(cancellationToken);
+        int deckSize = await db.Words.CountAsync(cancellationToken);
+        int recentNew = await db.ReviewLogs.CountAsync(r => r.LocalDate >= windowStart && r.PhaseBefore == CardPhase.New, cancellationToken);
+        var firstNew = await db.ReviewLogs
+            .Where(r => r.PhaseBefore == CardPhase.New)
+            .OrderBy(r => r.LocalDate)
+            .Select(r => (DateOnly?)r.LocalDate)
+            .FirstOrDefaultAsync(cancellationToken);
+        int daysSinceFirst = firstNew is { } first ? today.DayNumber - first.DayNumber + 1 : 0;
+
+        double pace = Forecast.Pace(recentNew, daysSinceFirst);
+        var goals = Forecast.Project(studied, pace, today, deckSize)
+            .Select(g => new GoalForecastDto(g.Goal.Date, g.Goal.Title, g.Goal.Words, g.Projected, g.RequiredPace, g.OnTrack))
+            .ToList();
+        return new ForecastDto(studied, Math.Round(pace, 1), settings.NewWordsPerDay, goals);
+    }
+
     // A day with 40 seconds of practice should still show up on the chart.
     private static int ToMinutesRoundedUp(long seconds) => (int)Math.Min(int.MaxValue, (seconds + SecondsPerMinute - 1) / SecondsPerMinute);
 

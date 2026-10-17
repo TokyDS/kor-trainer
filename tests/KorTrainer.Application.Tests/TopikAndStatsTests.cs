@@ -87,6 +87,25 @@ public sealed class TopikAndStatsTests
     }
 
     [Fact]
+    public async Task Forecast_UsesRecentPaceAgainstPlanGoals()
+    {
+        await using var t = await TestDatabase.CreateAsync();
+        await t.SetPlanDayAsync(4);
+        foreach (var card in (await t.Vocabulary.GetQueueAsync(3, Ct)).Cards)
+        {
+            await t.Vocabulary.ReviewAsync(new ReviewRequest(card.WordId, Grade.Good, 1000), Ct);
+        }
+
+        var forecast = await t.Stats.GetForecastAsync(Ct);
+
+        forecast.WordsStudied.Should().Be(3);
+        forecast.PacePerDay.Should().Be(3);
+        forecast.Goals.Select(g => g.Goal).Should().Equal(800, 1500, 3000);
+        forecast.Goals[0].Projected.Should().Be(3 + (3 * 80));
+        forecast.Goals[0].OnTrack.Should().BeFalse();
+    }
+
+    [Fact]
     public void LongestStreak_FindsTheLongestRun()
     {
         var start = new DateOnly(2026, 10, 1);

@@ -130,6 +130,7 @@ public static class ApiEndpoints
     {
         group.MapGet("/overview", (StatsService service, CancellationToken ct) => service.GetOverviewAsync(ct));
         group.MapGet("/daily", (int? days, StatsService service, CancellationToken ct) => service.GetDailyAsync(days ?? 30, ct));
+        group.MapGet("/forecast", (StatsService service, CancellationToken ct) => service.GetForecastAsync(ct));
     }
 
     private static void MapActivity(RouteGroupBuilder group)

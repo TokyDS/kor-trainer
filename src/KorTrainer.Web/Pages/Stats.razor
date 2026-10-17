@@ -20,6 +20,43 @@
         <div class="tile"><dt>чтение, мс/слог</dt><dd>@(o.ReadingMsPerSyllable?.ToString("0") ?? "—")</dd></div>
     </dl>
 
+    @if (_forecast is { } f)
+    {
+        <section class="card forecast" aria-labelledby="forecast-heading">
+            <div class="section-head">
+                <h2 id="forecast-heading">Прогноз по словам</h2>
+                <span class="muted">изучено @f.WordsStudied · темп @f.PacePerDay.ToString("0.#") в день (настройка: @f.NewWordsPerDaySetting)</span>
+            </div>
+            <ul class="goal-list">
+                @foreach (var goal in f.Goals)
+                {
+                    int percent = Math.Min(100, goal.Projected * 100 / Math.Max(1, goal.Goal));
+                    <li class="@(goal.OnTrack ? "on-track" : "behind")">
+                        <div class="goal-head">
+                            <strong>@goal.Title</strong>
+                            <span class="muted">@goal.Date.ToString("d MMMM yyyy", Russian) · цель @goal.Goal слов</span>
+                        </div>
+                        <span class="accuracy-track"><span class="accuracy-fill" style="width: @percent%"></span></span>
+                        <span class="goal-verdict">
+                            @if (goal.OnTrack)
+                            {
+                                <span>✓ успеваете: будет ~@goal.Projected</span>
+                            }
+                            else
+                            {
+                                <span>⚠ при текущем темпе ~@goal.Projected — нужно @goal.RequiredPace.ToString("0.#") слов в день</span>
+                            }
+                        </span>
+                    </li>
+                }
+            </ul>
+            @if (f.Goals.Any(g => !g.OnTrack))
+            {
+                <p class="muted small">Темп можно поднять в <a href="/settings">настройках</a> («Новых слов в день»).</p>
+            }
+        </section>
+    }
+
     <section class="card" aria-labelledby="minutes-heading">
         <div class="section-head">
             <h2 id="minutes-heading">Время занятий по дням, минуты</h2>
@@ -84,6 +121,7 @@
 
     private StatsOverviewDto? _overview;
     private IReadOnlyList<DailyStatDto>? _daily;
+    private ForecastDto? _forecast;
     private string? _error;
 
     private int MaxMinutes => Math.Max(10, _daily?.Max(d => d.StudyMinutes) ?? 0);
@@ -99,6 +137,7 @@
             var daily = Api.GetDailyStatsAsync(Days);
             _overview = await overview;
             _daily = await daily;
+            _forecast = await Api.GetForecastAsync();
         }
         catch (Exception ex) when (ex is ApiException or HttpRequestException)
         {
