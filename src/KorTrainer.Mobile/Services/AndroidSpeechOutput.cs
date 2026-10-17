@@ -14,6 +14,7 @@ namespace KorTrainer.Mobile.Services;
 public sealed class AndroidSpeechOutput(BrowserInterop browser, IAudioLibrary audio) : ISpeechOutput, IDisposable
 {
     private const string VoicePreferenceKey = "korean-voice";
+    private static readonly TimeSpan EngineStartTimeout = TimeSpan.FromSeconds(5);
     private static readonly Locale Korean = Locale.Korean!;
 
     private TextToSpeech? _engine;
@@ -90,11 +91,15 @@ public sealed class AndroidSpeechOutput(BrowserInterop browser, IAudioLibrary au
         {
             var initialized = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
             _engine = new TextToSpeech(Platform.AppContext, new InitListener(status => initialized.TrySetResult(status == OperationResult.Success)));
-            _ready = initialized.Task;
+            _ready = WithTimeoutAsync(initialized.Task);
         }
 
         return _ready;
     }
+
+    // Some phones never answer when no speech engine is installed: give up instead of waiting forever.
+    private static async Task<bool> WithTimeoutAsync(Task<bool> initialized) =>
+        await Task.WhenAny(initialized, Task.Delay(EngineStartTimeout)) == initialized && await initialized;
 
     /// <summary>Switches the engine to Korean (the learner's voice if still installed); false without Korean data.</summary>
     private bool SelectKoreanVoice()

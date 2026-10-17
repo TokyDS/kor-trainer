@@ -162,9 +162,16 @@ public sealed class LocalKorTrainerApi(IServiceScopeFactory scopes, ILogger<Loca
     {
         try
         {
-            await InitializeAsync(cancellationToken);
-            await using var scope = scopes.CreateAsyncScope();
-            return await action(scope.ServiceProvider.GetRequiredService<TService>(), cancellationToken);
+            // SQLite's async methods complete synchronously: run the work off the UI thread so the
+            // pages keep rendering (the first start creates the database and loads the decks).
+            return await Task.Run(
+                async () =>
+                {
+                    await InitializeAsync(cancellationToken);
+                    await using var scope = scopes.CreateAsyncScope();
+                    return await action(scope.ServiceProvider.GetRequiredService<TService>(), cancellationToken);
+                },
+                cancellationToken);
         }
         catch (Exception ex) when (ex is not (OperationCanceledException or ApiException))
         {
