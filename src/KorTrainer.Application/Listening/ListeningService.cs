@@ -1,4 +1,5 @@
 using KorTrainer.Application.Common;
+using KorTrainer.Application.Plan;
 using KorTrainer.Application.Hangul;
 using KorTrainer.Application.Settings;
 using KorTrainer.Contracts;
@@ -10,7 +11,7 @@ using Microsoft.EntityFrameworkCore;
 namespace KorTrainer.Application.Listening;
 
 /// <summary>Listening drills over the learner's own words, preferring native-speaker recordings.</summary>
-public sealed class ListeningService(IAppDbContext db, SettingsService settingsService, StudyClock clock, Random random, IAudioLibrary audio)
+public sealed class ListeningService(IAppDbContext db, PlanCursor cursor, Random random, IAudioLibrary audio)
 {
     public const int MaxCount = 50;
 
@@ -30,9 +31,7 @@ public sealed class ListeningService(IAppDbContext db, SettingsService settingsS
             .Require(count is >= 1 and <= MaxCount, nameof(count), $"Количество: от 1 до {MaxCount}.")
             .ThrowIfInvalid();
 
-        var settings = await settingsService.GetEntityAsync(cancellationToken);
-        var stage = new StudyPlan(settings.StartDate, settings.NewWordsPerDay).StageOn(clock.Today(settings));
-        var maxStage = StudyScope.MaxWordStage(stage);
+        var maxStage = StudyScope.MaxWordStage((await cursor.GetAsync(cancellationToken)).Step.Stage);
         var words = await db.Words
             .Where(w => w.Stage <= maxStage)
             .OrderBy(w => w.Stage).ThenBy(w => w.Rank)

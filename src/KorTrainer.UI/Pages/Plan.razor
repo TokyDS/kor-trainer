@@ -5,7 +5,7 @@
 
 <header class="page-header">
     <h1>План до TOPIK</h1>
-    <p class="muted">Цель: весной 2027 — минимум TOPIK I уровень 2, в идеале TOPIK II уровень 3.</p>
+    <p class="muted">Цель — TOPIK I уровень 2, в идеале TOPIK II уровень 3. Шаги идут в вашем темпе: следующий открывается, когда вы готовы.</p>
 </header>
 
 <StatusViews IsLoading="_plan is null && _error is null" Error="@_error" OnRetry="LoadAsync" />
@@ -15,20 +15,28 @@
     <ol class="timeline">
         @foreach (var stage in plan.Stages)
         {
-            <li class="@(stage.Stage == plan.CurrentStage ? "current" : string.Empty)">
-                <span class="timeline-dates">@stage.Start.ToString("dd.MM.yyyy") — @stage.End.ToString("dd.MM.yyyy")</span>
+            bool isCurrent = plan.Steps.Any(s => s.Stage == stage.Stage && s.State == StepState.Current);
+            <li class="@(isCurrent ? "current" : string.Empty)">
+                <span class="timeline-dates">@StageProgress(stage)</span>
                 <strong>@stage.Title</strong>
                 <span class="muted">@stage.Goal</span>
+                <div class="step-dots" aria-label="Шаги этапа">
+                    @foreach (var step in plan.Steps.Where(s => s.Stage == stage.Stage))
+                    {
+                        <a class="step-dot @step.State.ToString().ToLowerInvariant()" href="@(step.Key == plan.CurrentKey ? "/" : $"/?step={step.Key}")"
+                           title="@step.Title">@(step.State == StepState.Done ? "✓" : step.Number.ToString())</a>
+                    }
+                </div>
             </li>
         }
     </ol>
 
-    <h2>Уроки дней 1–10</h2>
+    <h2>Уроки 1–10</h2>
     <div class="lesson-list">
         @foreach (var lesson in plan.Lessons)
         {
-            <details class="card" open="@(lesson.Day == plan.CurrentDay)">
-                <summary><span class="day-number">День @lesson.Day</span> @lesson.Title</summary>
+            <details class="card" open="@($"lesson-{lesson.Day}" == plan.CurrentKey)">
+                <summary><span class="day-number">Урок @lesson.Day</span> @lesson.Title</summary>
                 <ul>
                     @foreach (var point in lesson.KeyPoints)
                     {
@@ -45,6 +53,9 @@
     private string? _error;
 
     protected override Task OnInitializedAsync() => LoadAsync();
+
+    private static string StageProgress(StageDto stage) =>
+        stage.DoneCount == stage.StepCount ? "пройдено" : $"{stage.DoneCount} из {stage.StepCount}";
 
     private async Task LoadAsync()
     {

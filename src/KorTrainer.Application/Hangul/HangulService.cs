@@ -1,4 +1,5 @@
 using KorTrainer.Application.Common;
+using KorTrainer.Application.Plan;
 using KorTrainer.Application.Settings;
 using KorTrainer.Contracts;
 using KorTrainer.Domain.Common;
@@ -9,7 +10,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace KorTrainer.Application.Hangul;
 
-public sealed class HangulService(IAppDbContext db, SettingsService settingsService, StudyClock clock, Random random, IAudioLibrary audio)
+public sealed class HangulService(IAppDbContext db, SettingsService settingsService, StudyClock clock, Random random, IAudioLibrary audio, PlanCursor cursor)
 {
     public const int MaxCount = 50;
     public const int MaxAnalyzeLength = 40;
@@ -85,9 +86,7 @@ public sealed class HangulService(IAppDbContext db, SettingsService settingsServ
 
     private async Task<PlanStage> MaxWordStageAsync(CancellationToken cancellationToken)
     {
-        var settings = await settingsService.GetEntityAsync(cancellationToken);
-        var stage = new StudyPlan(settings.StartDate, settings.NewWordsPerDay).StageOn(clock.Today(settings));
-        return StudyScope.MaxWordStage(stage);
+        return StudyScope.MaxWordStage((await cursor.GetAsync(cancellationToken)).Step.Stage);
     }
 
     public static HangulAnalysisDto Analyze(string? text)
@@ -116,7 +115,7 @@ public sealed class HangulService(IAppDbContext db, SettingsService settingsServ
     {
         new Validator().Require(Enum.IsDefined((HangulLevel)level), nameof(level), "Уровень: 1, 2 или 3.").ThrowIfInvalid();
 
-        var lesson = new StudyPlan(StudyPlan.DefaultStartDate).Lessons.Single(l => l.Day == level);
+        var lesson = Roadmap.Lessons.Single(l => l.Day == level);
         var letters = (HangulLevel)level switch
         {
             HangulLevel.Basics => JamoCatalog.ForLevel(HangulLevel.Basics),

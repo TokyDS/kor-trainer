@@ -1,9 +1,9 @@
 # Desktop reminder
 
-At 20:00 and 22:00 a systemd user timer asks the running trainer (`GET /api/reminder`) whether today's
-study is done. If not — no activity yet, or tasks left — a desktop notification appears ("Серия 5 дн.
-под угрозой", tasks left, words due) with a button that opens the trainer. Nothing happens when the
-trainer is not running.
+At 20:00 a systemd user timer asks the running trainer (`GET /api/reminder`) whether you studied today.
+If not, a gentle desktop notification appears ("Можно позаниматься 10 минут", words due, the current step)
+with a button that opens the trainer. Nothing happens when the trainer is not running or when reminders
+are switched off in the trainer's settings.
 
 Install (Linux with systemd and `notify-send`):
 

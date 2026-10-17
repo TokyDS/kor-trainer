@@ -3,6 +3,7 @@ using KorTrainer.Application.Common;
 using KorTrainer.Application.Grammar;
 using KorTrainer.Application.Listening;
 using KorTrainer.Application.Numbers;
+using KorTrainer.Application.Plan;
 using KorTrainer.Application.Stats;
 using KorTrainer.Application.Topik;
 using KorTrainer.Application.Hangul;
@@ -35,6 +36,8 @@ public static class DependencyInjection
         services.AddScoped<ListeningService>();
         services.AddScoped<TopikService>();
         services.AddScoped<StatsService>();
+        services.AddScoped<StepEvaluator>();
+        services.AddScoped<PlanCursor>();
         services.AddScoped<TodayService>();
         services.AddScoped<ReminderService>();
         services.AddScoped<ProgressTransferService>();

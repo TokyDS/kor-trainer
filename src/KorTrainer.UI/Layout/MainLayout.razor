@@ -21,7 +21,7 @@
     </main>
 
     <nav class="tabbar" aria-label="Разделы">
-        <NavLink class="tab" href="/" Match="NavLinkMatch.All"><span class="tab-icon" lang="ko">오늘</span>Сегодня</NavLink>
+        <NavLink class="tab" href="/" Match="NavLinkMatch.All"><span class="tab-icon" lang="ko">공부</span>Учёба</NavLink>
         <NavLink class="tab" href="/hangul"><span class="tab-icon" lang="ko">한</span>Хангыль</NavLink>
         <NavLink class="tab" href="/vocab"><span class="tab-icon" lang="ko">말</span>Слова</NavLink>
         <NavLink class="tab" href="/more"><span class="tab-icon">⋯</span>Ещё</NavLink>
@@ -31,7 +31,7 @@
 @code {
     private static readonly (string Title, string Href)[] NavItems =
     [
-        ("Сегодня", "/"),
+        ("Учёба", "/"),
         ("Хангыль", "/hangul"),
         ("Слова", "/vocab"),
         ("Грамматика", "/grammar"),

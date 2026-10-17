@@ -15,15 +15,17 @@ public sealed class HttpKorTrainerApi(HttpClient http) : IKorTrainerApi
 
     public Task<SettingsDto> SaveSettingsAsync(SettingsDto settings) => SendAsync<SettingsDto>(HttpMethod.Put, "api/settings", settings);
 
-    public Task<TodayDto> GetTodayAsync(DateOnly? date = null) =>
-        GetAsync<TodayDto>(date is { } d ? $"api/today?date={d:yyyy-MM-dd}" : "api/today");
+    public Task<TodayDto> GetTodayAsync(string? step = null) =>
+        GetAsync<TodayDto>(step is null ? "api/today" : $"api/today?step={Uri.EscapeDataString(step)}");
+
+    public Task<TodayDto> AdvanceAsync(string from) => SendAsync<TodayDto>(HttpMethod.Post, "api/plan/advance", new AdvanceRequest(from));
 
     public Task<ReminderDto> GetReminderAsync() => GetAsync<ReminderDto>("api/reminder");
 
     public Task<PlanDto> GetPlanAsync() => GetAsync<PlanDto>("api/plan");
 
-    public Task SetTaskDoneAsync(string taskKey, DateOnly date, bool done) =>
-        SendAsync(HttpMethod.Put, $"api/today/tasks/{Uri.EscapeDataString(taskKey)}", new SetTaskDoneRequest(date, done));
+    public Task SetTaskDoneAsync(string taskKey, string step, bool done) =>
+        SendAsync(HttpMethod.Put, $"api/today/tasks/{Uri.EscapeDataString(taskKey)}", new SetTaskDoneRequest(step, done));
 
     public Task<ExerciseSetDto> GetHangulExercisesAsync(string type, int level, int count) =>
         GetAsync<ExerciseSetDto>($"api/hangul/exercises/{Uri.EscapeDataString(type)}?level={level}&count={count}");

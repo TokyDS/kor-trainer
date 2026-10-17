@@ -26,7 +26,7 @@ public sealed class VocabularyServiceTests
     public async Task GetQueue_OnDayFour_OffersOnlyGreetingsLessonWords()
     {
         await using var t = await TestDatabase.CreateAsync();
-        await t.SetPlanDayAsync(4);
+        await t.SetPlanStepAsync("lesson-4");
 
         var queue = await t.Vocabulary.GetQueueAsync(50, Ct);
 
@@ -40,7 +40,7 @@ public sealed class VocabularyServiceTests
     public async Task GetQueue_RespectsNewWordsPerDayAcrossTheDay()
     {
         await using var t = await TestDatabase.CreateAsync();
-        await t.SetPlanDayAsync(12);
+        await t.SetPlanStepAsync("level1-1");
         var settings = await t.GetSettingsAsync();
         settings.NewWordsPerDay = 3;
         await t.Db.SaveChangesAsync();
@@ -62,7 +62,7 @@ public sealed class VocabularyServiceTests
     public async Task Review_NewCard_CreatesProgressAndLog()
     {
         await using var t = await TestDatabase.CreateAsync();
-        await t.SetPlanDayAsync(4);
+        await t.SetPlanStepAsync("lesson-4");
         var card = (await t.Vocabulary.GetQueueAsync(1, Ct)).Cards.Single();
 
         var result = await t.Vocabulary.ReviewAsync(new ReviewRequest(card.WordId, Grade.Good, 4200), Ct);
@@ -79,7 +79,7 @@ public sealed class VocabularyServiceTests
     public async Task GetQueue_ShowsLearningCardsDueSoonFirst()
     {
         await using var t = await TestDatabase.CreateAsync();
-        await t.SetPlanDayAsync(4);
+        await t.SetPlanStepAsync("lesson-4");
         var first = (await t.Vocabulary.GetQueueAsync(1, Ct)).Cards.Single();
         await t.Vocabulary.ReviewAsync(new ReviewRequest(first.WordId, Grade.Again, 1000), Ct);
         t.Time.Advance(TimeSpan.FromMinutes(2));
@@ -95,7 +95,7 @@ public sealed class VocabularyServiceTests
     public async Task GetQueue_IncludesReviewsDueLaterTodayInLearnerTimeZone()
     {
         await using var t = await TestDatabase.CreateAsync();
-        await t.SetPlanDayAsync(4);
+        await t.SetPlanStepAsync("lesson-4");
         var card = (await t.Vocabulary.GetQueueAsync(1, Ct)).Cards.Single();
         await t.Vocabulary.ReviewAsync(new ReviewRequest(card.WordId, Grade.Easy, 1000), Ct);
         var progress = await t.Db.WordProgress.SingleAsync();
@@ -132,7 +132,7 @@ public sealed class VocabularyServiceTests
     public async Task GetSummary_CountsUnlockedAndIntroducedWords()
     {
         await using var t = await TestDatabase.CreateAsync();
-        await t.SetPlanDayAsync(5);
+        await t.SetPlanStepAsync("lesson-5");
         var card = (await t.Vocabulary.GetQueueAsync(1, Ct)).Cards.Single();
         await t.Vocabulary.ReviewAsync(new ReviewRequest(card.WordId, Grade.Good, 1000), Ct);
 
@@ -150,7 +150,7 @@ public sealed class VocabularyServiceTests
     public async Task ListWords_FiltersByStatusAndSearch()
     {
         await using var t = await TestDatabase.CreateAsync();
-        await t.SetPlanDayAsync(4);
+        await t.SetPlanStepAsync("lesson-4");
 
         var unlocked = await t.Vocabulary.ListWordsAsync(null, null, WordStatus.New, null, 1, 100, Ct);
         var locked = await t.Vocabulary.ListWordsAsync(null, PlanStage.Level1, WordStatus.Locked, null, 1, 5, Ct);

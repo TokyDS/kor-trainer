@@ -1,26 +1,28 @@
 namespace KorTrainer.Domain.Plan;
 
-/// <summary>A vocabulary goal of the plan: how many words should have been studied by a date.</summary>
-public sealed record VocabularyGoal(DateOnly Date, string Title, int Words);
+/// <summary>A vocabulary milestone of the plan.</summary>
+public sealed record VocabularyGoal(string Title, int Words);
 
-/// <param name="Projected">Words studied by the goal date if the current pace holds.</param>
-/// <param name="RequiredPace">New words per day needed from today to reach the goal (0 when already reached).</param>
-public sealed record GoalForecast(VocabularyGoal Goal, int Projected, double RequiredPace)
-{
-    public bool OnTrack => Projected >= Goal.Words;
-}
+/// <param name="ExpectedOn">When the goal is reached if the recent pace holds; null when reached or without a pace.</param>
+public sealed record GoalForecast(VocabularyGoal Goal, bool Reached, DateOnly? ExpectedOn);
 
-/// <summary>Projects vocabulary growth against the plan's goals.</summary>
+/// <summary>Projects vocabulary growth: informational dates, never a schedule to keep up with.</summary>
 public static class Forecast
 {
     /// <summary>Days of history that define the current pace.</summary>
     public const int PaceWindowDays = 14;
 
+    /// <summary>The spring 2027 TOPIK the plan was written for.</summary>
+    public static readonly DateOnly ExamDate = new(2027, 4, 30);
+
+    /// <summary>Projections further away than this are not worth a date.</summary>
+    private const int MaxDaysAhead = 3650;
+
     public static IReadOnlyList<VocabularyGoal> Goals { get; } =
     [
-        new(StudyPlan.Level1End, "Конец этапа 1 (уровень 1)", 800),
-        new(StudyPlan.Level2End, "Конец этапа 2 (уровень 2)", 1500),
-        new(StudyPlan.TopikPrepEnd, "TOPIK II, уровень 3", 3000),
+        new("Уровень 1", Roadmap.Level1Words),
+        new("Уровень 2", Roadmap.Level2Words),
+        new("TOPIK II, уровень 3", Roadmap.TopikWords),
     ];
 
     /// <summary>
@@ -34,20 +36,29 @@ public static class Forecast
         return (double)newWordsInWindow / days;
     }
 
-    public static IReadOnlyList<GoalForecast> Project(int wordsStudied, double pacePerDay, DateOnly today, int deckSize)
+    public static IReadOnlyList<GoalForecast> Project(int wordsStudied, double pacePerDay, DateOnly today)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(wordsStudied);
         ArgumentOutOfRangeException.ThrowIfNegative(pacePerDay);
 
         return Goals
-            .Where(g => g.Date >= today)
             .Select(goal =>
             {
-                int daysLeft = goal.Date.DayNumber - today.DayNumber + 1;
-                int projected = (int)Math.Min(deckSize, wordsStudied + Math.Floor(pacePerDay * daysLeft));
-                double required = Math.Max(0, (double)(goal.Words - wordsStudied) / daysLeft);
-                return new GoalForecast(goal, projected, Math.Round(required, 1));
+                if (wordsStudied >= goal.Words)
+                {
+                    return new GoalForecast(goal, true, null);
+                }
+
+                double days = pacePerDay > 0 ? Math.Ceiling((goal.Words - wordsStudied) / pacePerDay) : double.PositiveInfinity;
+                return new GoalForecast(goal, false, days <= MaxDaysAhead ? today.AddDays((int)days) : null);
             })
             .ToList();
+    }
+
+    /// <summary>Words in the deck by <paramref name="date"/> at the current pace.</summary>
+    public static int WordsBy(DateOnly date, int wordsStudied, double pacePerDay, DateOnly today, int deckSize)
+    {
+        int days = Math.Max(0, date.DayNumber - today.DayNumber);
+        return (int)Math.Min(deckSize, wordsStudied + Math.Floor(pacePerDay * days));
     }
 }

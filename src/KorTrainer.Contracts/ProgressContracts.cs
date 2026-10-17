@@ -16,10 +16,16 @@ public sealed record ProgressExport(
     IReadOnlyList<AttemptExport> Attempts,
     IReadOnlyList<ReadingTrialExport> ReadingTrials,
     IReadOnlyList<SessionExport> Sessions,
-    IReadOnlyList<TaskCompletionExport> TaskCompletions,
-    IReadOnlyList<WritingDraftExport> WritingDrafts)
+    IReadOnlyList<WritingDraftExport> WritingDrafts,
+    IReadOnlyList<PlanStepExport>? PlanSteps = null,
+    IReadOnlyList<StepTaskCompletionExport>? StepTaskCompletions = null,
+    IReadOnlyList<TaskCompletionExport>? TaskCompletions = null)
 {
-    public const int CurrentSchemaVersion = 1;
+    /// <summary>2: self-paced plan steps instead of per-day task ticks.</summary>
+    public const int CurrentSchemaVersion = 2;
+
+    /// <summary>Calendar-plan backups (per-day <see cref="TaskCompletions"/>) still import.</summary>
+    public const int LegacySchemaVersion = 1;
 }
 
 public sealed record WordProgressExport(
@@ -57,8 +63,13 @@ public sealed record ReadingTrialExport(string Text, int SyllableCount, int Elap
 
 public sealed record SessionExport(StudyModule Module, DateTime StartedUtc, int DurationSeconds, DateOnly LocalDate);
 
+/// <summary>A manual tick of the old calendar plan (schema version 1).</summary>
 public sealed record TaskCompletionExport(DateOnly Date, string TaskKey, DateTime CompletedUtc);
+
+public sealed record PlanStepExport(string StepKey, DateTime StartedUtc, DateTime? CompletedUtc);
+
+public sealed record StepTaskCompletionExport(string StepKey, string TaskKey, DateTime CompletedUtc);
 
 public sealed record WritingDraftExport(int TaskNumber, DateTime StartedUtc, int DurationSeconds, string Text, DateOnly LocalDate);
 
-public sealed record ImportResultDto(int Words, int SkippedWords, int Reviews, int Attempts, int ReadingTrials, int Sessions, int TaskCompletions, int WritingDrafts);
+public sealed record ImportResultDto(int Words, int SkippedWords, int Reviews, int Attempts, int ReadingTrials, int Sessions, int PlanSteps, int WritingDrafts);

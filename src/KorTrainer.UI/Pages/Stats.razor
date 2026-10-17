@@ -16,7 +16,7 @@
         <div class="tile"><dt>в изучении</dt><dd>@(o.Vocabulary.Learning + o.Vocabulary.Young)</dd></div>
         <div class="tile"><dt>минут занятий</dt><dd>@o.TotalStudyMinutes</dd></div>
         <div class="tile"><dt>дней с занятиями</dt><dd>@o.ActiveDays</dd></div>
-        <div class="tile"><dt>серия / рекорд</dt><dd>@o.CurrentStreak / @o.LongestStreak</dd></div>
+        <div class="tile"><dt>за неделю / за месяц</dt><dd>@o.ActiveDaysThisWeek / @o.ActiveDaysThisMonth</dd><span class="muted">дней с занятиями</span></div>
         <div class="tile"><dt>чтение, мс/слог</dt><dd>@(o.ReadingMsPerSyllable?.ToString("0") ?? "—")</dd></div>
     </dl>
 
@@ -25,35 +25,38 @@
         <section class="card forecast" aria-labelledby="forecast-heading">
             <div class="section-head">
                 <h2 id="forecast-heading">Прогноз по словам</h2>
-                <span class="muted">изучено @f.WordsStudied · темп @f.PacePerDay.ToString("0.#") в день (настройка: @f.NewWordsPerDaySetting)</span>
+                <span class="muted">в колоде @f.WordsStudied · недавний темп @f.PacePerDay.ToString("0.#") в день</span>
             </div>
             <ul class="goal-list">
                 @foreach (var goal in f.Goals)
                 {
-                    int percent = Math.Min(100, goal.Projected * 100 / Math.Max(1, goal.Goal));
-                    <li class="@(goal.OnTrack ? "on-track" : "behind")">
+                    int percent = Math.Min(100, f.WordsStudied * 100 / Math.Max(1, goal.Goal));
+                    <li class="@(goal.Reached ? "on-track" : string.Empty)">
                         <div class="goal-head">
                             <strong>@goal.Title</strong>
-                            <span class="muted">@goal.Date.ToString("d MMMM yyyy", Russian) · цель @goal.Goal слов</span>
+                            <span class="muted">@goal.Goal слов</span>
                         </div>
                         <span class="accuracy-track"><span class="accuracy-fill" style="width: @percent%"></span></span>
                         <span class="goal-verdict">
-                            @if (goal.OnTrack)
+                            @if (goal.Reached)
                             {
-                                <span>✓ успеваете: будет ~@goal.Projected</span>
+                                <span>✓ достигнуто</span>
+                            }
+                            else if (goal.ExpectedOn is { } expected)
+                            {
+                                <span>в этом темпе — примерно @expected.ToString("MMMM yyyy", Russian)</span>
                             }
                             else
                             {
-                                <span>⚠ при текущем темпе ~@goal.Projected — нужно @goal.RequiredPace.ToString("0.#") слов в день</span>
+                                <span class="muted">дата появится, когда начнёте учить новые слова</span>
                             }
                         </span>
                     </li>
                 }
             </ul>
-            @if (f.Goals.Any(g => !g.OnTrack))
-            {
-                <p class="muted small">Темп можно поднять в <a href="/settings">настройках</a> («Новых слов в день»).</p>
-            }
+            <p class="muted small">
+                Это ориентир, а не расписание. К TOPIK (@f.ExamDate.ToString("MMMM yyyy", Russian)) в этом темпе будет около @f.WordsByExam слов.
+            </p>
         </section>
     }
 

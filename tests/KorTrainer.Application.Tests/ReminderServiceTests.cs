@@ -1,5 +1,4 @@
 using AwesomeAssertions;
-using KorTrainer.Application.Today;
 using KorTrainer.Contracts;
 using KorTrainer.Domain.Common;
 
@@ -10,51 +9,55 @@ public sealed class ReminderServiceTests
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
     [Fact]
-    public async Task Reminder_WithoutActivityToday_AsksToStudy()
+    public async Task Reminder_WithoutStudyToday_IsAGentleNudge()
     {
         await using var t = await TestDatabase.CreateAsync();
 
-        var reminder = await new ReminderService(t.Today).GetAsync(Ct);
+        var reminder = await t.Reminders.GetAsync(Ct);
 
         reminder.ShouldRemind.Should().BeTrue();
-        reminder.Title.Should().Be("Сегодня ещё не было занятий");
-        reminder.Message.Should().Contain("Осталось задач").And.Contain("Урок дня 1");
+        reminder.Title.Should().Be("Немного корейского сегодня?");
+        reminder.Message.Should().Contain("Урок 1");
+        reminder.Title.Should().NotContainAny("угроз", "серия", "Серия");
     }
 
     [Fact]
-    public async Task Reminder_WarnsWhenTheStreakIsAtRisk()
+    public async Task Reminder_MentionsWordsWaitingForReview()
     {
         await using var t = await TestDatabase.CreateAsync();
-        await t.Activity.RecordAttemptsAsync([new AttemptDto(StudyModule.Hangul, ExerciseTypes.Compose, "c", true, 900)], Ct);
-        t.Time.Advance(TimeSpan.FromDays(1));
+        await t.SetPlanStepAsync("lesson-4");
+        var card = (await t.Vocabulary.GetQueueAsync(1, Ct)).Cards[0];
+        await t.Vocabulary.ReviewAsync(new ReviewRequest(card.WordId, Domain.Srs.Grade.Good, 2000), Ct);
+        t.Time.Advance(TimeSpan.FromDays(3));
 
-        var reminder = await new ReminderService(t.Today).GetAsync(Ct);
+        var reminder = await t.Reminders.GetAsync(Ct);
 
-        reminder.Title.Should().Be("Серия 1 дн. под угрозой");
-        reminder.StreakDays.Should().Be(1);
-        reminder.StudiedToday.Should().BeFalse();
+        reminder.Title.Should().Be("Можно позаниматься 10 минут");
+        reminder.WordsDue.Should().BeGreaterThan(0);
+        reminder.Message.Should().StartWith("Слов к повторению:");
     }
 
     [Fact]
-    public async Task Reminder_AfterStudying_CountsTasksLeft()
+    public async Task Reminder_AfterStudyingToday_StaysQuiet()
     {
         await using var t = await TestDatabase.CreateAsync();
         await t.Activity.RecordAttemptsAsync([new AttemptDto(StudyModule.Hangul, ExerciseTypes.Compose, "c", true, 900)], Ct);
 
-        var reminder = await new ReminderService(t.Today).GetAsync(Ct);
+        var reminder = await t.Reminders.GetAsync(Ct);
 
+        reminder.ShouldRemind.Should().BeFalse();
         reminder.StudiedToday.Should().BeTrue();
-        reminder.Title.Should().StartWith("Задачи дня:");
-        reminder.TasksLeft.Should().BeGreaterThan(0);
+        reminder.ActiveDaysThisWeek.Should().Be(1);
     }
 
     [Fact]
-    public async Task Reminder_BeforeTheStart_StaysQuiet()
+    public async Task Reminder_TurnedOff_StaysQuiet()
     {
         await using var t = await TestDatabase.CreateAsync();
-        await t.SetPlanDayAsync(-3);
+        var settings = await t.Settings.GetAsync(Ct);
+        await t.Settings.UpdateAsync(settings with { RemindersEnabled = false }, Ct);
 
-        var reminder = await new ReminderService(t.Today).GetAsync(Ct);
+        var reminder = await t.Reminders.GetAsync(Ct);
 
         reminder.ShouldRemind.Should().BeFalse();
     }

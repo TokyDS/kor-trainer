@@ -84,11 +84,21 @@ internal sealed class StudySessionConfiguration : IEntityTypeConfiguration<Study
     }
 }
 
-internal sealed class DailyTaskCompletionConfiguration : IEntityTypeConfiguration<DailyTaskCompletion>
+internal sealed class PlanStepProgressConfiguration : IEntityTypeConfiguration<PlanStepProgress>
 {
-    public void Configure(EntityTypeBuilder<DailyTaskCompletion> builder)
+    public void Configure(EntityTypeBuilder<PlanStepProgress> builder)
     {
-        builder.HasKey(c => new { c.Date, c.TaskKey });
+        builder.HasKey(p => p.StepKey);
+        builder.Property(p => p.StepKey).HasMaxLength(32);
+    }
+}
+
+internal sealed class StepTaskCompletionConfiguration : IEntityTypeConfiguration<StepTaskCompletion>
+{
+    public void Configure(EntityTypeBuilder<StepTaskCompletion> builder)
+    {
+        builder.HasKey(c => new { c.StepKey, c.TaskKey });
+        builder.Property(c => c.StepKey).HasMaxLength(32);
         builder.Property(c => c.TaskKey).HasMaxLength(64);
     }
 }

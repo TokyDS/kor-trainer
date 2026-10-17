@@ -14,12 +14,6 @@
 {
     <form class="card settings-form" @onsubmit="SaveAsync">
         <label>
-            <span>Дата старта плана</span>
-            <input type="date" @bind="m.StartDate" />
-            <small class="muted">День 1 — эта дата. Этапы после 10-го дня привязаны к календарю (до 31.12.2026 — этап 1 и т.д.).</small>
-        </label>
-
-        <label>
             <span>Часовой пояс</span>
             <select @bind="m.TimeZoneId">
                 @foreach (var zone in TimeZones.Append(m.TimeZoneId).Distinct())
@@ -29,6 +23,12 @@
             </select>
             <small class="muted">Определяет, когда начинается новый учебный день.</small>
         </label>
+
+        <label class="toggle">
+            <input type="checkbox" @bind="m.RemindersEnabled" />
+            <span>Мягкие напоминания по вечерам</span>
+        </label>
+        <small class="muted">Вечером, если сегодня ещё не занимались: баннер здесь, уведомление на телефоне и на компьютере.</small>
 
         <label class="toggle">
             <input type="checkbox" @bind="m.ShowRomanization" />
@@ -255,6 +255,8 @@
 
         public double SpeechRate { get; set; }
 
+        public bool RemindersEnabled { get; set; }
+
         public static SettingsModel From(SettingsDto s) => new()
         {
             StartDate = s.StartDate,
@@ -264,9 +266,10 @@
             NewWordsPerDay = s.NewWordsPerDay,
             MaxReviewsPerDay = s.MaxReviewsPerDay,
             SpeechRate = s.SpeechRate,
+            RemindersEnabled = s.RemindersEnabled,
         };
 
         public SettingsDto ToDto() =>
-            new(StartDate, TimeZoneId, ShowRomanization, Theme, NewWordsPerDay, MaxReviewsPerDay, SpeechRate);
+            new(StartDate, TimeZoneId, ShowRomanization, Theme, NewWordsPerDay, MaxReviewsPerDay, SpeechRate, RemindersEnabled);
     }
 }

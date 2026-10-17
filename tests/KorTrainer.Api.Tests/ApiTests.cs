@@ -39,14 +39,33 @@ public sealed class ApiTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Today_ReturnsDayOneWithEnumsAsStrings()
+    public async Task Today_ReturnsTheFirstStepWithEnumsAsStrings()
     {
         var raw = await _client.GetStringAsync("/api/today", Ct);
         var today = JsonSerializer.Deserialize<TodayDto>(raw, Json)!;
 
-        raw.Should().Contain("\"stage\":\"Hangul\"");
-        today.DayNumber.Should().Be(1);
-        today.Tasks.Should().Contain(t => t.Route == "/hangul/letter-to-sound?level=1");
+        raw.Should().Contain("\"stage\":\"Hangul\"").And.Contain("\"state\":\"Current\"");
+        today.Step.Key.Should().Be("lesson-1");
+        today.Step.Tasks.Should().Contain(t => t.Route == "/hangul/letter-to-sound?level=1");
+    }
+
+    [Fact]
+    public async Task Advance_MovesToTheNextStep_AndRejectsAStaleRequest()
+    {
+        var first = await _client.PostAsJsonAsync("/api/plan/advance", new AdvanceRequest("lesson-1"), Json, Ct);
+        var again = await _client.PostAsJsonAsync("/api/plan/advance", new AdvanceRequest("lesson-1"), Json, Ct);
+
+        first.StatusCode.Should().Be(HttpStatusCode.OK);
+        (await first.Content.ReadFromJsonAsync<TodayDto>(Json, Ct))!.Step.Key.Should().Be("lesson-2");
+        again.StatusCode.Should().Be(HttpStatusCode.Conflict);
+    }
+
+    [Fact]
+    public async Task Today_UnknownStep_Is404()
+    {
+        var response = await _client.GetAsync("/api/today?step=day-3", Ct);
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
     [Fact]
@@ -58,7 +77,7 @@ public sealed class ApiTests : IAsyncLifetime
         var today = await _client.GetFromJsonAsync<TodayDto>("/api/today", Json, Ct);
 
         post.StatusCode.Should().Be(HttpStatusCode.OK);
-        today!.Tasks.Single(t => t.Key == ExerciseTypes.LetterToSound).Progress.Should().Be(1);
+        today!.Step.Tasks.Single(t => t.Key == ExerciseTypes.LetterToSound).Progress.Should().Be(1);
         today.StudiedToday.Should().BeTrue();
     }
 
@@ -160,9 +179,9 @@ public sealed class ApiTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task VocabularyFlow_ReviewsANewCardOnDayFour()
+    public async Task VocabularyFlow_ReviewsANewCardInLessonFour()
     {
-        await MoveToPlanDayAsync(4);
+        await MoveToLessonAsync(4);
 
         var queue = await _client.GetFromJsonAsync<VocabularyQueueDto>("/api/vocab/queue", Json, Ct);
         var card = queue!.Cards[0];
@@ -188,7 +207,7 @@ public sealed class ApiTests : IAsyncLifetime
     [Fact]
     public async Task ProgressExportAndImport_RoundTripThroughHttp()
     {
-        await MoveToPlanDayAsync(4);
+        await MoveToLessonAsync(4);
         var card = (await _client.GetFromJsonAsync<VocabularyQueueDto>("/api/vocab/queue", Json, Ct))!.Cards[0];
         await _client.PostAsJsonAsync("/api/vocab/reviews", new ReviewRequest(card.WordId, Grade.Easy, 1000), Json, Ct);
 
@@ -211,11 +230,13 @@ public sealed class ApiTests : IAsyncLifetime
         plan!.Stages.Select(s => s.Stage).Should().Contain([PlanStage.Level1, PlanStage.MockExam, PlanStage.TopikPrep]);
     }
 
-    private async Task MoveToPlanDayAsync(int day)
+    private async Task MoveToLessonAsync(int lesson)
     {
-        var settings = await _client.GetFromJsonAsync<SettingsDto>("/api/settings", Json, Ct);
-        var response = await _client.PutAsJsonAsync("/api/settings", settings! with { StartDate = new DateOnly(2026, 10, 13).AddDays(1 - day) }, Json, Ct);
-        response.EnsureSuccessStatusCode();
+        for (int day = 1; day < lesson; day++)
+        {
+            var response = await _client.PostAsJsonAsync("/api/plan/advance", new AdvanceRequest($"lesson-{day}"), Json, Ct);
+            response.EnsureSuccessStatusCode();
+        }
     }
 
     private static JsonSerializerOptions CreateJson()

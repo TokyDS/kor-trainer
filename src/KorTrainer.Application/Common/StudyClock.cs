@@ -19,17 +19,20 @@ public sealed class StudyClock(TimeProvider timeProvider)
         DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(utc, DateTimeKind.Utc), ResolveZone(settings.TimeZoneId)));
 
     /// <summary>The UTC instant at which the given local day ends (next local midnight).</summary>
-    public static DateTime EndOfLocalDayUtc(UserSettings settings, DateOnly date)
+    public static DateTime EndOfLocalDayUtc(UserSettings settings, DateOnly date) => StartOfLocalDayUtc(settings, date.AddDays(1));
+
+    /// <summary>The UTC instant at which the given local day begins (local midnight).</summary>
+    public static DateTime StartOfLocalDayUtc(UserSettings settings, DateOnly date)
     {
         var zone = ResolveZone(settings.TimeZoneId);
-        var nextMidnight = date.AddDays(1).ToDateTime(TimeOnly.MinValue, DateTimeKind.Unspecified);
+        var midnight = date.ToDateTime(TimeOnly.MinValue, DateTimeKind.Unspecified);
 
         // In zones that switch to DST at 00:00 (e.g. America/Santiago) local midnight does not exist.
-        while (zone.IsInvalidTime(nextMidnight))
+        while (zone.IsInvalidTime(midnight))
         {
-            nextMidnight = nextMidnight.AddMinutes(30);
+            midnight = midnight.AddMinutes(30);
         }
 
-        return TimeZoneInfo.ConvertTimeToUtc(nextMidnight, zone);
+        return TimeZoneInfo.ConvertTimeToUtc(midnight, zone);
     }
 }

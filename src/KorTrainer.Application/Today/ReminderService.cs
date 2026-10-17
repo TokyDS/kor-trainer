@@ -1,45 +1,34 @@
+using KorTrainer.Application.Settings;
 using KorTrainer.Contracts;
 
 namespace KorTrainer.Application.Today;
 
-/// <summary>Decides whether the learner should be nudged today and with what message.</summary>
-public sealed class ReminderService(TodayService todayService)
+/// <summary>
+/// A gentle evening nudge on days without study — never about losing a streak. Used by the Today banner,
+/// the desktop timer and the phone notification; silent when the learner turned reminders off.
+/// </summary>
+public sealed class ReminderService(TodayService todayService, SettingsService settingsService)
 {
-    public async Task<ReminderDto> GetAsync(CancellationToken cancellationToken) =>
-        Build(await todayService.GetTodayAsync(cancellationToken));
+    public async Task<ReminderDto> GetAsync(CancellationToken cancellationToken)
+    {
+        var settings = await settingsService.GetEntityAsync(cancellationToken);
+        return Build(await todayService.GetTodayAsync(cancellationToken), settings.RemindersEnabled);
+    }
 
-    public static ReminderDto Build(TodayDto today)
+    public static ReminderDto Build(TodayDto today, bool enabled)
     {
         ArgumentNullException.ThrowIfNull(today);
-        int done = today.Tasks.Count(t => t.IsDone);
-        int total = today.Tasks.Count;
         int due = today.Vocabulary.DueNow;
-        bool remind = today.DayNumber >= 1 && (!today.StudiedToday || done < total);
+        var step = today.Step;
 
-        string title = !today.StudiedToday && today.StreakDays > 0
-            ? $"Серия {today.StreakDays} дн. под угрозой"
-            : !today.StudiedToday
-                ? "Сегодня ещё не было занятий"
-                : done < total
-                    ? $"Задачи дня: {done} из {total}"
-                    : "Все задачи дня выполнены";
-
+        string title = due > 0 ? "Можно позаниматься 10 минут" : "Немного корейского сегодня?";
         var lines = new List<string>();
-        if (done < total)
-        {
-            lines.Add($"Осталось задач: {total - done}.");
-        }
-
         if (due > 0)
         {
             lines.Add($"Слов к повторению: {due}.");
         }
 
-        if (today.Lesson is { } lesson && done < total)
-        {
-            lines.Add($"Урок дня {lesson.Day}: {lesson.Title}.");
-        }
-
-        return new ReminderDto(remind, title, string.Join(" ", lines), today.StreakDays, today.StudiedToday, total - done, due);
+        lines.Add($"Сейчас: {step.StageTitle} · {step.Title}.");
+        return new ReminderDto(enabled && !today.StudiedToday, title, string.Join(" ", lines), today.StudiedToday, today.ActiveDaysThisWeek, due);
     }
 }

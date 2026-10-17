@@ -335,7 +335,7 @@ h1:focus { outline: none; }
     border-bottom: 2px solid var(--ink);
 }
 
-.today-hero h1 { font-size: clamp(2.2rem, 1.6rem + 3vw, 3.4rem); margin-bottom: var(--space-1); }
+.today-hero h1 { font-size: clamp(1.5rem, 1.1rem + 2vw, 2.6rem); margin-bottom: var(--space-1); }
 
 .streak {
     display: grid;
@@ -349,6 +349,9 @@ h1:focus { outline: none; }
 }
 
 .streak-number { font-size: 2rem; font-weight: 800; line-height: 1; }
+.streak-number small { font-size: 0.9rem; font-weight: 600; color: var(--ink-faint); }
+.step-done { display: grid; gap: var(--space-2); justify-items: start; }
+.step-skip { margin-top: var(--space-4); padding-top: var(--space-3); border-top: 1px dashed var(--rule); }
 .streak-label { font-size: 0.72rem; }
 .streak.lit { background: var(--accent); color: var(--accent-ink); transform: rotate(-2deg); box-shadow: var(--shadow); }
 
@@ -657,6 +660,14 @@ input[type="range"] { accent-color: var(--accent); }
 .timeline li.current::before { background: var(--accent); border-color: var(--accent); }
 .timeline li.current strong { color: var(--accent); }
 .timeline-dates { font-size: 0.8rem; color: var(--ink-faint); }
+.step-dots { display: flex; flex-wrap: wrap; gap: 6px; margin-top: var(--space-2); }
+.step-dot {
+    display: inline-grid; place-items: center; min-width: 28px; height: 28px; padding: 0 6px;
+    border-radius: 14px; border: 1px solid var(--rule); font-size: 0.75rem; color: var(--ink-soft); text-decoration: none;
+}
+.step-dot.done { background: var(--celadon-soft); border-color: var(--celadon); color: var(--celadon); }
+.step-dot.current { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 700; }
+.step-dot:hover { border-color: var(--accent); }
 
 .lesson-list details { padding: var(--space-3) var(--space-4); }
 .lesson-list summary { cursor: pointer; font-weight: 600; }

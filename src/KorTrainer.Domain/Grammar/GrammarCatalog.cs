@@ -33,11 +33,4 @@ public static class GrammarCatalog
     ];
 
     public static GrammarTopic? Find(string type) => Topics.FirstOrDefault(t => t.Type == type);
-
-    /// <summary>Topics already introduced by the plan on the given stage (at least the first ones).</summary>
-    public static IReadOnlyList<GrammarTopic> AvailableAt(PlanStage stage)
-    {
-        var available = Topics.Where(t => t.Stage <= stage).ToList();
-        return available.Count > 0 ? available : Topics.Where(t => t.Stage == PlanStage.FirstPhrases).ToList();
-    }
 }

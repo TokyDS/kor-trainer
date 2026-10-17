@@ -114,14 +114,6 @@ public sealed class GrammarExerciseGeneratorTests
         act.Should().Throw<InvalidOperationException>();
     }
 
-    [Fact]
-    public void AvailableAt_FollowsThePlan()
-    {
-        GrammarCatalog.AvailableAt(PlanStage.Hangul).Select(t => t.Type).Should().Contain(ExerciseTypes.Copula);
-        GrammarCatalog.AvailableAt(PlanStage.Level1).Should().NotContain(t => t.Stage == PlanStage.Level2);
-        GrammarCatalog.AvailableAt(PlanStage.Level2).Should().HaveCount(GrammarCatalog.Topics.Count);
-    }
-
     [Theory]
     [InlineData("студент, ученик", "студент")]
     [InlineData("утро; завтрак", "утро")]

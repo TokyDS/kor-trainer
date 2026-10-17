@@ -14,8 +14,11 @@ Romanization is **off by default** — the point is to learn to read Hangul with
 
 **Iteration 1 (MVP)**
 
-- **Today** — the day of the study plan with lesson notes, tasks whose progress is tracked
-  automatically from your answers, manual ticks, a day streak and quick links for the current stage.
+- **A self-paced plan** — the home page shows your current step (a lesson or a block of ~100 words)
+  with lesson notes, tasks whose progress is tracked automatically from your answers and accumulates
+  for as long as the step is open, manual ticks and quick links. When the tasks are done the app offers
+  the next step; "Перейти дальше" is always available. Nothing moves forward just because days pass.
+  Instead of a streak it shows how many of the last 7 days had study.
 - **Hangul**
   - letter → sound and sound → letter, with Russian sound approximations;
   - syllable composition and decomposition computed from Unicode arithmetic (no syllable tables);
@@ -53,7 +56,7 @@ Romanization is **off by default** — the point is to learn to read Hangul with
   character counter with the target range and saved drafts. Past papers are linked on
   [topik.go.kr](https://www.topik.go.kr), not copied.
 - Statistics: learned and learning words, accuracy per module (overall and last 7 days), study minutes
-  per day (bar chart with hover details and a table view), streak and record, reading speed.
+  per day (bar chart with hover details and a table view), study days this week and month, reading speed.
 
 ![TOPIK writing](docs/screenshots/topik-writing.png)
 
@@ -64,11 +67,13 @@ Romanization is **off by default** — the point is to learn to read Hangul with
   batchim) and filtered to ones that really sound different. Native recordings are preferred.
 - **Reverse cards** — `?mode=reverse` on the review page shows the Russian side; you type the Korean
   word and get a letter-level diff (wrong vowel, missing batchim) with a suggested grade.
-- **Any plan day** — ← / → on the Today page browse past days (editable for a week) and upcoming lessons.
-- **Forecast** — the statistics page projects your current pace (new words over the last 14 days)
-  onto the plan's goals (800 / 1,500 / 3,000 words) and shows the pace each goal needs.
-- **Reminders** — in the evening the Today page shows what is left; on Linux a systemd user timer also
-  raises a desktop notification at 20:00 and 22:00 (see [`tools/reminder`](tools/reminder/README.md)).
+- **Browse the plan** — ← / → on the home page show finished steps with the progress made in them and
+  preview upcoming ones; the plan page shows every step of every stage.
+- **Forecast** — the statistics page dates each vocabulary goal (800 / 1,500 / 3,000 words) at your
+  recent pace (new words over the last 14 days) — a guide, never a deadline.
+- **Gentle reminders** — on evenings without study the home page, a systemd user timer on Linux (20:00,
+  see [`tools/reminder`](tools/reminder/README.md)) and the Android app suggest ten minutes of practice.
+  They can be switched off in the settings.
 - **Installable app (PWA)** — a web manifest and a service worker that caches the app shell, recordings
   and the last API answers: the trainer opens in its own window and starts without the server, showing
   the last loaded plan (answers given offline are not saved). Browsers only enable this on `localhost`
@@ -164,9 +169,10 @@ with direct service calls and the system text-to-speech engine.
   Revised Romanization rules on top of it (`학교` → `hakgyo`).
 - **SM-2 scheduler** — a pure function `Schedule(CardState, Grade, now) → CardState` over an
   immutable record; the UI shows the next interval for every answer, as in Anki.
-- **Plan-driven unlocking** — days 1–3 drill Hangul only; lesson words open on days 4–9; stage words
-  open by calendar dates. Activity records store the learner's local date, so streaks and daily
-  statistics are plain SQL `GROUP BY` without time zone math.
+- **Plan-driven unlocking** — lessons 1–3 drill Hangul only; lesson words open from lesson 4; stage words
+  and grammar topics open with the blocks that introduce them. The current step is the one open
+  `PlanStepProgress` row and its tasks count activity inside its time window. Activity records store
+  the learner's local date, so daily statistics are plain SQL `GROUP BY` without time zone math.
 - **Deterministic generators** — every drill is generated from rules with an injected `Random`,
   so tests can assert properties over hundreds of generated items.
 
@@ -175,7 +181,8 @@ with direct service calls and the system text-to-speech engine.
 | Method | Route | Purpose |
 |---|---|---|
 | GET/PUT | `/api/settings` | start date, time zone, romanization, theme, limits |
-| GET | `/api/today?date=` | plan day (today by default), tasks with progress, streak, vocabulary summary |
+| GET | `/api/today?step=` | a plan step (the current one by default), tasks with progress, study days, vocabulary |
+| POST | `/api/plan/advance` | finish the current step (`{ "from": key }`, 409 if it already changed) and open the next |
 | GET | `/api/reminder` | whether to nudge the learner today, with title and message |
 | GET | `/api/plan` | stages and lessons |
 | PUT | `/api/today/tasks/{key}` | manual tick |
@@ -211,15 +218,17 @@ Line coverage of the server-side code is about 94% (Domain 97%, Application 91%,
 
 ## Study plan
 
-| Dates | Stage |
+| Steps | Stage |
 |---|---|
-| days 1–3 | Hangul: basic letters → iotized/compound vowels and consonant series → batchim and 연음 |
-| days 4–10 | first phrases: greetings, 이에요/예요, 이/가 아니에요, numbers, counters, self-introduction |
-| until 2026-12-31 | stage 1: level 1, ~800 words |
-| 2027-01-01 – 02-21 | stage 2: level 2 grammar, 1500–2000 words |
-| 2027-02-22 – 02-28 | mock exam and the TOPIK I/II decision |
-| 2027-03-01 – 04-30 | stage 3: TOPIK II writing 51–54, reading, listening |
+| lessons 1–3 | Hangul: basic letters → iotized/compound vowels and consonant series → batchim and 연음 |
+| lessons 4–10 | first phrases: greetings, 이에요/예요, 이/가 아니에요, numbers, counters, self-introduction |
+| 8 blocks | stage 1: level 1, up to 800 words, one grammar topic per block (이/가, 을/를, -아/어요, …) |
+| 7 blocks | stage 2: level 2 endings (-고, -아서, -(으)니까, …), up to 1500 words |
+| 1 step | mock exam and the TOPIK I/II decision |
+| 15 blocks | stage 3: TOPIK II writing 51–54, reading, listening, up to 3000 words |
 
-The start date is configurable; days 1–10 move with it, later stages are bound to the calendar.
+Every step takes as long as it takes. The plan was written for TOPIK in spring 2027; the forecast shows
+where your current pace leads. Learners of the earlier calendar version keep the lessons they finished
+on their day and continue from the first unfinished one.
 Official past papers are available at [topik.go.kr](https://www.topik.go.kr) — the app links to them
 and does not copy exam content.

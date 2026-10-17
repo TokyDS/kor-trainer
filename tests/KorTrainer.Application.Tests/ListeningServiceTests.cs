@@ -13,9 +13,9 @@ public sealed class ListeningServiceTests
     public async Task GetExercises_PlaysRecordedWordsWhenEnoughAreAvailable()
     {
         await using var t = await TestDatabase.CreateAsync();
-        await t.SetPlanDayAsync(12);
+        await t.SetPlanStepAsync("level1-1");
         var recorded = new FakeAudioLibrary("가다", "바다", "학교", "사람", "시간", "친구", "음식", "가방", "의자", "책");
-        var service = new ListeningService(t.Db, t.Settings, t.Clock, new Random(1), recorded);
+        var service = new ListeningService(t.Db, t.Cursor, new Random(1), recorded);
 
         var set = await service.GetExercisesAsync(ExerciseTypes.ListenMeaning, 20, Ct);
 
@@ -27,7 +27,7 @@ public sealed class ListeningServiceTests
     public async Task GetExercises_WithoutRecordings_UsesWordsOfOpenedStages()
     {
         await using var t = await TestDatabase.CreateAsync();
-        var service = new ListeningService(t.Db, t.Settings, t.Clock, new Random(2), new FakeAudioLibrary());
+        var service = new ListeningService(t.Db, t.Cursor, new Random(2), new FakeAudioLibrary());
 
         var set = await service.GetExercisesAsync(ExerciseTypes.ListenSpelling, 10, Ct);
 
@@ -38,7 +38,7 @@ public sealed class ListeningServiceTests
     public async Task GetExercises_RejectsUnknownType()
     {
         await using var t = await TestDatabase.CreateAsync();
-        var service = new ListeningService(t.Db, t.Settings, t.Clock, new Random(3), new FakeAudioLibrary());
+        var service = new ListeningService(t.Db, t.Cursor, new Random(3), new FakeAudioLibrary());
 
         var act = () => service.GetExercisesAsync("dictation", 5, Ct);
 

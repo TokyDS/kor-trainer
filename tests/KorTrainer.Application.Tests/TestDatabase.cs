@@ -2,6 +2,7 @@ using KorTrainer.Application.Activity;
 using KorTrainer.Application.Common;
 using KorTrainer.Application.Grammar;
 using KorTrainer.Application.Hangul;
+using KorTrainer.Application.Plan;
 using KorTrainer.Application.Progress;
 using KorTrainer.Application.Settings;
 using KorTrainer.Application.Stats;
@@ -37,11 +38,14 @@ public sealed class TestDatabase : IAsyncDisposable
         Time = time;
         Clock = new StudyClock(time);
         Settings = new SettingsService(db);
-        Vocabulary = new VocabularyService(db, Settings, Clock, new SrsScheduler());
+        Evaluator = new StepEvaluator(db);
+        Cursor = new PlanCursor(db, Settings, Clock, Evaluator);
+        Vocabulary = new VocabularyService(db, Settings, Clock, new SrsScheduler(), Cursor);
         Activity = new ActivityService(db, Settings, Clock);
-        Today = new TodayService(db, Settings, Vocabulary, Clock);
-        Hangul = new HangulService(db, Settings, Clock, new Random(42), Audio);
-        Grammar = new GrammarService(db, Settings, Clock, new Random(42));
+        Today = new TodayService(db, Cursor, Evaluator, Vocabulary, Clock);
+        Reminders = new ReminderService(Today, Settings);
+        Hangul = new HangulService(db, Settings, Clock, new Random(42), Audio, Cursor);
+        Grammar = new GrammarService(db, Cursor, new Random(42));
         Topik = new TopikService(db, Settings, Clock);
         Stats = new StatsService(db, Settings, Vocabulary, Clock);
         Progress = new ProgressTransferService(db, Settings, Clock);
@@ -62,7 +66,13 @@ public sealed class TestDatabase : IAsyncDisposable
 
     public ActivityService Activity { get; }
 
+    public StepEvaluator Evaluator { get; }
+
+    public PlanCursor Cursor { get; }
+
     public TodayService Today { get; }
+
+    public ReminderService Reminders { get; }
 
     public HangulService Hangul { get; }
 
@@ -84,12 +94,13 @@ public sealed class TestDatabase : IAsyncDisposable
         return new TestDatabase(connection, db, new FakeTimeProvider(now ?? DayOneMorning));
     }
 
-    /// <summary>Moves the plan start so that "now" falls on the given plan day.</summary>
-    public async Task SetPlanDayAsync(int day)
+    /// <summary>Makes the given step current, as if the learner had moved there just now.</summary>
+    public async Task SetPlanStepAsync(string stepKey)
     {
-        var settings = await Settings.GetEntityAsync(CancellationToken.None);
-        settings.StartDate = Clock.Today(settings).AddDays(1 - day);
+        await Db.PlanSteps.ExecuteDeleteAsync();
+        Db.PlanSteps.Add(new PlanStepProgress { StepKey = stepKey, StartedUtc = Clock.UtcNow });
         await Db.SaveChangesAsync();
+        Db.ChangeTracker.Clear();
     }
 
     public async Task<UserSettings> GetSettingsAsync() => await Settings.GetEntityAsync(CancellationToken.None);

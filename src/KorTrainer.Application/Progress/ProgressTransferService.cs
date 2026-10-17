@@ -2,6 +2,7 @@ using KorTrainer.Application.Common;
 using KorTrainer.Application.Settings;
 using KorTrainer.Contracts;
 using KorTrainer.Domain.Entities;
+using KorTrainer.Domain.Plan;
 using Microsoft.EntityFrameworkCore;
 
 namespace KorTrainer.Application.Progress;
@@ -30,7 +31,8 @@ public sealed class ProgressTransferService(IAppDbContext db, SettingsService se
         var attempts = await db.ExerciseAttempts.AsNoTracking().OrderBy(a => a.Id).ToListAsync(cancellationToken);
         var reading = await db.ReadingTrials.AsNoTracking().OrderBy(r => r.Id).ToListAsync(cancellationToken);
         var sessions = await db.StudySessions.AsNoTracking().OrderBy(s => s.Id).ToListAsync(cancellationToken);
-        var completions = await db.TaskCompletions.AsNoTracking().OrderBy(c => c.Date).ThenBy(c => c.TaskKey).ToListAsync(cancellationToken);
+        var steps = await db.PlanSteps.AsNoTracking().OrderBy(s => s.StartedUtc).ToListAsync(cancellationToken);
+        var ticks = await db.StepTaskCompletions.AsNoTracking().OrderBy(c => c.StepKey).ThenBy(c => c.TaskKey).ToListAsync(cancellationToken);
         var drafts = await db.WritingDrafts.AsNoTracking().OrderBy(d => d.Id).ToListAsync(cancellationToken);
 
         return new ProgressExport(
@@ -46,8 +48,9 @@ public sealed class ProgressTransferService(IAppDbContext db, SettingsService se
             attempts.Select(a => new AttemptExport(a.Module, a.ExerciseType, a.ItemKey, a.IsCorrect, a.ResponseMs, a.AnsweredUtc, a.LocalDate)).ToList(),
             reading.Select(r => new ReadingTrialExport(r.Text, r.SyllableCount, r.ElapsedMs, r.ReadCorrectly, r.CompletedUtc, r.LocalDate)).ToList(),
             sessions.Select(s => new SessionExport(s.Module, s.StartedUtc, s.DurationSeconds, s.LocalDate)).ToList(),
-            completions.Select(c => new TaskCompletionExport(c.Date, c.TaskKey, c.CompletedUtc)).ToList(),
-            drafts.Select(d => new WritingDraftExport(d.TaskNumber, d.StartedUtc, d.DurationSeconds, d.Text, d.LocalDate)).ToList());
+            drafts.Select(d => new WritingDraftExport(d.TaskNumber, d.StartedUtc, d.DurationSeconds, d.Text, d.LocalDate)).ToList(),
+            steps.Select(s => new PlanStepExport(s.StepKey, s.StartedUtc, s.CompletedUtc)).ToList(),
+            ticks.Select(c => new StepTaskCompletionExport(c.StepKey, c.TaskKey, c.CompletedUtc)).ToList());
     }
 
     /// <summary>
@@ -66,8 +69,12 @@ public sealed class ProgressTransferService(IAppDbContext db, SettingsService se
         await db.ExerciseAttempts.ExecuteDeleteAsync(cancellationToken);
         await db.ReadingTrials.ExecuteDeleteAsync(cancellationToken);
         await db.StudySessions.ExecuteDeleteAsync(cancellationToken);
-        await db.TaskCompletions.ExecuteDeleteAsync(cancellationToken);
+        await db.PlanSteps.ExecuteDeleteAsync(cancellationToken);
+        await db.StepTaskCompletions.ExecuteDeleteAsync(cancellationToken);
         await db.WritingDrafts.ExecuteDeleteAsync(cancellationToken);
+
+        // Bulk deletes bypass the change tracker: forget entities loaded earlier in this scope.
+        db.ChangeTracker.Clear();
 
         var settings = await settingsService.GetEntityAsync(cancellationToken);
         SettingsService.Apply(settings, snapshot.Settings);
@@ -126,12 +133,9 @@ public sealed class ProgressTransferService(IAppDbContext db, SettingsService se
             DurationSeconds = s.DurationSeconds,
             LocalDate = s.LocalDate,
         }));
-        db.TaskCompletions.AddRange(snapshot.TaskCompletions.DistinctBy(c => (c.Date, c.TaskKey)).Select(c => new DailyTaskCompletion
-        {
-            Date = c.Date,
-            TaskKey = c.TaskKey,
-            CompletedUtc = Utc(c.CompletedUtc),
-        }));
+        var steps = ImportSteps(snapshot);
+        db.PlanSteps.AddRange(steps);
+        db.StepTaskCompletions.AddRange(ImportTicks(snapshot));
         db.WritingDrafts.AddRange(snapshot.WritingDrafts.Select(d => new WritingDraft
         {
             TaskNumber = d.TaskNumber,
@@ -151,8 +155,63 @@ public sealed class ProgressTransferService(IAppDbContext db, SettingsService se
             snapshot.Attempts.Count,
             snapshot.ReadingTrials.Count,
             snapshot.Sessions.Count,
-            snapshot.TaskCompletions.Count,
+            steps.Count,
             snapshot.WritingDrafts.Count);
+    }
+
+    /// <summary>
+    /// Started steps of the plan, keeping exactly one open (the current step). A version 1 backup has none:
+    /// the plan then reopens from its activity as for any learner of the calendar plan.
+    /// </summary>
+    private static List<PlanStepProgress> ImportSteps(ProgressExport snapshot)
+    {
+        var roadmap = new Roadmap(snapshot.Settings.NewWordsPerDay);
+        var steps = (snapshot.PlanSteps ?? [])
+            .Where(s => roadmap.Find(s.StepKey) is not null)
+            .DistinctBy(s => s.StepKey)
+            .Select(s => new PlanStepProgress
+            {
+                StepKey = s.StepKey,
+                StartedUtc = Utc(s.StartedUtc),
+                // A step cannot end before it began; an inverted window would hide its progress.
+                CompletedUtc = s.CompletedUtc is { } c ? (Utc(c) < Utc(s.StartedUtc) ? Utc(s.StartedUtc) : Utc(c)) : null,
+            })
+            .ToList();
+        if (steps.Count == 0)
+        {
+            return steps;
+        }
+
+        var furthest = steps.MaxBy(s => roadmap.Find(s.StepKey)!.Index)!;
+        foreach (var step in steps.Where(s => s != furthest))
+        {
+            step.CompletedUtc ??= furthest.StartedUtc;
+        }
+
+        if (furthest.CompletedUtc is { } finished && roadmap.Next(roadmap.Find(furthest.StepKey)!) is { } next)
+        {
+            steps.Add(new PlanStepProgress { StepKey = next.Key, StartedUtc = finished });
+        }
+        else
+        {
+            furthest.CompletedUtc = null;
+        }
+
+        return steps;
+    }
+
+    /// <summary>Manual ticks; version 1 ticks were per calendar day and map to the lesson of that day.</summary>
+    private static IEnumerable<StepTaskCompletion> ImportTicks(ProgressExport snapshot)
+    {
+        var ticks = (snapshot.StepTaskCompletions ?? []).Select(c => (c.StepKey, c.TaskKey, c.CompletedUtc));
+        var legacy = (snapshot.TaskCompletions ?? [])
+            .Select(c => (Day: c.Date.DayNumber - snapshot.Settings.StartDate.DayNumber + 1, c.TaskKey, c.CompletedUtc))
+            .Where(c => c.Day is >= 1 and <= Roadmap.LessonCount)
+            .Select(c => ($"lesson-{c.Day}", c.TaskKey, c.CompletedUtc));
+
+        return ticks.Concat(legacy)
+            .DistinctBy(c => (c.Item1, c.TaskKey))
+            .Select(c => new StepTaskCompletion { StepKey = c.Item1, TaskKey = c.TaskKey, CompletedUtc = Utc(c.CompletedUtc) });
     }
 
     // A backup is untrusted input: every record is checked before the existing data is wiped.
@@ -164,11 +223,11 @@ public sealed class ProgressTransferService(IAppDbContext db, SettingsService se
         }
 
         new Validator()
-            .Require(snapshot.SchemaVersion == ProgressExport.CurrentSchemaVersion, nameof(snapshot.SchemaVersion), $"Поддерживается только версия формата {ProgressExport.CurrentSchemaVersion}.")
+            .Require(snapshot.SchemaVersion is ProgressExport.CurrentSchemaVersion or ProgressExport.LegacySchemaVersion, nameof(snapshot.SchemaVersion), $"Поддерживаются версии формата {ProgressExport.LegacySchemaVersion} и {ProgressExport.CurrentSchemaVersion}.")
             .Require(snapshot.Settings is not null, nameof(snapshot.Settings), "В файле нет настроек.")
             .Require(snapshot.Words is not null && snapshot.Reviews is not null && snapshot.Attempts is not null
                 && snapshot.ReadingTrials is not null && snapshot.Sessions is not null
-                && snapshot.TaskCompletions is not null && snapshot.WritingDrafts is not null, "file", "В файле не хватает разделов.")
+                && snapshot.WritingDrafts is not null, "file", "В файле не хватает разделов.")
             .ThrowIfInvalid();
         SettingsService.Validate(snapshot.Settings!);
 
@@ -186,6 +245,8 @@ public sealed class ProgressTransferService(IAppDbContext db, SettingsService se
         CheckSection(validator, snapshot.Sessions, nameof(snapshot.Sessions), s =>
             Enum.IsDefined(s.Module) && s.DurationSeconds is > 0 and <= MaxSessionSeconds);
         CheckSection(validator, snapshot.TaskCompletions, nameof(snapshot.TaskCompletions), c => IsKey(c.TaskKey));
+        CheckSection(validator, snapshot.PlanSteps, nameof(snapshot.PlanSteps), s => IsKey(s.StepKey));
+        CheckSection(validator, snapshot.StepTaskCompletions, nameof(snapshot.StepTaskCompletions), c => IsKey(c.StepKey) && IsKey(c.TaskKey));
         CheckSection(validator, snapshot.WritingDrafts, nameof(snapshot.WritingDrafts), d =>
             d.TaskNumber is >= 51 and <= 54 && d.DurationSeconds is >= 0 and <= MaxSessionSeconds && d.Text is { Length: <= MaxDraftLength });
         validator.ThrowIfInvalid();

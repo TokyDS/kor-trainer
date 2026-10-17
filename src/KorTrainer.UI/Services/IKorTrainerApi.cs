@@ -20,13 +20,17 @@ public interface IKorTrainerApi
 
     Task<SettingsDto> SaveSettingsAsync(SettingsDto settings);
 
-    Task<TodayDto> GetTodayAsync(DateOnly? date = null);
+    /// <summary>The current plan step, or another step by key when browsing.</summary>
+    Task<TodayDto> GetTodayAsync(string? step = null);
+
+    /// <summary>Finishes step <paramref name="from"/> and opens the next one.</summary>
+    Task<TodayDto> AdvanceAsync(string from);
 
     Task<ReminderDto> GetReminderAsync();
 
     Task<PlanDto> GetPlanAsync();
 
-    Task SetTaskDoneAsync(string taskKey, DateOnly date, bool done);
+    Task SetTaskDoneAsync(string taskKey, string step, bool done);
 
     Task<ExerciseSetDto> GetHangulExercisesAsync(string type, int level, int count);
 

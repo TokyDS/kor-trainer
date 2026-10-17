@@ -17,7 +17,7 @@ public sealed class ProgressTransferServiceTests
         ProgressExport snapshot;
         await using (var source = await TestDatabase.CreateAsync())
         {
-            await source.SetPlanDayAsync(4);
+            await source.SetPlanStepAsync("lesson-4");
             var cards = (await source.Vocabulary.GetQueueAsync(3, Ct)).Cards;
             foreach (var card in cards)
             {
@@ -44,7 +44,7 @@ public sealed class ProgressTransferServiceTests
     public async Task Import_ReplacesExistingProgress()
     {
         await using var t = await TestDatabase.CreateAsync();
-        await t.SetPlanDayAsync(4);
+        await t.SetPlanStepAsync("lesson-4");
         var empty = await t.Progress.ExportAsync(Ct);
         var card = (await t.Vocabulary.GetQueueAsync(1, Ct)).Cards.Single();
         await t.Vocabulary.ReviewAsync(new ReviewRequest(card.WordId, Grade.Good, 1000), Ct);
@@ -72,7 +72,7 @@ public sealed class ProgressTransferServiceTests
     public async Task Import_RejectsCorruptRecordsWithoutTouchingExistingData()
     {
         await using var t = await TestDatabase.CreateAsync();
-        await t.SetPlanDayAsync(4);
+        await t.SetPlanStepAsync("lesson-4");
         var card = (await t.Vocabulary.GetQueueAsync(1, Ct)).Cards.Single();
         await t.Vocabulary.ReviewAsync(new ReviewRequest(card.WordId, Grade.Good, 1000), Ct);
         var snapshot = await t.Progress.ExportAsync(Ct);
@@ -110,5 +110,43 @@ public sealed class ProgressTransferServiceTests
         var act = () => t.Progress.ImportAsync(snapshot with { SchemaVersion = 99 }, Ct);
 
         await act.Should().ThrowAsync<ValidationFailedException>();
+    }
+
+    [Fact]
+    public async Task Import_RestoresThePositionInThePlan()
+    {
+        await using var source = await TestDatabase.CreateAsync();
+        await source.Today.AdvanceAsync(new AdvanceRequest("lesson-1"), Ct);
+        await source.Today.AdvanceAsync(new AdvanceRequest("lesson-2"), Ct);
+        await source.Today.SetTaskDoneAsync("guide", new SetTaskDoneRequest("lesson-3", true), Ct);
+        var snapshot = await source.Progress.ExportAsync(Ct);
+
+        await using var target = await TestDatabase.CreateAsync();
+        var result = await target.Progress.ImportAsync(snapshot, Ct);
+        var today = await target.Today.GetTodayAsync(Ct);
+
+        snapshot.SchemaVersion.Should().Be(ProgressExport.CurrentSchemaVersion);
+        result.PlanSteps.Should().Be(3);
+        today.Step.Key.Should().Be("lesson-3");
+        today.Step.Tasks.Single(x => x.Key == "guide").IsDone.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Import_OfACalendarPlanBackup_MapsDayTicksToLessons()
+    {
+        await using var t = await TestDatabase.CreateAsync();
+        var snapshot = await t.Progress.ExportAsync(Ct);
+        var legacy = snapshot with
+        {
+            SchemaVersion = ProgressExport.LegacySchemaVersion,
+            PlanSteps = null,
+            StepTaskCompletions = null,
+            TaskCompletions = [new TaskCompletionExport(snapshot.Settings.StartDate.AddDays(1), "guide", DateTime.UtcNow), new TaskCompletionExport(snapshot.Settings.StartDate.AddDays(40), "x", DateTime.UtcNow)],
+        };
+
+        await t.Progress.ImportAsync(legacy, Ct);
+
+        var ticks = await t.Db.StepTaskCompletions.Select(c => c.StepKey + "/" + c.TaskKey).ToListAsync(Ct);
+        ticks.Should().Equal("lesson-2/guide");
     }
 }

@@ -31,7 +31,7 @@ Static web assets are only served from `dotnet run` in the Development environme
 back end in-process. Never reference EF or ASP.NET from Domain.
 
 - Domain: `Hangul/` (Syllable, Batchim, Pronunciation, Romanizer, JamoCatalog), `Grammar/`, `Numbers/`, `Srs/`, `Plan/`
-  (StudyPlan, PlanContent with Russian lesson texts, Streak), `Exercises/` (generators), `Entities/`.
+  (Roadmap of self-paced steps, PlanContent with Russian lesson texts, StudyRhythm, Forecast), `Exercises/` (generators), `Entities/`.
 - Application: one service per feature; validation via `Validator` → `ValidationFailedException` (400),
   `NotFoundException` (404). Time comes from `StudyClock` (wraps `TimeProvider`, uses the learner's time zone).
 - Infrastructure: `AppDbContext` implements `IAppDbContext`; decks embedded from `Seed/words.json`
@@ -54,6 +54,10 @@ back end in-process. Never reference EF or ASP.NET from Domain.
 - Hangul logic uses Unicode arithmetic (`0xAC00`, `% 28`, `/ 588`), never tables of syllables.
 - Domain logic is pure and deterministic: inject `Random`/`TimeProvider`, prefer immutable records.
 - Activity entities store `LocalDate` (learner's day) at write time; group statistics by it.
+- The plan is self-paced: `Roadmap` lists steps (keys `lesson-N`, `level1-N`, `level2-N`, `mock-exam`, `topik-N`,
+  `maintenance` — stored in user data, never rename them). `PlanCursor` keeps exactly one open `PlanStepProgress`;
+  `StepEvaluator` counts activity inside a step's UTC window. Never move the learner forward by date, and keep
+  reminders gentle (no streak or "falling behind" wording).
 - Write tests first for domain rules; keep Application tests on a migrated in-memory SQLite DB
   (`TestDatabase`), API tests via `KorTrainerApiFactory`.
 - Exercise type ids live in `ExerciseTypes`; plan tasks reference them for automatic progress.
@@ -72,7 +76,7 @@ back end in-process. Never reference EF or ASP.NET from Domain.
 4. ✅ TOPIK writing (`Domain/Topik/WritingTasks`, timer page, drafts) and statistics (`StatsService`, `/stats`).
 
 5. ✅ Extras: listening drills (`ListeningExerciseGenerator`, `/listening`), reverse cards with typed answers
-   (`AnswerChecker`, `/vocab/review?mode=reverse`), day navigation (`/api/today?date=`), vocabulary forecast
+   (`AnswerChecker`, `/vocab/review?mode=reverse`), step browsing (`/api/today?step=`), vocabulary forecast
    (`Domain/Plan/Forecast`), reminders (`ReminderService`, `tools/reminder` systemd timer) and PWA.
 
 - PWA: `wwwroot/manifest.webmanifest`, `service-worker.js` (no-op in development) and

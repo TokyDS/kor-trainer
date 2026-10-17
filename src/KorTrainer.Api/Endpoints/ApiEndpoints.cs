@@ -56,8 +56,9 @@ public static class ApiEndpoints
 
     private static void MapToday(RouteGroupBuilder group)
     {
-        group.MapGet("/today", (DateOnly? date, TodayService service, CancellationToken ct) => service.GetDayAsync(date, ct));
+        group.MapGet("/today", (string? step, TodayService service, CancellationToken ct) => service.GetStepAsync(step, ct));
         group.MapGet("/plan", (TodayService service, CancellationToken ct) => service.GetPlanAsync(ct));
+        group.MapPost("/plan/advance", (AdvanceRequest request, TodayService service, CancellationToken ct) => service.AdvanceAsync(request, ct));
         group.MapGet("/reminder", (ReminderService service, CancellationToken ct) => service.GetAsync(ct));
         group.MapPut("/today/tasks/{taskKey}", async (string taskKey, SetTaskDoneRequest request, TodayService service, CancellationToken ct) =>
         {

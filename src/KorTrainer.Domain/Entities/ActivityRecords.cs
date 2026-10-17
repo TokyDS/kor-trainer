@@ -82,10 +82,20 @@ public sealed class StudySession : IActivityRecord
     public int DurationSeconds { get; set; }
 }
 
-/// <summary>A task ticked by hand; automatic completion is derived from activity.</summary>
-public sealed class DailyTaskCompletion
+/// <summary>A roadmap step the learner has started; the one without <see cref="CompletedUtc"/> is the current step.</summary>
+public sealed class PlanStepProgress
 {
-    public DateOnly Date { get; set; }
+    public required string StepKey { get; set; }
+
+    public DateTime StartedUtc { get; set; }
+
+    public DateTime? CompletedUtc { get; set; }
+}
+
+/// <summary>A task of a step ticked by hand; automatic completion is derived from activity.</summary>
+public sealed class StepTaskCompletion
+{
+    public required string StepKey { get; set; }
 
     public required string TaskKey { get; set; }
 

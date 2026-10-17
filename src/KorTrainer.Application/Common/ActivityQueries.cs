@@ -12,7 +12,6 @@ internal static class ActivityQueries
         days.UnionWith(await db.ExerciseAttempts.Select(r => r.LocalDate).Distinct().ToListAsync(cancellationToken));
         days.UnionWith(await db.ReadingTrials.Select(r => r.LocalDate).Distinct().ToListAsync(cancellationToken));
         days.UnionWith(await db.WritingDrafts.Select(r => r.LocalDate).Distinct().ToListAsync(cancellationToken));
-        days.UnionWith(await db.TaskCompletions.Select(r => r.Date).Distinct().ToListAsync(cancellationToken));
         return days;
     }
 }

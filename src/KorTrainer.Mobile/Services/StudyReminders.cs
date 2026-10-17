@@ -8,14 +8,14 @@ using Application = Android.App.Application;
 namespace KorTrainer.Mobile.Services;
 
 /// <summary>
-/// Evening reminders like the desktop timer: alarms at 20:00 and 22:00 ask the local back end whether today's
-/// study is done and, if not, post a notification that opens the app.
+/// A gentle evening reminder like the desktop timer: an alarm at 20:00 asks the local back end whether the learner
+/// studied today and, if not (and reminders are on), posts a notification that opens the app.
 /// </summary>
 public sealed class StudyReminders(IKorTrainerApi api, ILogger<StudyReminders> logger)
 {
     public const string ChannelId = "study-reminders";
     private const int NotificationId = 20;
-    private static readonly int[] ReminderHours = [20, 22];
+    private static readonly int[] ReminderHours = [20];
 
     /// <summary>(Re)arms the daily alarms; safe to call on every start and after a reboot.</summary>
     public static void Schedule(Context context)
@@ -44,7 +44,7 @@ public sealed class StudyReminders(IKorTrainerApi api, ILogger<StudyReminders> l
     {
         var channel = new NotificationChannel(ChannelId, "Напоминания о занятиях", NotificationImportance.Default)
         {
-            Description = "Вечером, если задачи дня ещё не сделаны.",
+            Description = "Вечером, если сегодня ещё не занимались. Отключается в настройках тренажёра.",
         };
         ((NotificationManager?)context.GetSystemService(Context.NotificationService))?.CreateNotificationChannel(channel);
     }

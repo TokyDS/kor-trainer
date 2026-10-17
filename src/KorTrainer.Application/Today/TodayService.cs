@@ -1,167 +1,137 @@
 using KorTrainer.Application.Common;
-using KorTrainer.Application.Settings;
+using KorTrainer.Application.Plan;
 using KorTrainer.Application.Vocabulary;
 using KorTrainer.Contracts;
-using KorTrainer.Domain.Common;
+using KorTrainer.Domain.Entities;
 using KorTrainer.Domain.Plan;
 using Microsoft.EntityFrameworkCore;
 
 namespace KorTrainer.Application.Today;
 
-/// <summary>Builds the "Today" screen: plan tasks with live progress, lesson notes and streak.</summary>
+/// <summary>The home screen: the current plan step with live task progress, and browsing of other steps.</summary>
 public sealed class TodayService(
     IAppDbContext db,
-    SettingsService settingsService,
+    PlanCursor cursor,
+    StepEvaluator evaluator,
     VocabularyService vocabularyService,
     StudyClock clock)
 {
-    private const int SecondsPerMinute = 60;
+    public Task<TodayDto> GetTodayAsync(CancellationToken cancellationToken) => GetStepAsync(null, cancellationToken);
 
-    /// <summary>Past days whose manual ticks may still be changed.</summary>
-    public const int EditableDays = 7;
-
-    /// <summary>How far ahead the plan can be previewed.</summary>
-    public const int MaxDaysAhead = 366;
-
-    public Task<TodayDto> GetTodayAsync(CancellationToken cancellationToken) => GetDayAsync(null, cancellationToken);
-
-    /// <summary>
-    /// The plan of any day: today, a past day with the progress made on that day, or a future day to
-    /// look ahead (read-only).
-    /// </summary>
-    public async Task<TodayDto> GetDayAsync(DateOnly? date, CancellationToken cancellationToken)
+    /// <summary>A step of the plan: the current one by default, a finished one with the progress made in it, or an upcoming one to look ahead.</summary>
+    public async Task<TodayDto> GetStepAsync(string? stepKey, CancellationToken cancellationToken)
     {
-        var settings = await settingsService.GetEntityAsync(cancellationToken);
-        var today = clock.Today(settings);
-        var target = date ?? today;
-        new Validator()
-            .Require(target >= settings.StartDate.AddDays(-EditableDays) && target <= today.AddDays(MaxDaysAhead), "date", "Такого дня в плане нет.")
-            .ThrowIfInvalid();
-
-        var plan = new StudyPlan(settings.StartDate, settings.NewWordsPerDay);
-        var day = plan.GetDay(target);
+        var current = await cursor.GetAsync(cancellationToken);
+        var step = stepKey is null ? current.Step : current.Roadmap.Find(stepKey) ?? throw new NotFoundException("Такого шага в плане нет.");
+        var history = await cursor.GetHistoryAsync(cancellationToken);
         var vocabulary = await vocabularyService.GetSummaryAsync(cancellationToken);
-        var activity = await LoadActivityAsync(target, cancellationToken);
-        var activeDays = await db.ActiveDaysAsync(cancellationToken);
-        var dayVocabulary = target == today
-            ? new DayVocabulary(vocabulary.NewToday, vocabulary.ReviewsToday, vocabulary.DueNow, target.CompareTo(today))
-            : new DayVocabulary(
-                await db.ReviewLogs.CountAsync(r => r.LocalDate == target && r.PhaseBefore == Domain.Srs.CardPhase.New, cancellationToken),
-                await db.ReviewLogs.CountAsync(r => r.LocalDate == target, cancellationToken),
-                0,
-                target.CompareTo(today));
 
-        var tasks = day.Tasks.Select(t => ToDto(t, activity, dayVocabulary)).ToList();
+        var state = StateOf(step, current);
+        var progress = history.GetValueOrDefault(step.Key);
+        var window = state switch
+        {
+            StepState.Current => new StepWindow(current.Progress.StartedUtc, DateTime.MaxValue, state, vocabulary.DueNow),
+            StepState.Done when progress is { CompletedUtc: { } completed } => new StepWindow(progress.StartedUtc, completed, state),
+            _ => new StepWindow(DateTime.MinValue, DateTime.MinValue, StepState.Upcoming),
+        };
+        var tasks = await evaluator.EvaluateAsync(step, window, cancellationToken);
+
+        var today = clock.Today(current.Settings);
+        var activeDays = await db.ActiveDaysAsync(cancellationToken);
         return new TodayDto(
-            target,
-            day.DayNumber,
-            ToDto(day.Stage),
-            day.Lesson is { } l ? ToDto(l) : null,
-            tasks,
-            Streak.Calculate(activeDays, today),
-            activeDays.Contains(target),
-            day.QuickLinks.Select(q => new QuickLinkDto(q.Title, q.Route)).ToList(),
-            vocabulary,
-            today,
-            target <= today && target >= today.AddDays(-EditableDays));
+            ToDto(current.Roadmap, step, tasks, state, progress),
+            current.Step.Key,
+            StudyRhythm.ActiveDays(activeDays, today),
+            activeDays.Contains(today),
+            vocabulary);
+    }
+
+    /// <summary>Moves on to the next step (the learner decides; unfinished tasks do not block it).</summary>
+    public async Task<TodayDto> AdvanceAsync(AdvanceRequest request, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        await cursor.AdvanceAsync(request.From, cancellationToken);
+        return await GetTodayAsync(cancellationToken);
     }
 
     public async Task<PlanDto> GetPlanAsync(CancellationToken cancellationToken)
     {
-        var settings = await settingsService.GetEntityAsync(cancellationToken);
-        var today = clock.Today(settings);
-        var plan = new StudyPlan(settings.StartDate, settings.NewWordsPerDay);
-        return new PlanDto(
-            plan.StartDate,
-            plan.DayNumber(today),
-            plan.StageOn(today),
-            plan.Stages.Select(ToDto).ToList(),
-            plan.Lessons.Select(ToDto).ToList());
+        var current = await cursor.GetAsync(cancellationToken);
+        var steps = current.Roadmap.Steps
+            .Select(s => new PlanStepSummaryDto(s.Key, s.Index + 1, s.Stage, s.Title, StateOf(s, current)))
+            .ToList();
+        var stages = current.Roadmap.Steps
+            .GroupBy(s => s.Stage)
+            .Select(g => new StageDto(
+                g.Key,
+                g.First().StageTitle,
+                Roadmap.StageGoal(g.Key),
+                g.Count(),
+                g.Count(s => StateOf(s, current) == StepState.Done)))
+            .ToList();
+        return new PlanDto(current.Step.Key, stages, steps, Roadmap.Lessons.Select(ToDto).ToList());
     }
 
-    /// <summary>Ticks or unticks a task of the given day by hand.</summary>
+    /// <summary>Ticks or unticks a task of the current step or of a finished one.</summary>
     public async Task SetTaskDoneAsync(string taskKey, SetTaskDoneRequest request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
-        var settings = await settingsService.GetEntityAsync(cancellationToken);
-        var today = clock.Today(settings);
+        var current = await cursor.GetAsync(cancellationToken);
+        var step = current.Roadmap.Find(request.Step) ?? throw new NotFoundException("Такого шага в плане нет.");
         new Validator()
-            .Require(request.Date <= today && request.Date >= today.AddDays(-EditableDays), nameof(request.Date), "Отмечать можно только задачи за последнюю неделю.")
+            .Require(StateOf(step, current) != StepState.Upcoming, nameof(request.Step), "Отмечать задачи можно, когда шаг уже начат.")
             .ThrowIfInvalid();
-
-        var day = new StudyPlan(settings.StartDate, settings.NewWordsPerDay).GetDay(request.Date);
-        if (day.Tasks.All(t => t.Key != taskKey))
+        if (step.Tasks.All(t => t.Key != taskKey))
         {
-            throw new NotFoundException($"В плане на {request.Date:yyyy-MM-dd} нет задачи '{taskKey}'.");
+            throw new NotFoundException($"В шаге «{step.Title}» нет задачи '{taskKey}'.");
         }
 
-        var existing = await db.TaskCompletions.SingleOrDefaultAsync(c => c.Date == request.Date && c.TaskKey == taskKey, cancellationToken);
+        var existing = await db.StepTaskCompletions.SingleOrDefaultAsync(c => c.StepKey == step.Key && c.TaskKey == taskKey, cancellationToken);
         if (request.Done && existing is null)
         {
-            db.TaskCompletions.Add(new() { Date = request.Date, TaskKey = taskKey, CompletedUtc = clock.UtcNow });
+            db.StepTaskCompletions.Add(new StepTaskCompletion { StepKey = step.Key, TaskKey = taskKey, CompletedUtc = clock.UtcNow });
         }
         else if (!request.Done && existing is not null)
         {
-            db.TaskCompletions.Remove(existing);
+            db.StepTaskCompletions.Remove(existing);
         }
 
-        await db.SaveChangesAsync(cancellationToken);
-    }
-
-    private async Task<DayActivity> LoadActivityAsync(DateOnly today, CancellationToken cancellationToken)
-    {
-        var answers = await db.ExerciseAttempts
-            .Where(a => a.LocalDate == today)
-            .GroupBy(a => new { a.Module, a.ExerciseType })
-            .Select(g => new AnswerCount(g.Key.Module, g.Key.ExerciseType, g.Count()))
-            .ToListAsync(cancellationToken);
-
-        int reading = await db.ReadingTrials.CountAsync(r => r.LocalDate == today, cancellationToken);
-        int writingSeconds = await db.WritingDrafts.Where(w => w.LocalDate == today).SumAsync(w => w.DurationSeconds, cancellationToken);
-        var manual = await db.TaskCompletions.Where(c => c.Date == today).Select(c => c.TaskKey).ToListAsync(cancellationToken);
-
-        return new DayActivity(answers, reading, writingSeconds, manual.ToHashSet());
-    }
-
-    private static DailyTaskDto ToDto(DailyTask task, DayActivity activity, DayVocabulary vocabulary)
-    {
-        var target = task.Target;
-        bool ticked = activity.ManualKeys.Contains(task.Key);
-        (int progress, int goal, bool reached) = target.Metric switch
+        try
         {
-            TaskMetric.Manual => (ticked ? 1 : 0, 1, false),
-            TaskMetric.NewWords => Count(vocabulary.NewWords, target.Count),
-            TaskMetric.VocabularyDueCleared => vocabulary.Relation switch
-            {
-                // The queue of a past day cannot be reconstructed: count it done if reviews happened.
-                < 0 => (vocabulary.Reviews, vocabulary.Reviews, vocabulary.Reviews > 0),
-                0 => (vocabulary.Reviews, vocabulary.Reviews + vocabulary.DueNow, vocabulary.DueNow == 0),
-                _ => (0, 0, false),
-            },
-            TaskMetric.Answers => Count(activity.Answers(target.Module, target.ExerciseType), target.Count),
-            TaskMetric.ReadingTrials => Count(activity.ReadingTrials, target.Count),
-            TaskMetric.WritingMinutes => Count(activity.WritingSeconds / SecondsPerMinute, target.Count),
-            _ => (0, target.Count, false),
-        };
-
-        return new DailyTaskDto(task.Key, task.Title, task.Route, progress, goal, ticked || reached, target.Metric == TaskMetric.Manual);
-
-        static (int, int, bool) Count(int value, int goal) => (Math.Min(value, goal), goal, value >= goal);
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException) when (request.Done)
+        {
+            // Ticked twice at once (double click): the task is ticked either way.
+        }
     }
 
-    private static StageDto ToDto(StageInfo s) => new(s.Stage, s.Title, s.Goal, s.Start, s.End);
+    private static StepState StateOf(PlanStep step, CurrentStep current) =>
+        step.Index < current.Step.Index ? StepState.Done
+        : step.Index == current.Step.Index ? StepState.Current
+        : StepState.Upcoming;
+
+    private static PlanStepDto ToDto(Roadmap roadmap, PlanStep step, IReadOnlyList<PlanTaskDto> tasks, StepState state, PlanStepProgress? progress)
+    {
+        var next = roadmap.Next(step);
+        return new PlanStepDto(
+            step.Key,
+            step.Index + 1,
+            roadmap.Steps.Count,
+            step.Stage,
+            step.StageTitle,
+            step.Title,
+            step.Goal,
+            step.Lesson is { } l ? ToDto(l) : null,
+            tasks,
+            step.QuickLinks.Select(q => new QuickLinkDto(q.Title, q.Route)).ToList(),
+            state,
+            progress?.StartedUtc,
+            progress?.CompletedUtc,
+            roadmap.Previous(step)?.Key,
+            next?.Key,
+            next is null ? null : $"{next.StageTitle} · {next.Title}");
+    }
 
     private static LessonDto ToDto(LessonInfo l) => new(l.Day, l.Title, l.KeyPoints);
-
-    /// <param name="Relation">Day compared with today: negative — past, 0 — today, positive — future.</param>
-    private sealed record DayVocabulary(int NewWords, int Reviews, int DueNow, int Relation);
-
-    private sealed record AnswerCount(StudyModule Module, string ExerciseType, int Count);
-
-    private sealed record DayActivity(IReadOnlyList<AnswerCount> AnswerCounts, int ReadingTrials, int WritingSeconds, IReadOnlySet<string> ManualKeys)
-    {
-        public int Answers(StudyModule? module, string? exerciseType) => AnswerCounts
-            .Where(a => (module is null || a.Module == module) && (exerciseType is null || a.ExerciseType == exerciseType))
-            .Sum(a => a.Count);
-    }
 }

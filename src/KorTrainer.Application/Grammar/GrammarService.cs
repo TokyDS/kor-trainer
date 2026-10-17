@@ -1,4 +1,5 @@
 using KorTrainer.Application.Common;
+using KorTrainer.Application.Plan;
 using KorTrainer.Application.Hangul;
 using KorTrainer.Application.Settings;
 using KorTrainer.Contracts;
@@ -11,15 +12,15 @@ using Microsoft.EntityFrameworkCore;
 
 namespace KorTrainer.Application.Grammar;
 
-public sealed class GrammarService(IAppDbContext db, SettingsService settingsService, StudyClock clock, Random random)
+public sealed class GrammarService(IAppDbContext db, PlanCursor cursor, Random random)
 {
     public const int MaxCount = 50;
 
     public async Task<IReadOnlyList<GrammarTopicDto>> GetTopicsAsync(CancellationToken cancellationToken)
     {
-        var stage = await CurrentStageAsync(cancellationToken);
+        var unlocked = await UnlockedTopicsAsync(cancellationToken);
         return GrammarCatalog.Topics
-            .Select(t => new GrammarTopicDto(t.Type, t.Title, t.Description, t.Stage, t.Stage <= stage))
+            .Select(t => new GrammarTopicDto(t.Type, t.Title, t.Description, t.Stage, unlocked.Topics.Contains(t)))
             .ToList();
     }
 
@@ -32,9 +33,9 @@ public sealed class GrammarService(IAppDbContext db, SettingsService settingsSer
             .Require(count is >= 1 and <= MaxCount, nameof(count), $"Количество: от 1 до {MaxCount}.")
             .ThrowIfInvalid();
 
-        var stage = await CurrentStageAsync(cancellationToken);
-        var topics = topic is not null ? [topic] : GrammarCatalog.AvailableAt(stage);
-        var maxWordStage = StudyScope.MaxWordStage(stage);
+        var unlocked = await UnlockedTopicsAsync(cancellationToken);
+        var topics = topic is not null ? [topic] : unlocked.Topics;
+        var maxWordStage = StudyScope.MaxWordStage(unlocked.Stage);
         var words = await db.Words
             .Where(w => w.Stage <= maxWordStage)
             .Where(w => w.PartOfSpeech == PartOfSpeech.Noun || w.PartOfSpeech == PartOfSpeech.Verb || w.PartOfSpeech == PartOfSpeech.Adjective)
@@ -59,9 +60,11 @@ public sealed class GrammarService(IAppDbContext db, SettingsService settingsSer
         return new ExerciseSetDto(StudyModule.Grammar, type, title, items);
     }
 
-    private async Task<PlanStage> CurrentStageAsync(CancellationToken cancellationToken)
+    /// <summary>Topics the plan has introduced so far — at least the first ones, so the mixed drill is never empty.</summary>
+    private async Task<(PlanStage Stage, IReadOnlyList<GrammarTopic> Topics)> UnlockedTopicsAsync(CancellationToken cancellationToken)
     {
-        var settings = await settingsService.GetEntityAsync(cancellationToken);
-        return new StudyPlan(settings.StartDate, settings.NewWordsPerDay).StageOn(clock.Today(settings));
+        var current = await cursor.GetAsync(cancellationToken);
+        var unlocked = current.Roadmap.GrammarUnlocked(current.Step);
+        return (current.Step.Stage, unlocked.Count > 0 ? unlocked : GrammarCatalog.Topics.Where(t => t.Stage == PlanStage.FirstPhrases).ToList());
     }
 }

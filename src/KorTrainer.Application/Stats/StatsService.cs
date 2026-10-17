@@ -14,6 +14,7 @@ public sealed class StatsService(IAppDbContext db, SettingsService settingsServi
 {
     public const int MaxDays = 366;
     private const int RecentDays = 7;
+    private const int MonthDays = 30;
     private const int SecondsPerMinute = 60;
 
     public async Task<StatsOverviewDto> GetOverviewAsync(CancellationToken cancellationToken)
@@ -58,8 +59,8 @@ public sealed class StatsService(IAppDbContext db, SettingsService settingsServi
             accuracy.OrderBy(a => a.Module).ToList(),
             ToMinutesRoundedUp(sessionSeconds + writingSeconds),
             activeDays.Count,
-            Streak.Calculate(activeDays, today),
-            LongestStreak(activeDays),
+            StudyRhythm.ActiveDays(activeDays, today),
+            StudyRhythm.ActiveDays(activeDays, today, MonthDays),
             readingSyllables > 0 ? Math.Round((double)readingMs / readingSyllables) : null,
             await db.WritingDrafts.CountAsync(cancellationToken));
     }
@@ -97,7 +98,7 @@ public sealed class StatsService(IAppDbContext db, SettingsService settingsServi
             .ToList();
     }
 
-    /// <summary>Projects the vocabulary at the plan's goal dates from the recent pace of new words.</summary>
+    /// <summary>When each vocabulary goal is reached at the recent pace of new words (informational, no deadlines).</summary>
     public async Task<ForecastDto> GetForecastAsync(CancellationToken cancellationToken)
     {
         var settings = await settingsService.GetEntityAsync(cancellationToken);
@@ -115,34 +116,18 @@ public sealed class StatsService(IAppDbContext db, SettingsService settingsServi
         int daysSinceFirst = firstNew is { } first ? today.DayNumber - first.DayNumber + 1 : 0;
 
         double pace = Forecast.Pace(recentNew, daysSinceFirst);
-        var goals = Forecast.Project(studied, pace, today, deckSize)
-            .Select(g => new GoalForecastDto(g.Goal.Date, g.Goal.Title, g.Goal.Words, g.Projected, g.RequiredPace, g.OnTrack))
+        var goals = Forecast.Project(studied, pace, today)
+            .Select(g => new GoalForecastDto(g.Goal.Title, g.Goal.Words, g.Reached, g.ExpectedOn))
             .ToList();
-        return new ForecastDto(studied, Math.Round(pace, 1), settings.NewWordsPerDay, goals);
+        return new ForecastDto(
+            studied,
+            Math.Round(pace, 1),
+            settings.NewWordsPerDay,
+            goals,
+            Forecast.ExamDate,
+            Forecast.WordsBy(Forecast.ExamDate, studied, pace, today, deckSize));
     }
 
     // A day with 40 seconds of practice should still show up on the chart.
     private static int ToMinutesRoundedUp(long seconds) => (int)Math.Min(int.MaxValue, (seconds + SecondsPerMinute - 1) / SecondsPerMinute);
-
-    public static int LongestStreak(IReadOnlySet<DateOnly> activeDays)
-    {
-        int longest = 0;
-        foreach (var day in activeDays)
-        {
-            if (activeDays.Contains(day.AddDays(-1)))
-            {
-                continue;
-            }
-
-            int length = 1;
-            while (activeDays.Contains(day.AddDays(length)))
-            {
-                length++;
-            }
-
-            longest = Math.Max(longest, length);
-        }
-
-        return longest;
-    }
 }

@@ -65,8 +65,9 @@ public sealed class SettingsService(IAppDbContext db)
         settings.NewWordsPerDay = source.NewWordsPerDay;
         settings.MaxReviewsPerDay = source.MaxReviewsPerDay;
         settings.SpeechRate = source.SpeechRate;
+        settings.RemindersEnabled = source.RemindersEnabled;
     }
 
     public static SettingsDto ToDto(UserSettings s) =>
-        new(s.StartDate, s.TimeZoneId, s.ShowRomanization, s.Theme, s.NewWordsPerDay, s.MaxReviewsPerDay, s.SpeechRate);
+        new(s.StartDate, s.TimeZoneId, s.ShowRomanization, s.Theme, s.NewWordsPerDay, s.MaxReviewsPerDay, s.SpeechRate, s.RemindersEnabled);
 }

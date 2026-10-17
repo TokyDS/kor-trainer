@@ -33,14 +33,16 @@ public sealed class LocalKorTrainerApi(IServiceScopeFactory scopes, ILogger<Loca
 
     public Task<SettingsDto> SaveSettingsAsync(SettingsDto settings) => Run<SettingsService, SettingsDto>((s, ct) => s.UpdateAsync(settings, ct));
 
-    public Task<TodayDto> GetTodayAsync(DateOnly? date = null) => Run<TodayService, TodayDto>((s, ct) => s.GetDayAsync(date, ct));
+    public Task<TodayDto> GetTodayAsync(string? step = null) => Run<TodayService, TodayDto>((s, ct) => s.GetStepAsync(step, ct));
+
+    public Task<TodayDto> AdvanceAsync(string from) => Run<TodayService, TodayDto>((s, ct) => s.AdvanceAsync(new AdvanceRequest(from), ct));
 
     public Task<ReminderDto> GetReminderAsync() => Run<ReminderService, ReminderDto>((s, ct) => s.GetAsync(ct));
 
     public Task<PlanDto> GetPlanAsync() => Run<TodayService, PlanDto>((s, ct) => s.GetPlanAsync(ct));
 
-    public Task SetTaskDoneAsync(string taskKey, DateOnly date, bool done) =>
-        Run<TodayService>((s, ct) => s.SetTaskDoneAsync(taskKey, new SetTaskDoneRequest(date, done), ct));
+    public Task SetTaskDoneAsync(string taskKey, string step, bool done) =>
+        Run<TodayService>((s, ct) => s.SetTaskDoneAsync(taskKey, new SetTaskDoneRequest(step, done), ct));
 
     public Task<ExerciseSetDto> GetHangulExercisesAsync(string type, int level, int count) =>
         Run<HangulService, ExerciseSetDto>((s, ct) => s.GetExercisesAsync(type, level, count, ct));

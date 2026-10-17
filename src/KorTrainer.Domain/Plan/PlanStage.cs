@@ -13,6 +13,4 @@ public enum PlanStage
     Maintenance = 7,
 }
 
-public sealed record StageInfo(PlanStage Stage, string Title, string Goal, DateOnly Start, DateOnly End);
-
 public sealed record LessonInfo(int Day, string Title, IReadOnlyList<string> KeyPoints);
