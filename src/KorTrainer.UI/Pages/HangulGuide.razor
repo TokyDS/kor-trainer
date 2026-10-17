@@ -1,0 +1,101 @@
+@page "/hangul/guide"
+@using KorTrainer.Domain.Hangul
+@inject IKorTrainerApi Api
+@inject AppState State
+
+<PageTitle>Памятка — KorTrainer</PageTitle>
+
+<header class="page-header">
+    <a class="back" href="/hangul">← Хангыль</a>
+    <h1>@(_guide?.Title ?? "Памятка")</h1>
+</header>
+
+<VoiceNotice />
+<StatusViews IsLoading="_guide is null && _error is null" Error="@_error" OnRetry="LoadAsync" />
+
+@if (_guide is { } guide)
+{
+    <section class="card lesson">
+        <ul>
+            @foreach (var point in guide.KeyPoints)
+            {
+                <li>@point</li>
+            }
+        </ul>
+    </section>
+
+    <h2>@(guide.Level == 3 ? "Согласные в роли патчима" : "Буквы уровня") <span class="muted small">— нажмите, чтобы услышать</span></h2>
+    <div class="letter-grid">
+        @foreach (var letter in guide.Letters)
+        {
+            <button type="button" class="letter-tile" @onclick="() => SpeakAsync(letter.SampleSyllable)">
+                <span class="letter" lang="ko">@letter.Jamo</span>
+                <span class="letter-sound">@letter.Sound</span>
+                @if (State.Settings.ShowRomanization)
+                {
+                    <span class="romanization">@letter.Romanization</span>
+                }
+                @if (letter.Name is not null)
+                {
+                    <span class="muted small" lang="ko">@letter.Name</span>
+                }
+            </button>
+        }
+    </div>
+
+    @if (guide.Level == 3)
+    {
+        <h2>7 конечных звуков</h2>
+        <div class="card">
+            <table class="finals-table">
+                <thead><tr><th>Звучит как</th><th>Какие патчимы</th></tr></thead>
+                <tbody>
+                    @foreach (char sound in Pronunciation.RepresentativeSounds)
+                    {
+                        <tr>
+                            <td lang="ko" class="final-sound">@sound</td>
+                            <td lang="ko">@string.Join(" ", HangulAlphabet.Finals.Where(f => Pronunciation.RepresentativeSound(f) == sound))</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+
+    <div class="actions">
+        @if (guide.Level < 3)
+        {
+            <a class="btn primary" href="/hangul/@ExerciseTypes.LetterToSound?level=@guide.Level">Тренировать буквы</a>
+        }
+        else
+        {
+            <a class="btn primary" href="/hangul/@ExerciseTypes.FinalSound?level=3">Тренировать патчим</a>
+        }
+        <a class="btn" href="/hangul/reading?level=@guide.Level">Чтение на время</a>
+    </div>
+}
+
+@code {
+    private HangulGuideDto? _guide;
+    private string? _error;
+
+    [SupplyParameterFromQuery]
+    public int? Level { get; set; }
+
+    protected override Task OnParametersSetAsync() => LoadAsync();
+
+    private async Task SpeakAsync(string text) => await State.SpeakAsync(text);
+
+    private async Task LoadAsync()
+    {
+        _error = null;
+        try
+        {
+            _guide = await Api.GetGuideAsync(Math.Clamp(Level ?? 1, 1, 3));
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException)
+        {
+            _error = ex.Message;
+        }
+    }
+}

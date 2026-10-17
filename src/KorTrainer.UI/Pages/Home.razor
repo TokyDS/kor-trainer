@@ -1,0 +1,199 @@
+@page "/"
+@inject IKorTrainerApi Api
+@inject NavigationManager Navigation
+
+<PageTitle>Сегодня — KorTrainer</PageTitle>
+
+<StatusViews IsLoading="_today is null && _error is null" Error="@_error" OnRetry="LoadAsync" />
+
+@if (_today is { } today)
+{
+    <nav class="day-nav" aria-label="Дни плана">
+        <a class="btn small" href="@DayHref(today.Date.AddDays(-1), today.Today)" aria-label="Предыдущий день">←</a>
+        <span class="day-nav-label">
+            @(today.IsToday ? "Сегодня" : today.IsFuture ? "Впереди — только просмотр" : today.CanEdit ? "Прошедший день" : "Прошедший день — только просмотр")
+        </span>
+        <a class="btn small" href="@DayHref(today.Date.AddDays(1), today.Today)" aria-label="Следующий день">→</a>
+        @if (!today.IsToday)
+        {
+            <a class="btn small primary" href="/">К сегодня</a>
+        }
+    </nav>
+
+    @if (today.IsToday && _reminder is { ShouldRemind: true } reminder)
+    {
+        <div class="notice warning reminder" role="status">
+            <strong>@reminder.Title</strong>
+            @if (reminder.Message.Length > 0)
+            {
+                <p>@reminder.Message</p>
+            }
+        </div>
+    }
+
+    <header class="today-hero @(today.IsToday ? string.Empty : "other-day")">
+        <div>
+            <p class="eyebrow">@today.Stage.Title</p>
+            <h1>
+                @if (today.DayNumber >= 1)
+                {
+                    <span>День @today.DayNumber</span>
+                }
+                else
+                {
+                    <span>До старта @(1 - today.DayNumber) дн.</span>
+                }
+            </h1>
+            <p class="muted">@today.Date.ToString("d MMMM yyyy", Russian) · @today.Stage.Goal</p>
+        </div>
+        <div class="streak @(today.StudiedToday ? "lit" : string.Empty)" title="Дней подряд с занятиями">
+            <span class="streak-number">@today.StreakDays</span>
+            <span class="streak-label">@DaysWord(today.StreakDays) подряд</span>
+        </div>
+    </header>
+
+    <div class="today-grid">
+        <section class="card tasks" aria-labelledby="tasks-heading">
+            <div class="section-head">
+                <h2 id="tasks-heading">Задачи дня</h2>
+                <span class="muted">@today.Tasks.Count(t => t.IsDone) из @today.Tasks.Count</span>
+            </div>
+            @if (today.Tasks.Count == 0)
+            {
+                <p class="muted">На сегодня задач нет. Начать можно с памятки по хангылю.</p>
+            }
+            <ul class="task-list">
+                @foreach (var task in today.Tasks)
+                {
+                    <li class="task @(task.IsDone ? "done" : string.Empty)">
+                        <button type="button" class="check" role="checkbox" aria-checked="@task.IsDone.ToString().ToLowerInvariant()"
+                                aria-label="Отметить вручную" disabled="@(_saving || !today.CanEdit)" @onclick="() => ToggleAsync(task)">
+                            @(task.IsDone ? "✓" : string.Empty)
+                        </button>
+                        <div class="task-body">
+                            <span class="task-title">@task.Title</span>
+                            @if (!task.IsManualOnly && task.Target > 0)
+                            {
+                                <span class="task-progress">
+                                    <span class="progress-track small"><span class="progress-fill" style="width: @(task.Progress * 100 / task.Target)%"></span></span>
+                                    <span class="muted">@task.Progress / @task.Target</span>
+                                </span>
+                            }
+                        </div>
+                        @if (task.Route is not null)
+                        {
+                            <a class="btn small" href="@task.Route">@(task.IsDone ? "Ещё" : "Начать")</a>
+                        }
+                    </li>
+                }
+            </ul>
+        </section>
+
+        @if (today.Lesson is { } lesson)
+        {
+            <section class="card lesson" aria-labelledby="lesson-heading">
+                <p class="eyebrow">Конспект урока</p>
+                <h2 id="lesson-heading">@lesson.Title</h2>
+                <ul>
+                    @foreach (var point in lesson.KeyPoints)
+                    {
+                        <li>@point</li>
+                    }
+                </ul>
+            </section>
+        }
+
+        <section class="card vocab-mini" aria-labelledby="vocab-heading">
+            <h2 id="vocab-heading">Словарь</h2>
+            <dl class="stats-row">
+                <div><dt>к повторению</dt><dd>@today.Vocabulary.DueNow</dd></div>
+                <div><dt>в изучении</dt><dd>@(today.Vocabulary.Learning + today.Vocabulary.Young)</dd></div>
+                <div><dt>выучено</dt><dd>@today.Vocabulary.Mature</dd></div>
+            </dl>
+            <a class="btn primary" href="/vocab/review">Повторять слова</a>
+        </section>
+
+        <section class="card quick" aria-labelledby="quick-heading">
+            <h2 id="quick-heading">Быстрый переход</h2>
+            <div class="quick-links">
+                @foreach (var link in today.QuickLinks)
+                {
+                    <a class="chip" href="@link.Route">@link.Title</a>
+                }
+            </div>
+        </section>
+    </div>
+
+    @if (_saveError is not null)
+    {
+        <p class="notice error">@_saveError</p>
+    }
+}
+
+@code {
+    private static readonly System.Globalization.CultureInfo Russian = System.Globalization.CultureInfo.GetCultureInfo("ru-RU");
+    private const int ReminderHour = 18;
+
+    private TodayDto? _today;
+    private ReminderDto? _reminder;
+    private string? _error;
+    private string? _saveError;
+    private bool _saving;
+
+    [SupplyParameterFromQuery(Name = "date")]
+    public string? DateParameter { get; set; }
+
+    private DateOnly? RequestedDate => DateOnly.TryParseExact(DateParameter, "yyyy-MM-dd", out var d) ? d : null;
+
+    // The page is reused when only ?date= changes, so reload on every parameter change.
+    protected override Task OnParametersSetAsync() => LoadAsync();
+
+    private static string DayHref(DateOnly date, DateOnly today) =>
+        date == today ? "/" : $"/?date={date:yyyy-MM-dd}";
+
+    private async Task LoadAsync()
+    {
+        _error = null;
+        try
+        {
+            _today = await Api.GetTodayAsync(RequestedDate);
+            // Evening nudge, mirroring the desktop reminder.
+            _reminder = _today.IsToday && DateTime.Now.Hour >= ReminderHour ? await Api.GetReminderAsync() : null;
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    private async Task ToggleAsync(DailyTaskDto task)
+    {
+        if (_today is null)
+        {
+            return;
+        }
+
+        _saving = true;
+        _saveError = null;
+        try
+        {
+            await Api.SetTaskDoneAsync(task.Key, _today.Date, !task.IsDone);
+            _today = await Api.GetTodayAsync(RequestedDate);
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException)
+        {
+            _saveError = ex.Message;
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private static string DaysWord(int n) => (n % 10, n % 100) switch
+    {
+        (1, not 11) => "день",
+        (2 or 3 or 4, not (12 or 13 or 14)) => "дня",
+        _ => "дней",
+    };
+}

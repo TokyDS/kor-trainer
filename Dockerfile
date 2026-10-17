@@ -10,6 +10,7 @@ COPY src/KorTrainer.Domain/KorTrainer.Domain.csproj src/KorTrainer.Domain/
 COPY src/KorTrainer.Contracts/KorTrainer.Contracts.csproj src/KorTrainer.Contracts/
 COPY src/KorTrainer.Application/KorTrainer.Application.csproj src/KorTrainer.Application/
 COPY src/KorTrainer.Infrastructure/KorTrainer.Infrastructure.csproj src/KorTrainer.Infrastructure/
+COPY src/KorTrainer.UI/KorTrainer.UI.csproj src/KorTrainer.UI/
 COPY src/KorTrainer.Web/KorTrainer.Web.csproj src/KorTrainer.Web/
 COPY src/KorTrainer.Api/KorTrainer.Api.csproj src/KorTrainer.Api/
 RUN dotnet restore src/KorTrainer.Api/KorTrainer.Api.csproj

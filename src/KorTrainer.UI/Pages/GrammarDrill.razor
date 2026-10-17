@@ -1,0 +1,16 @@
+@page "/grammar/{Type}"
+@inject IKorTrainerApi Api
+
+<PageTitle>Грамматика — KorTrainer</PageTitle>
+
+@* The key forces a fresh drill when the topic in the URL changes. *@
+<ChoiceDrill @key="Type" Load="LoadAsync" BackHref="/grammar" />
+
+@code {
+    private const int SetSize = 20;
+
+    [Parameter]
+    public string Type { get; set; } = string.Empty;
+
+    private Task<ExerciseSetDto> LoadAsync() => Api.GetGrammarExercisesAsync(Type, SetSize);
+}

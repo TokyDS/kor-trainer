@@ -20,8 +20,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\KorTrainer.Contracts\KorTrainer.Contracts.csproj" />
-    <ProjectReference Include="..\KorTrainer.Domain\KorTrainer.Domain.csproj" />
+    <ProjectReference Include="..\KorTrainer.UI\KorTrainer.UI.csproj" />
   </ItemGroup>
 
 </Project>

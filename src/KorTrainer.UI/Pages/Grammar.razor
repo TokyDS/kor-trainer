@@ -1,0 +1,53 @@
+@page "/grammar"
+@inject IKorTrainerApi Api
+
+<PageTitle>Грамматика — KorTrainer</PageTitle>
+
+<header class="page-header">
+    <h1>Грамматика</h1>
+    <p class="muted">Упражнения собираются из слов колоды по правилам: частицы выбираются по патчиму, глаголы спрягаются с учётом неправильных классов. При ошибке показывается правило.</p>
+</header>
+
+<StatusViews IsLoading="_topics is null && _error is null" Error="@_error" OnRetry="LoadAsync" />
+
+@if (_topics is { } topics)
+{
+    <div class="mode-grid">
+        <a class="mode-card feature" href="/grammar/@ExerciseTypes.Mixed">
+            <span class="mode-glyph" lang="ko">섞기</span>
+            <strong>Вперемешку</strong>
+            <span>Все темы, уже открытые планом</span>
+        </a>
+        @foreach (var topic in topics)
+        {
+            <a class="mode-card @(topic.IsOpen ? string.Empty : "upcoming")" href="/grammar/@topic.Type">
+                <span class="mode-glyph" lang="ko">@topic.Title</span>
+                <span class="muted">@topic.Description</span>
+                @if (!topic.IsOpen)
+                {
+                    <span class="badge">по плану позже</span>
+                }
+            </a>
+        }
+    </div>
+}
+
+@code {
+    private IReadOnlyList<GrammarTopicDto>? _topics;
+    private string? _error;
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _error = null;
+        try
+        {
+            _topics = await Api.GetGrammarTopicsAsync();
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException)
+        {
+            _error = ex.Message;
+        }
+    }
+}
