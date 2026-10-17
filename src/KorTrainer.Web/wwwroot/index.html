@@ -16,7 +16,10 @@
             }
         } catch { /* storage unavailable */ }
     </script>
-    <link rel="icon" type="image/png" href="icon-192.png" />
+    <meta name="theme-color" content="#c0392f" />
+    <link rel="icon" type="image/png" href="favicon.png" />
+    <link rel="apple-touch-icon" href="apple-touch-icon.png" />
+    <link rel="manifest" href="manifest.webmanifest" />
     <link rel="stylesheet" href="css/app.css" />
 </head>
 
@@ -34,6 +37,23 @@
         <span class="dismiss">🗙</span>
     </div>
     <script src="_framework/blazor.webassembly.js"></script>
+    <div id="update-ui" class="update-ui" role="status" hidden>
+        Доступна новая версия тренажёра.
+        <a href="." class="reload">Обновить</a>
+    </div>
+    <script>
+        // Service workers need a secure context (https or localhost); elsewhere the app simply runs online.
+        if ('serviceWorker' in navigator) {
+            const hadController = !!navigator.serviceWorker.controller;
+            navigator.serviceWorker.addEventListener('controllerchange', () => {
+                if (hadController) {
+                    document.getElementById('update-ui').hidden = false;
+                }
+            });
+            navigator.serviceWorker.register('service-worker.js', { updateViaCache: 'none' })
+                .catch(error => console.warn('Service worker registration failed', error));
+        }
+    </script>
 </body>
 
 </html>

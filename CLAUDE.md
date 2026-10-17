@@ -66,5 +66,12 @@ Static web assets are only served from `dotnet run` in the Development environme
    converter and `/numbers/{type|mixed}` drills.
 4. ✅ TOPIK writing (`Domain/Topik/WritingTasks`, timer page, drafts) and statistics (`StatsService`, `/stats`).
 
-All planned modules exist; the deck has ~5,900 words (curated + NIKL A/B/C). Next ideas: listening
-drills, example sentences for words, PWA/offline.
+5. ✅ Extras: listening drills (`ListeningExerciseGenerator`, `/listening`), reverse cards with typed answers
+   (`AnswerChecker`, `/vocab/review?mode=reverse`), day navigation (`/api/today?date=`), vocabulary forecast
+   (`Domain/Plan/Forecast`), reminders (`ReminderService`, `tools/reminder` systemd timer) and PWA.
+
+- PWA: `wwwroot/manifest.webmanifest`, `service-worker.js` (no-op in development) and
+  `service-worker.published.js` (app shell precache from `service-worker-assets.js`, audio cache-first,
+  GET /api network-first). Only active after publish and on localhost/HTTPS. Icons are drawn from 한 on `--accent`.
+
+The deck has ~5,900 words (curated + NIKL A/B/C). Next ideas: example sentences for words, offline answer queue.

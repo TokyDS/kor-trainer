@@ -1,0 +1,23 @@
+{
+  "name": "KorTrainer — тренажёр корейского",
+  "short_name": "KorTrainer",
+  "description": "Корейский с нуля до TOPIK: хангыль, слова, грамматика, числа и аудирование по плану.",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "lang": "ru",
+  "background_color": "#f6f1e7",
+  "theme_color": "#c0392f",
+  "categories": ["education"],
+  "icons": [
+    { "src": "icon-192.png", "type": "image/png", "sizes": "192x192" },
+    { "src": "icon-512.png", "type": "image/png", "sizes": "512x512" },
+    { "src": "icon-maskable-512.png", "type": "image/png", "sizes": "512x512", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Сегодня", "url": "./" },
+    { "name": "Повторение слов", "url": "./vocab/review" },
+    { "name": "Аудирование", "url": "./listening" }
+  ]
+}
