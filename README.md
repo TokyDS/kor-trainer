@@ -106,6 +106,13 @@ Without Docker (requires the .NET 10 SDK):
 dotnet run --project src/KorTrainer.Api      # http://localhost:5116, DB in src/KorTrainer.Api/data/
 ```
 
+### Android app
+
+The phone version is a real APK: the same pages, but the database and all logic live on the phone, so
+it works without the server and offline (recordings are downloaded on first play). Build it with
+`tools/android/build-apk.sh` — setup, signing and moving your progress are described in
+[`tools/android`](tools/android/README.md).
+
 ### Native-speaker recordings
 
 About 930 words — including the minimal pairs of the plain/aspirated/tense listening drill (바다/파다,
@@ -130,16 +137,22 @@ src/
   KorTrainer.Application     use cases (Today, Vocabulary, Hangul, Activity, Progress), validation
   KorTrainer.Infrastructure  EF Core + SQLite, migrations, deck seeding
   KorTrainer.Api             Minimal API, ProblemDetails, rate limiting; hosts the WASM client
-  KorTrainer.Web             Blazor WebAssembly UI, JS interop for speech/keyboard/theme
+  KorTrainer.UI              Razor class library: every page and component, CSS, JS interop
+  KorTrainer.Web             Blazor WebAssembly host: HTTP client, Web Speech, PWA
+  KorTrainer.Embedded        the back end in-process (IKorTrainerApi over the services) for the app
+  KorTrainer.Mobile          .NET MAUI Android app: BlazorWebView, Android TTS, reminders
 tests/
   KorTrainer.Domain.Tests        unit tests of the language and scheduling logic
   KorTrainer.Application.Tests   services against a migrated in-memory SQLite database
   KorTrainer.Api.Tests           HTTP integration tests with WebApplicationFactory
+  KorTrainer.Embedded.Tests      the app's in-process back end on a real SQLite file
 ```
 
 Dependencies point inwards: `Api → Infrastructure → Application → Domain`. The Domain project has
-no dependencies, so the same code runs on the server and inside the browser (the client uses it
-for romanization).
+no dependencies, so the same code runs on the server, inside the browser (the client uses it
+for romanization) and on the phone. The pages only know `IKorTrainerApi`, `ISpeechOutput` and
+`IBackupExporter`: the web host implements them with HTTP and the Web Speech API, the Android app
+with direct service calls and the system text-to-speech engine.
 
 ### Interesting bits
 

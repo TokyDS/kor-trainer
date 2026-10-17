@@ -11,3 +11,4 @@ obj/
 TestResults/
 coverage/
 .claude/worktrees/
+artifacts/
