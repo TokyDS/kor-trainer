@@ -1,0 +1,10 @@
+[Unit]
+Description=KorTrainer — напоминание вечером, если занятия ещё не сделаны
+
+[Timer]
+OnCalendar=*-*-* 20:00:00
+OnCalendar=*-*-* 22:00:00
+AccuracySec=1min
+
+[Install]
+WantedBy=timers.target

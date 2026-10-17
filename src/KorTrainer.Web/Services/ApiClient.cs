@@ -24,6 +24,8 @@ public sealed class ApiClient(HttpClient http)
     public Task<TodayDto> GetTodayAsync(DateOnly? date = null) =>
         GetAsync<TodayDto>(date is { } d ? $"api/today?date={d:yyyy-MM-dd}" : "api/today");
 
+    public Task<ReminderDto> GetReminderAsync() => GetAsync<ReminderDto>("api/reminder");
+
     public Task<PlanDto> GetPlanAsync() => GetAsync<PlanDto>("api/plan");
 
     public Task SetTaskDoneAsync(string taskKey, DateOnly date, bool done) =>

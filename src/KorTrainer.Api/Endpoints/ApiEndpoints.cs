@@ -58,6 +58,7 @@ public static class ApiEndpoints
     {
         group.MapGet("/today", (DateOnly? date, TodayService service, CancellationToken ct) => service.GetDayAsync(date, ct));
         group.MapGet("/plan", (TodayService service, CancellationToken ct) => service.GetPlanAsync(ct));
+        group.MapGet("/reminder", (ReminderService service, CancellationToken ct) => service.GetAsync(ct));
         group.MapPut("/today/tasks/{taskKey}", async (string taskKey, SetTaskDoneRequest request, TodayService service, CancellationToken ct) =>
         {
             await service.SetTaskDoneAsync(taskKey, request, ct);

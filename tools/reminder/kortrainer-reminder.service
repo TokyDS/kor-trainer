@@ -1,0 +1,8 @@
+[Unit]
+Description=KorTrainer — напоминание о занятии
+After=graphical-session.target
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/kortrainer-remind
+TimeoutStartSec=15min

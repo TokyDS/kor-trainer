@@ -42,3 +42,6 @@ public sealed record TodayDto(
 public sealed record PlanDto(DateOnly StartDate, int CurrentDay, PlanStage CurrentStage, IReadOnlyList<StageDto> Stages, IReadOnlyList<LessonDto> Lessons);
 
 public sealed record SetTaskDoneRequest(DateOnly Date, bool Done);
+
+/// <param name="ShouldRemind">Something is left for today (used by the desktop reminder and the Today banner).</param>
+public sealed record ReminderDto(bool ShouldRemind, string Title, string Message, int StreakDays, bool StudiedToday, int TasksLeft, int WordsDue);

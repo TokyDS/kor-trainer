@@ -36,6 +36,7 @@ public static class DependencyInjection
         services.AddScoped<TopikService>();
         services.AddScoped<StatsService>();
         services.AddScoped<TodayService>();
+        services.AddScoped<ReminderService>();
         services.AddScoped<ProgressTransferService>();
         return services;
     }

@@ -20,6 +20,17 @@
         }
     </nav>
 
+    @if (today.IsToday && _reminder is { ShouldRemind: true } reminder)
+    {
+        <div class="notice warning reminder" role="status">
+            <strong>@reminder.Title</strong>
+            @if (reminder.Message.Length > 0)
+            {
+                <p>@reminder.Message</p>
+            }
+        </div>
+    }
+
     <header class="today-hero @(today.IsToday ? string.Empty : "other-day")">
         <div>
             <p class="eyebrow">@today.Stage.Title</p>
@@ -121,7 +132,10 @@
 
 @code {
     private static readonly System.Globalization.CultureInfo Russian = System.Globalization.CultureInfo.GetCultureInfo("ru-RU");
+    private const int ReminderHour = 18;
+
     private TodayDto? _today;
+    private ReminderDto? _reminder;
     private string? _error;
     private string? _saveError;
     private bool _saving;
@@ -143,6 +157,8 @@
         try
         {
             _today = await Api.GetTodayAsync(RequestedDate);
+            // Evening nudge, mirroring the desktop reminder.
+            _reminder = _today.IsToday && DateTime.Now.Hour >= ReminderHour ? await Api.GetReminderAsync() : null;
         }
         catch (Exception ex) when (ex is ApiException or HttpRequestException)
         {
