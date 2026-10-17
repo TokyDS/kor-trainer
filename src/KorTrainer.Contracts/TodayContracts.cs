@@ -18,6 +18,9 @@ public sealed record DailyTaskDto(
     bool IsDone,
     bool IsManualOnly);
 
+/// <param name="Date">The day shown; may differ from <paramref name="Today"/> when browsing the plan.</param>
+/// <param name="StudiedToday">There was activity on <paramref name="Date"/>.</param>
+/// <param name="CanEdit">Manual ticks of this day can still be changed (today and the last week).</param>
 public sealed record TodayDto(
     DateOnly Date,
     int DayNumber,
@@ -27,7 +30,14 @@ public sealed record TodayDto(
     int StreakDays,
     bool StudiedToday,
     IReadOnlyList<QuickLinkDto> QuickLinks,
-    VocabularySummaryDto Vocabulary);
+    VocabularySummaryDto Vocabulary,
+    DateOnly Today,
+    bool CanEdit)
+{
+    public bool IsToday => Date == Today;
+
+    public bool IsFuture => Date > Today;
+}
 
 public sealed record PlanDto(DateOnly StartDate, int CurrentDay, PlanStage CurrentStage, IReadOnlyList<StageDto> Stages, IReadOnlyList<LessonDto> Lessons);
 

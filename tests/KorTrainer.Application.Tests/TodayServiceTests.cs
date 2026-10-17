@@ -119,6 +119,58 @@ public sealed class TodayServiceTests
     }
 
     [Fact]
+    public async Task GetDay_PastDay_ShowsThatDaysLessonAndProgressAndStaysEditable()
+    {
+        await using var t = await TestDatabase.CreateAsync();
+        await t.Activity.RecordAttemptsAsync([new AttemptDto(StudyModule.Hangul, ExerciseTypes.LetterToSound, "letter:ㄱ", true, 900)], Ct);
+        t.Time.Advance(TimeSpan.FromDays(2));
+
+        var dayOne = await t.Today.GetDayAsync(new DateOnly(2026, 10, 13), Ct);
+
+        dayOne.DayNumber.Should().Be(1);
+        dayOne.IsToday.Should().BeFalse();
+        dayOne.CanEdit.Should().BeTrue();
+        dayOne.Lesson!.Day.Should().Be(1);
+        dayOne.Tasks.Single(x => x.Key == ExerciseTypes.LetterToSound).Progress.Should().Be(1);
+        dayOne.StudiedToday.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task GetDay_FutureDay_IsReadOnlyPreview()
+    {
+        await using var t = await TestDatabase.CreateAsync();
+
+        var dayFive = await t.Today.GetDayAsync(new DateOnly(2026, 10, 17), Ct);
+
+        dayFive.DayNumber.Should().Be(5);
+        dayFive.IsFuture.Should().BeTrue();
+        dayFive.CanEdit.Should().BeFalse();
+        dayFive.Tasks.Should().OnlyContain(x => !x.IsDone);
+        dayFive.Lesson!.Title.Should().Contain("이에요");
+    }
+
+    [Fact]
+    public async Task GetDay_PastDayWithoutReviews_DoesNotCountReviewTaskAsDone()
+    {
+        await using var t = await TestDatabase.CreateAsync();
+        await t.SetPlanDayAsync(6);
+
+        var yesterday = await t.Today.GetDayAsync(new DateOnly(2026, 10, 12), Ct);
+
+        yesterday.Tasks.Single(x => x.Key == "vocab-due").IsDone.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task GetDay_OutsideThePlan_ThrowsValidation()
+    {
+        await using var t = await TestDatabase.CreateAsync();
+
+        var act = () => t.Today.GetDayAsync(new DateOnly(2025, 1, 1), Ct);
+
+        await act.Should().ThrowAsync<ValidationFailedException>();
+    }
+
+    [Fact]
     public async Task GetPlan_ListsStagesAndLessons()
     {
         await using var t = await TestDatabase.CreateAsync();

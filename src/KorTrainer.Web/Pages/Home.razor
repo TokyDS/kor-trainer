@@ -1,5 +1,6 @@
 @page "/"
 @inject ApiClient Api
+@inject NavigationManager Navigation
 
 <PageTitle>Сегодня — KorTrainer</PageTitle>
 
@@ -7,7 +8,19 @@
 
 @if (_today is { } today)
 {
-    <header class="today-hero">
+    <nav class="day-nav" aria-label="Дни плана">
+        <a class="btn small" href="@DayHref(today.Date.AddDays(-1), today.Today)" aria-label="Предыдущий день">←</a>
+        <span class="day-nav-label">
+            @(today.IsToday ? "Сегодня" : today.IsFuture ? "Впереди — только просмотр" : today.CanEdit ? "Прошедший день" : "Прошедший день — только просмотр")
+        </span>
+        <a class="btn small" href="@DayHref(today.Date.AddDays(1), today.Today)" aria-label="Следующий день">→</a>
+        @if (!today.IsToday)
+        {
+            <a class="btn small primary" href="/">К сегодня</a>
+        }
+    </nav>
+
+    <header class="today-hero @(today.IsToday ? string.Empty : "other-day")">
         <div>
             <p class="eyebrow">@today.Stage.Title</p>
             <h1>
@@ -43,7 +56,7 @@
                 {
                     <li class="task @(task.IsDone ? "done" : string.Empty)">
                         <button type="button" class="check" role="checkbox" aria-checked="@task.IsDone.ToString().ToLowerInvariant()"
-                                aria-label="Отметить вручную" disabled="@_saving" @onclick="() => ToggleAsync(task)">
+                                aria-label="Отметить вручную" disabled="@(_saving || !today.CanEdit)" @onclick="() => ToggleAsync(task)">
                             @(task.IsDone ? "✓" : string.Empty)
                         </button>
                         <div class="task-body">
@@ -113,14 +126,23 @@
     private string? _saveError;
     private bool _saving;
 
-    protected override Task OnInitializedAsync() => LoadAsync();
+    [SupplyParameterFromQuery(Name = "date")]
+    public string? DateParameter { get; set; }
+
+    private DateOnly? RequestedDate => DateOnly.TryParseExact(DateParameter, "yyyy-MM-dd", out var d) ? d : null;
+
+    // The page is reused when only ?date= changes, so reload on every parameter change.
+    protected override Task OnParametersSetAsync() => LoadAsync();
+
+    private static string DayHref(DateOnly date, DateOnly today) =>
+        date == today ? "/" : $"/?date={date:yyyy-MM-dd}";
 
     private async Task LoadAsync()
     {
         _error = null;
         try
         {
-            _today = await Api.GetTodayAsync();
+            _today = await Api.GetTodayAsync(RequestedDate);
         }
         catch (Exception ex) when (ex is ApiException or HttpRequestException)
         {
@@ -140,7 +162,7 @@
         try
         {
             await Api.SetTaskDoneAsync(task.Key, _today.Date, !task.IsDone);
-            _today = await Api.GetTodayAsync();
+            _today = await Api.GetTodayAsync(RequestedDate);
         }
         catch (Exception ex) when (ex is ApiException or HttpRequestException)
         {

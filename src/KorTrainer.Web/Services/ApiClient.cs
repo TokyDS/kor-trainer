@@ -21,7 +21,8 @@ public sealed class ApiClient(HttpClient http)
 
     public Task<SettingsDto> SaveSettingsAsync(SettingsDto settings) => SendAsync<SettingsDto>(HttpMethod.Put, "api/settings", settings);
 
-    public Task<TodayDto> GetTodayAsync() => GetAsync<TodayDto>("api/today");
+    public Task<TodayDto> GetTodayAsync(DateOnly? date = null) =>
+        GetAsync<TodayDto>(date is { } d ? $"api/today?date={d:yyyy-MM-dd}" : "api/today");
 
     public Task<PlanDto> GetPlanAsync() => GetAsync<PlanDto>("api/plan");
 
