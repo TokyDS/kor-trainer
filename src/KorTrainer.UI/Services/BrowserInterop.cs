@@ -97,6 +97,12 @@ public sealed class BrowserInterop(IJSRuntime js) : IAsyncDisposable
         return await module.InvokeAsync<T>(function, args);
     }
 
+    public async ValueTask InvokeVoidAsync(string function, params object?[] args)
+    {
+        var module = await GetModuleAsync();
+        await module.InvokeVoidAsync(function, args);
+    }
+
     public async ValueTask BlurActiveAsync()
     {
         var module = await GetModuleAsync();

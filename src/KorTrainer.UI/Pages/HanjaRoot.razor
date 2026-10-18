@@ -24,7 +24,7 @@
         {
             <li class="@(word.Studied ? "studied" : "upcoming")">
                 <HangulText Text="@word.Korean" />
-                <SpeakButton Text="@word.Korean" />
+                <SpeakButton Text="@word.Korean" ShowKeyHint="false" />
                 <span class="muted" lang="zh">@word.Hanja</span>
                 <span>@word.Russian</span>
                 @if (!word.Studied)

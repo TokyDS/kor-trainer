@@ -904,3 +904,35 @@ input[type="range"] { accent-color: var(--accent); }
 .diff { font-size: 1.3rem; margin: 0 0 var(--space-1); line-height: 1.6; word-break: keep-all; }
 mark.diff-missing { background: var(--danger-soft); color: var(--danger); border-radius: 4px; padding: 0 2px; text-decoration: underline wavy; }
 del.diff-extra { color: var(--ink-faint); }
+
+/* ---------- Keyboard trainer ---------- */
+
+.typing-card { display: grid; gap: var(--space-3); }
+.typing-target { font-size: clamp(1.6rem, 1.2rem + 2vw, 2.4rem); margin: 0; letter-spacing: 0.04em; }
+.typing-input { font-size: 1.5rem; padding: var(--space-2) var(--space-3); border-radius: var(--radius-md); border: 2px solid var(--rule); background: var(--paper-raised); color: var(--ink); width: 100%; box-sizing: border-box; }
+.typing-input:focus { outline: none; border-color: var(--accent); }
+.typing-input.typo { border-color: var(--danger); background: var(--danger-soft); }
+.typing-stats { margin: 0; }
+.korean-keyboard { display: grid; gap: 6px; margin: var(--space-4) auto 0; max-width: 640px; user-select: none; }
+.kb-row { display: flex; gap: 6px; justify-content: center; }
+.kb-row:nth-child(2) { padding-left: 18px; }
+.kb-row:nth-child(3) { padding-left: 42px; }
+.kb-key {
+    position: relative; flex: 0 1 52px; min-width: 0; aspect-ratio: 1; display: grid; place-items: center;
+    border-radius: 8px; background: var(--paper-raised); border: 1px solid var(--rule); font-size: 1.15rem;
+    box-shadow: 0 2px 0 var(--rule);
+}
+.kb-key.vowel { background: var(--paper-sunken); }
+.kb-key small { position: absolute; top: 2px; right: 5px; font-size: 0.65rem; color: var(--ink-faint); }
+.kb-key .kb-latin { top: auto; bottom: 2px; left: 5px; right: auto; }
+.kb-key.next { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); transform: translateY(-2px); }
+.kb-key.next small { color: var(--accent-ink); }
+.kb-key.wide { flex-basis: 110px; aspect-ratio: auto; height: 44px; font-size: 0.85rem; }
+.kb-key.space { flex-basis: 260px; aspect-ratio: auto; height: 44px; font-size: 0.85rem; }
+@media (max-width: 520px) {
+    .kb-row { gap: 3px; }
+    .kb-row:nth-child(2) { padding-left: 10px; }
+    .kb-row:nth-child(3) { padding-left: 24px; }
+    .kb-key { font-size: 0.95rem; border-radius: 6px; }
+    .kb-key .kb-latin { display: none; }
+}

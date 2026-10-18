@@ -78,13 +78,13 @@ public sealed class HanjaAndWordDetailsTests
     }
 
     [Fact]
-    public async Task Exercises_BeforeAnyWords_ExplainWhy()
+    public async Task Exercises_BeforeAnyWords_UseTheMostFrequentWords()
     {
         await using var t = await TestDatabase.CreateAsync();
 
-        var act = () => t.Hanja.GetExercisesAsync(ExerciseTypes.HanjaRoot, 10, Ct);
+        var set = await t.Hanja.GetExercisesAsync(ExerciseTypes.HanjaRoot, 10, Ct);
 
-        (await act.Should().ThrowAsync<ValidationFailedException>()).Which.Errors["type"][0].Should().StartWith("Пока мало слов");
+        set.Items.Should().HaveCount(10);
     }
 
     [Fact]

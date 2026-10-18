@@ -1,0 +1,38 @@
+@* The 두벌식 layout; highlights the key (and Shift) for the next jamo. *@
+@using KorTrainer.Domain.Typing
+
+<div class="korean-keyboard" aria-hidden="true">
+    @foreach (var row in Dubeolsik.Rows)
+    {
+        <div class="kb-row">
+            @foreach (var key in row)
+            {
+                bool next = _next is { } n && n.Code == key.Code;
+                <span class="kb-key @(next ? "next" : string.Empty) @(IsVowel(key.Jamo) ? "vowel" : string.Empty)">
+                    <span lang="ko">@(next && _next!.Shift && key.Shifted is { } s ? s : key.Jamo)</span>
+                    @if (key.Shifted is { } shifted && !(next && _next!.Shift))
+                    {
+                        <small lang="ko">@shifted</small>
+                    }
+                    <small class="kb-latin">@key.Code[3..]</small>
+                </span>
+            }
+        </div>
+    }
+    <div class="kb-row">
+        <span class="kb-key wide @(_next is { Shift: true } ? "next" : string.Empty)">Shift</span>
+        <span class="kb-key space @(NextJamo == ' ' ? "next" : string.Empty)">пробел</span>
+    </div>
+</div>
+
+@code {
+    private DubeolsikKey? _next;
+
+    /// <summary>The jamo to type next; null hides the hint.</summary>
+    [Parameter]
+    public char? NextJamo { get; set; }
+
+    protected override void OnParametersSet() => _next = NextJamo is { } j ? Dubeolsik.KeyFor(j) : null;
+
+    private static bool IsVowel(char jamo) => KorTrainer.Domain.Hangul.HangulAlphabet.IsMedial(jamo);
+}

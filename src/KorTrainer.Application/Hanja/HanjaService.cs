@@ -18,6 +18,9 @@ public sealed class HanjaService(IAppDbContext db, IHanjaGlossary glossary, Plan
     /// <summary>Below this many studied words with hanja the drills also use words the plan has unlocked.</summary>
     private const int MinStudiedWords = 12;
 
+    /// <summary>Frequent words added for learners who have hardly any Sino-Korean words yet.</summary>
+    private const int StarterWords = 80;
+
     private static readonly Dictionary<string, string> Titles = new()
     {
         [ExerciseTypes.HanjaRoot] = "Ханча: общий корень",
@@ -68,6 +71,11 @@ public sealed class HanjaService(IAppDbContext db, IHanjaGlossary glossary, Plan
         var pool = studied.Count >= MinStudiedWords
             ? studied
             : words.Where(w => w.Studied || unlock.IsUnlocked(w.Stage, w.LessonDay)).Select(w => w.Word).ToList();
+        if (pool.Count < MinStudiedWords)
+        {
+            // A beginner gets the most frequent Sino-Korean words, so the drill is never locked.
+            pool = [.. pool.Concat(words.Select(w => w.Word).OrderBy(w => w.Rank).Take(StarterWords)).DistinctBy(w => w.Key)];
+        }
 
         var items = new HanjaExerciseGenerator(random).Generate(type, count, pool, glossary.Glosses);
         if (items.Count == 0)

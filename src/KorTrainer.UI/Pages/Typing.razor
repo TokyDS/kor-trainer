@@ -1,0 +1,35 @@
+@page "/typing"
+@using KorTrainer.Domain.Typing
+
+<PageTitle>Набор текста — KorTrainer</PageTitle>
+
+<header class="page-header">
+    <h1>Набор на корейском</h1>
+    <p class="muted">
+        Стандартная раскладка 두벌식: согласные под левой рукой, гласные — под правой. На компьютере ставить корейскую
+        раскладку не нужно — тренажёр сам собирает слоги из нажатий. На телефоне включите корейскую клавиатуру
+        (Gboard → Языки → Корейский → «두벌식») — у неё та же раскладка.
+    </p>
+</header>
+
+<div class="mode-grid">
+    @foreach (var lesson in TypingLessons.Lessons)
+    {
+        <a class="mode-card @(lesson.Number == 1 ? "feature" : string.Empty)" href="/typing/@lesson.Number">
+            <span class="mode-glyph" lang="ko">@lesson.NewJamo</span>
+            <strong>@lesson.Number. @lesson.Title</strong>
+        </a>
+    }
+    <a class="mode-card" href="/typing/@TypingLessons.WordsLevel">
+        <span class="mode-glyph" lang="ko">학교</span>
+        <strong>5. Ваши слова</strong>
+        <span class="muted">Слова, которые вы учите</span>
+    </a>
+    <a class="mode-card" href="/typing/@TypingLessons.SentencesLevel">
+        <span class="mode-glyph" lang="ko">가요.</span>
+        <strong>6. Предложения</strong>
+        <span class="muted">Целые фразы с пробелами</span>
+    </a>
+</div>
+
+<KoreanKeyboard />

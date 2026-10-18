@@ -147,6 +147,42 @@ export function speak(text, rate) {
     return true;
 }
 
+// --- Keyboard trainer (두벌식) -----------------------------------------------------
+
+const typingHandlers = new WeakMap();
+
+/**
+ * Sends physical letter keys and Backspace of a hardware keyboard to .NET, which composes Hangul itself,
+ * so no Korean layout has to be installed. Phone keyboards send no key codes (keyCode 229) and type into
+ * the input normally; .NET then reads the value from the input event.
+ * @param {HTMLInputElement} input
+ */
+export function attachTyping(input, dotnetRef) {
+    if (!input || typingHandlers.has(input)) return;
+    const handler = event => {
+        if (event.ctrlKey || event.metaKey || event.altKey || event.isComposing) return;
+        if (/^Key[A-Z]$/.test(event.code) || event.code === 'Backspace') {
+            event.preventDefault();
+            dotnetRef.invokeMethodAsync('OnTypingKey', event.code, event.shiftKey);
+        }
+    };
+    input.addEventListener('keydown', handler);
+    typingHandlers.set(input, handler);
+    input.focus();
+}
+
+export function detachTyping(input) {
+    const handler = input && typingHandlers.get(input);
+    if (handler) {
+        input.removeEventListener('keydown', handler);
+        typingHandlers.delete(input);
+    }
+}
+
+export function focusElement(element) {
+    element?.focus();
+}
+
 // --- Speech recognition (shadowing) ---------------------------------------------
 
 const RECOGNITION_TIMEOUT_MS = 12000;

@@ -1,0 +1,260 @@
+@page "/typing/{Level:int}"
+@using KorTrainer.Domain.Typing
+@inject IKorTrainerApi Api
+@inject BrowserInterop Browser
+@implements IAsyncDisposable
+
+<PageTitle>Набор текста — KorTrainer</PageTitle>
+
+<section class="drill typing-drill">
+    <header class="drill-head">
+        <a class="btn small" href="/typing">← Уровни</a>
+        <h1>@(_set?.Title ?? "Набор текста")</h1>
+        @if (_set is not null && _position < _set.Items.Count)
+        {
+            <span class="muted">@(_position + 1) / @_set.Items.Count</span>
+        }
+    </header>
+
+    <StatusViews IsLoading="_set is null && _error is null" Error="@_error" OnRetry="LoadAsync" />
+
+    @if (_set is { } set)
+    {
+        @if (Current is { } target)
+        {
+            var next = Dubeolsik.NextJamo(Clean(target), _text);
+            <div class="card typing-card">
+                <p class="typing-target" lang="ko">@target</p>
+                <input @ref="_input" class="typing-input @(next is null && !IsDone(target) ? "typo" : string.Empty)" type="text" lang="ko"
+                       autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Наберите текст"
+                       value="@_text" @oninput="OnNativeInput" />
+                @if (next is null && !IsDone(target))
+                {
+                    <p class="notice warning small">Опечатка — сотрите лишнее клавишей Backspace.</p>
+                }
+                <p class="typing-stats muted small">
+                    @Speed уд./мин · точность @Accuracy · Backspace — стереть одну букву
+                </p>
+            </div>
+            <KoreanKeyboard NextJamo="next" />
+        }
+        else
+        {
+            <div class="card drill-summary">
+                <h2>Готово!</h2>
+                <p>Скорость: @Speed ударов в минуту · точность @Accuracy.</p>
+                <p class="muted small">Для TOPIK II письма достаточно 100–150 ударов в минуту; носители печатают 300+.</p>
+                <div class="actions">
+                    <button type="button" class="btn primary" @onclick="LoadAsync">Ещё раз</button>
+                    @if (Level < TypingLessons.SentencesLevel)
+                    {
+                        <a class="btn" href="/typing/@(Level + 1)">Следующий уровень</a>
+                    }
+                </div>
+            </div>
+        }
+    }
+</section>
+
+@code {
+    private const int SetSize = 15;
+    private const int MaxCountedMs = 120_000;
+
+    private readonly HangulComposer _composer = new();
+    private readonly System.Diagnostics.Stopwatch _clock = new();
+    private readonly System.Diagnostics.Stopwatch _itemClock = new();
+    private DotNetObjectReference<TypingDrill>? _self;
+    private ElementReference _input;
+    private bool _attached;
+    private TypingSetDto? _set;
+    private string? _error;
+    private int _position;
+    private string _text = string.Empty;
+    private int _keystrokes;
+    private int _backspaces;
+    private int _itemBackspaces;
+    private DateTime _startedUtc;
+
+    [Parameter]
+    public int Level { get; set; }
+
+    private string? Current => _set is not null && _position < _set.Items.Count ? _set.Items[_position] : null;
+
+    private int Speed => _clock.Elapsed.TotalSeconds < 1 ? 0 : (int)(_keystrokes / _clock.Elapsed.TotalMinutes);
+
+    private string Accuracy => _keystrokes == 0 ? "—" : $"{Math.Max(0, 100 - (_backspaces * 100 / _keystrokes))}%";
+
+    protected override Task OnParametersSetAsync() => LoadAsync();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (Current is not null && !_attached)
+        {
+            _self ??= DotNetObjectReference.Create(this);
+            await Browser.InvokeVoidAsync("attachTyping", _input, _self);
+            _attached = true;
+        }
+    }
+
+    private async Task LoadAsync()
+    {
+        _error = null;
+        await SaveSessionAsync();
+        await DetachAsync();
+        _set = null;
+        try
+        {
+            _set = await Api.GetTypingSetAsync(Level, SetSize);
+            _position = 0;
+            _keystrokes = _backspaces = 0;
+            _clock.Reset();
+            ResetItem();
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    [JSInvokable]
+    public async Task OnTypingKey(string code, bool shift)
+    {
+        Start();
+        if (code == "Backspace")
+        {
+            _composer.Backspace();
+            _backspaces++;
+            _itemBackspaces++;
+        }
+        else if (Dubeolsik.JamoFor(code, shift) is { } jamo)
+        {
+            _composer.Type(jamo);
+            _keystrokes++;
+        }
+
+        _text = _composer.Text;
+        await CheckAsync();
+        StateHasChanged();
+    }
+
+    // Phone keyboards (and spaces/punctuation) type into the input directly.
+    private async Task OnNativeInput(ChangeEventArgs e)
+    {
+        Start();
+        string value = e.Value?.ToString() ?? string.Empty;
+        if (value.Length < _text.Length)
+        {
+            _backspaces++;
+            _itemBackspaces++;
+        }
+        else
+        {
+            _keystrokes += value.Length - _text.Length;
+        }
+
+        _text = value;
+        _composer.Reset(value);
+        await CheckAsync();
+    }
+
+    private async Task CheckAsync()
+    {
+        if (Current is not { } target || !IsDone(target))
+        {
+            return;
+        }
+
+        try
+        {
+            int ms = (int)Math.Min(_itemClock.ElapsedMilliseconds, MaxCountedMs);
+            await Api.RecordAttemptsAsync([new AttemptDto(StudyModule.Typing, ExerciseTypes.Typing, $"typing:{Level}", _itemBackspaces == 0, ms)]);
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException)
+        {
+            // Typing statistics are optional; keep going.
+        }
+
+        _position++;
+        ResetItem();
+        if (Current is null)
+        {
+            _clock.Stop();
+            await SaveSessionAsync();
+            await DetachAsync();
+        }
+        else
+        {
+            await Browser.InvokeVoidAsync("focusElement", _input);
+        }
+    }
+
+    private bool IsDone(string target) => Clean(_text) == Clean(target);
+
+    /// <summary>Punctuation is not graded and spaces are normalized.</summary>
+    private static string Clean(string text) =>
+        string.Join(' ', new string(text.Where(c => !char.IsPunctuation(c)).ToArray()).Split(' ', StringSplitOptions.RemoveEmptyEntries));
+
+    private void Start()
+    {
+        if (!_clock.IsRunning)
+        {
+            _clock.Start();
+            _startedUtc = DateTime.UtcNow;
+        }
+    }
+
+    private void ResetItem()
+    {
+        _text = string.Empty;
+        _composer.Reset();
+        _itemBackspaces = 0;
+        _itemClock.Restart();
+    }
+
+    private async Task DetachAsync()
+    {
+        if (_attached)
+        {
+            _attached = false;
+            try
+            {
+                await Browser.InvokeVoidAsync("detachTyping", _input);
+            }
+            catch (JSDisconnectedException)
+            {
+                // The page is closing.
+            }
+        }
+    }
+
+    private async Task SaveSessionAsync()
+    {
+        if (_startedUtc == default)
+        {
+            return;
+        }
+
+        int seconds = (int)(DateTime.UtcNow - _startedUtc).TotalSeconds;
+        _startedUtc = default;
+        if (seconds < 5)
+        {
+            return;
+        }
+
+        try
+        {
+            await Api.RecordSessionAsync(new SessionDto(StudyModule.Typing, DateTime.UtcNow.AddSeconds(-seconds), Math.Min(seconds, 3600)));
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException)
+        {
+            // A lost session total only affects statistics.
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await SaveSessionAsync();
+        await DetachAsync();
+        _self?.Dispose();
+    }
+}
