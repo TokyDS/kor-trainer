@@ -22,6 +22,7 @@ public static class MauiProgram
         builder.Services.AddEmbeddedTrainer(FileSystem.AppDataDirectory, FileSystem.CacheDirectory);
         builder.Services.AddScoped<BrowserInterop>();
         builder.Services.AddScoped<ISpeechOutput, AndroidSpeechOutput>();
+        builder.Services.AddSingleton<ISpeechInput, AndroidSpeechInput>();
         builder.Services.AddSingleton<IBackupExporter, ShareBackupExporter>();
         builder.Services.AddScoped<AppState>();
         builder.Services.AddSingleton<StudyReminders>();

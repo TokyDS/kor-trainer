@@ -12,6 +12,7 @@ builder.Services.AddScoped(_ => new HttpClient { BaseAddress = new Uri(builder.H
 builder.Services.AddScoped<IKorTrainerApi, HttpKorTrainerApi>();
 builder.Services.AddScoped<BrowserInterop>();
 builder.Services.AddScoped<ISpeechOutput, BrowserSpeechOutput>();
+builder.Services.AddScoped<ISpeechInput, BrowserSpeechInput>();
 builder.Services.AddScoped<IBackupExporter, WebBackupExporter>();
 builder.Services.AddScoped<AppState>();
 

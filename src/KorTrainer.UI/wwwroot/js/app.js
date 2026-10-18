@@ -147,6 +147,61 @@ export function speak(text, rate) {
     return true;
 }
 
+// --- Speech recognition (shadowing) ---------------------------------------------
+
+const RECOGNITION_TIMEOUT_MS = 12000;
+
+function recognitionClass() {
+    return window.SpeechRecognition || window.webkitSpeechRecognition || null;
+}
+
+export function speechRecognitionAvailable() {
+    return recognitionClass() !== null;
+}
+
+const recognitionErrors = {
+    'not-allowed': 'Нет доступа к микрофону — разрешите его в настройках браузера.',
+    'service-not-allowed': 'Распознавание речи запрещено в этом браузере.',
+    'no-speech': 'Не услышал речь — попробуйте ещё раз, ближе к микрофону.',
+    'audio-capture': 'Микрофон не найден.',
+    'network': 'Для распознавания нужен интернет.',
+    'language-not-supported': 'Корейский язык распознавания не поддерживается.',
+};
+
+/**
+ * Listens for one Korean utterance.
+ * @returns {Promise<{text: string|null, error: string|null}>}
+ */
+export function recognizeKorean() {
+    const Recognition = recognitionClass();
+    if (!Recognition) {
+        return Promise.resolve({ text: null, error: 'Браузер не умеет распознавать речь — откройте тренажёр в Chrome.' });
+    }
+    stopRecording();
+    if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+    }
+    return new Promise(resolve => {
+        const recognition = new Recognition();
+        recognition.lang = 'ko-KR';
+        recognition.interimResults = false;
+        recognition.maxAlternatives = 1;
+        let settled = false;
+        const finish = value => {
+            if (!settled) {
+                settled = true;
+                clearTimeout(timer);
+                resolve(value);
+            }
+        };
+        const timer = setTimeout(() => { recognition.abort(); finish({ text: null, error: recognitionErrors['no-speech'] }); }, RECOGNITION_TIMEOUT_MS);
+        recognition.onresult = event => finish({ text: event.results[0][0].transcript, error: null });
+        recognition.onerror = event => finish({ text: null, error: recognitionErrors[event.error] ?? `Ошибка распознавания: ${event.error}` });
+        recognition.onend = () => finish({ text: null, error: recognitionErrors['no-speech'] });
+        recognition.start();
+    });
+}
+
 function platformName() {
     const ua = navigator.userAgent || '';
     if (/android/i.test(ua)) return 'android';

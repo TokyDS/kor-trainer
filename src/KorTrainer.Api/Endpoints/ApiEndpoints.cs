@@ -1,3 +1,4 @@
+using KorTrainer.Application.Sentences;
 using KorTrainer.Application.Hanja;
 using System.Text.Json;
 using KorTrainer.Application.Activity;
@@ -52,6 +53,8 @@ public static class ApiEndpoints
         });
         words.MapGet("/hard", (WordDetailsService service, CancellationToken ct) => service.GetHardWordsAsync(ct));
         words.MapGet("/hard/exercises/{type}", (string type, int? count, WordDetailsService service, CancellationToken ct) => service.GetHardExercisesAsync(type, count ?? 20, ct));
+        api.MapGroup("/sentences").WithTags("Sentences")
+            .MapGet("/{type}", (string type, int? count, SentenceService service, CancellationToken ct) => service.GetPracticeAsync(type, count ?? 10, ct));
         MapTopik(api.MapGroup("/topik").WithTags("TOPIK"));
         MapStats(api.MapGroup("/stats").WithTags("Statistics"));
         MapActivity(api.MapGroup(string.Empty).WithTags("Activity"));

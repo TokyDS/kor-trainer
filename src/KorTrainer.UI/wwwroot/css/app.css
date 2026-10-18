@@ -891,3 +891,16 @@ input[type="range"] { accent-color: var(--accent); }
 .hard-list { list-style: none; padding: 0; display: grid; gap: var(--space-3); margin-top: var(--space-4); }
 .hard-head { all: unset; cursor: pointer; display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-3); align-items: baseline; width: 100%; }
 .hard-head:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+
+/* ---------- Dictation and shadowing ---------- */
+
+.sentence-card { display: grid; gap: var(--space-3); }
+.play-row { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+.sentence-ko { font-size: clamp(1.3rem, 1.1rem + 1vw, 1.8rem); margin: 0; line-height: 1.5; }
+.sentence-ru { margin: 0; color: var(--ink-soft); }
+.diff-result { border-radius: var(--radius-md); padding: var(--space-3); border-left: 4px solid var(--warn); background: var(--warn-soft); }
+.diff-result.passed { border-left-color: var(--celadon); background: var(--celadon-soft); }
+.diff-result .verdict { font-weight: 700; margin: 0 0 var(--space-2); }
+.diff { font-size: 1.3rem; margin: 0 0 var(--space-1); line-height: 1.6; word-break: keep-all; }
+mark.diff-missing { background: var(--danger-soft); color: var(--danger); border-radius: 4px; padding: 0 2px; text-decoration: underline wavy; }
+del.diff-extra { color: var(--ink-faint); }

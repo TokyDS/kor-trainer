@@ -96,5 +96,7 @@ public interface IKorTrainerApi
 
     Task<ExerciseSetDto> GetHardExercisesAsync(string type, int count);
 
+    Task<SentenceSetDto> GetSentencePracticeAsync(string type, int count);
+
     Task<ImportResultDto> ImportProgressAsync(Stream json, CancellationToken cancellationToken);
 }

@@ -7,10 +7,15 @@
 	<!-- Evening study reminders, re-armed after a reboot. -->
 	<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 	<uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+	<!-- Shadowing: the learner repeats a sentence and the speech recognizer checks it. -->
+	<uses-permission android:name="android.permission.RECORD_AUDIO" />
 	<queries>
-		<!-- Android 11+ only lets apps see text-to-speech engines they declare. -->
+		<!-- Android 11+ only lets apps see text-to-speech engines and recognizers they declare. -->
 		<intent>
 			<action android:name="android.intent.action.TTS_SERVICE" />
+		</intent>
+		<intent>
+			<action android:name="android.speech.RecognitionService" />
 		</intent>
 	</queries>
 </manifest>

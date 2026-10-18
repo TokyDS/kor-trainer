@@ -124,6 +124,9 @@ public sealed class HttpKorTrainerApi(HttpClient http) : IKorTrainerApi
     public Task<ExerciseSetDto> GetHardExercisesAsync(string type, int count) =>
         GetAsync<ExerciseSetDto>($"api/vocab/hard/exercises/{Uri.EscapeDataString(type)}?count={count}");
 
+    public Task<SentenceSetDto> GetSentencePracticeAsync(string type, int count) =>
+        GetAsync<SentenceSetDto>($"api/sentences/{Uri.EscapeDataString(type)}?count={count}");
+
     public async Task<ImportResultDto> ImportProgressAsync(Stream json, CancellationToken cancellationToken)
     {
         using var content = new StreamContent(json);

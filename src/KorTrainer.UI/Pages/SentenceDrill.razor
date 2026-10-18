@@ -1,0 +1,319 @@
+@page "/listening/dictation"
+@page "/listening/shadowing"
+@using KorTrainer.Domain.Hangul
+@inject IKorTrainerApi Api
+@inject AppState State
+@inject ISpeechInput SpeechInput
+@inject NavigationManager Navigation
+@implements IAsyncDisposable
+
+<PageTitle>@(IsDictation ? "Диктант" : "Повторение вслух") — KorTrainer</PageTitle>
+
+<section class="drill sentence-drill">
+    <header class="drill-head">
+        <a class="btn small" href="/listening">← Аудирование</a>
+        <h1>@(IsDictation ? "Диктант" : "Повторение вслух")</h1>
+        @if (_set is not null && _position < _set.Items.Count)
+        {
+            <span class="muted">@(_position + 1) / @_set.Items.Count</span>
+        }
+    </header>
+
+    <StatusViews IsLoading="_set is null && _error is null" Error="@_error" OnRetry="LoadAsync" />
+
+    @if (_set is { } set)
+    {
+        @if (!set.FromStudiedWords && _position == 0 && _comparison is null)
+        {
+            <p class="notice small">Ваших выученных слов пока маловато — часть предложений из слов, которые ещё впереди.</p>
+        }
+
+        @if (!IsDictation && _recognitionAvailable == false)
+        {
+            <div class="notice warning">
+                <strong>Распознавание речи недоступно.</strong>
+                <p>Откройте тренажёр в Chrome (на телефоне — в приложении KorTrainer). Можно повторять и без проверки: слушайте и проговаривайте вслух.</p>
+            </div>
+        }
+
+        @if (Current is { } item)
+        {
+            <div class="card sentence-card">
+                <div class="play-row">
+                    <button type="button" class="btn primary" @onclick="() => PlayAsync(false)">▶ Слушать</button>
+                    <button type="button" class="btn" @onclick="() => PlayAsync(true)">🐢 Медленно</button>
+                </div>
+
+                @if (!IsDictation || _comparison is not null)
+                {
+                    <p class="sentence-ko" lang="ko">@item.Korean</p>
+                    <p class="sentence-ru">@item.Russian@(item.MachineTranslated ? " *" : string.Empty)</p>
+                }
+
+                @if (IsDictation && _comparison is null)
+                {
+                    <form class="answer-form" @onsubmit="CheckDictation">
+                        <input @ref="_input" type="text" lang="ko" autocomplete="off" autocapitalize="off" spellcheck="false"
+                               placeholder="Запишите услышанное по-корейски" aria-label="Ответ" @bind="_answer" @bind:event="oninput" />
+                        <button type="submit" class="btn primary">Проверить</button>
+                    </form>
+                    <p class="keys-hint">Пробелы и знаки препинания не проверяются. <kbd>Enter</kbd> — проверить.</p>
+                }
+
+                @if (!IsDictation && _comparison is null)
+                {
+                    <button type="button" class="btn primary wide" disabled="@(_listening || _recognitionAvailable == false)" @onclick="ListenAsync">
+                        @(_listening ? "🎙 Говорите…" : "🎙 Повторить вслух")
+                    </button>
+                    @if (_heardError is not null)
+                    {
+                        <p class="notice warning small">@_heardError</p>
+                    }
+                    <button type="button" class="link-button" @onclick="Next">Пропустить</button>
+                }
+
+                @if (_comparison is { } c)
+                {
+                    <div class="diff-result @(Passed(c) ? "passed" : "failed")">
+                        <p class="verdict">@(Passed(c) ? (c.IsExact ? "Точно!" : "Почти, засчитано") : "Есть ошибки") · @((int)Math.Round(c.Score * 100))%</p>
+                        @if (!IsDictation)
+                        {
+                            <p class="muted small">Распознано: <span lang="ko">@_heard</span></p>
+                        }
+                        <p class="diff" lang="ko">
+                            @foreach (var part in c.Parts)
+                            {
+                                @if (part.Kind == DiffKind.Match)
+                                {
+                                    <span>@part.Text</span>
+                                }
+                                else if (part.Kind == DiffKind.Missing)
+                                {
+                                    <mark class="diff-missing" title="Пропущено">@part.Text</mark>
+                                }
+                                else
+                                {
+                                    <del class="diff-extra" title="Лишнее">@part.Text</del>
+                                }
+                            }
+                        </p>
+                        <p class="muted tiny"><mark class="diff-missing">так</mark> — пропущено или услышано иначе, <del class="diff-extra">так</del> — лишнее.</p>
+                    </div>
+                    <div class="actions">
+                        @if (!IsDictation && !Passed(c))
+                        {
+                            <button type="button" class="btn" @onclick="Retry">Ещё раз</button>
+                        }
+                        <button type="button" class="btn primary" @onclick="Next">Дальше</button>
+                    </div>
+                }
+            </div>
+            <p class="muted tiny">Предложение: Tatoeba #@item.Id, автор @item.Author (CC BY 2.0 FR)@(item.MachineTranslated ? "; * машинный перевод" : string.Empty).</p>
+        }
+        else
+        {
+            <div class="card drill-summary">
+                <h2>Готово!</h2>
+                <p>Засчитано: @_passed из @set.Items.Count.</p>
+                <div class="actions">
+                    <button type="button" class="btn primary" @onclick="LoadAsync">Ещё 10 предложений</button>
+                    <a class="btn" href="/listening">К аудированию</a>
+                </div>
+            </div>
+        }
+    }
+</section>
+
+@code {
+    private const int SetSize = 10;
+    private const double ShadowingPassScore = 0.8;
+
+    private SentenceSetDto? _set;
+    private string? _error;
+    private int _position;
+    private string _answer = string.Empty;
+    private SentenceComparison? _comparison;
+    private string? _heard;
+    private string? _heardError;
+    private bool _listening;
+    private bool? _recognitionAvailable;
+    private bool _attemptRecorded;
+    private int _passed;
+    private ElementReference _input;
+    private DateTime _startedUtc;
+    private readonly System.Diagnostics.Stopwatch _itemTimer = new();
+    private bool _autoPlayPending;
+
+    private bool IsDictation => Navigation.Uri.Contains("/dictation", StringComparison.Ordinal);
+
+    private string Type => IsDictation ? ExerciseTypes.Dictation : ExerciseTypes.Shadowing;
+
+    private PracticeSentenceDto? Current => _set is not null && _position < _set.Items.Count ? _set.Items[_position] : null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await State.InitializeAsync();
+        if (!IsDictation)
+        {
+            _recognitionAvailable = await SpeechInput.IsAvailableAsync();
+        }
+
+        await LoadAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_autoPlayPending && Current is not null)
+        {
+            _autoPlayPending = false;
+            await PlayAsync(false);
+        }
+    }
+
+    private async Task LoadAsync()
+    {
+        _error = null;
+        _set = null;
+        try
+        {
+            await SaveSessionAsync();
+            _set = await Api.GetSentencePracticeAsync(Type, SetSize);
+            _position = 0;
+            _passed = 0;
+            _startedUtc = DateTime.UtcNow;
+            ResetItem();
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    private async Task PlayAsync(bool slow)
+    {
+        if (Current is { } item)
+        {
+            await State.SpeakAsync(item.Korean, slow);
+        }
+    }
+
+    private async Task CheckDictation()
+    {
+        if (Current is not { } item)
+        {
+            return;
+        }
+
+        _comparison = SentenceComparer.Compare(item.Korean, _answer);
+        await RecordAsync(item, Passed(_comparison));
+    }
+
+    private async Task ListenAsync()
+    {
+        if (Current is not { } item)
+        {
+            return;
+        }
+
+        _listening = true;
+        _heardError = null;
+        StateHasChanged();
+        var result = await SpeechInput.ListenAsync();
+        _listening = false;
+        if (result.Text is null)
+        {
+            _heardError = result.Error;
+            return;
+        }
+
+        _heard = result.Text;
+        _comparison = SentenceComparer.Compare(item.Korean, result.Text);
+        await RecordAsync(item, Passed(_comparison));
+    }
+
+    private bool Passed(SentenceComparison comparison) => IsDictation ? comparison.IsExact : comparison.Score >= ShadowingPassScore;
+
+    private async Task RecordAsync(PracticeSentenceDto item, bool correct)
+    {
+        if (correct)
+        {
+            _passed++;
+        }
+
+        // Only the first answer counts; retries are practice.
+        if (_attemptRecorded)
+        {
+            return;
+        }
+
+        _attemptRecorded = true;
+        try
+        {
+            int ms = (int)Math.Min(_itemTimer.ElapsedMilliseconds, 120_000);
+            await Api.RecordAttemptsAsync([new AttemptDto(StudyModule.Listening, Type, $"sentence:{item.Id}", correct, ms)]);
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException)
+        {
+            _heardError = $"Ответ не сохранился: {ex.Message}";
+        }
+    }
+
+    private void Retry()
+    {
+        if (_comparison is not null && Passed(_comparison))
+        {
+            _passed--;
+        }
+
+        _comparison = null;
+        _heard = null;
+        _heardError = null;
+    }
+
+    private void Next()
+    {
+        _position++;
+        ResetItem();
+        if (Current is null)
+        {
+            _ = SaveSessionAsync();
+        }
+    }
+
+    private void ResetItem()
+    {
+        _answer = string.Empty;
+        _comparison = null;
+        _heard = null;
+        _heardError = null;
+        _attemptRecorded = false;
+        _itemTimer.Restart();
+        _autoPlayPending = IsDictation;
+    }
+
+    private async Task SaveSessionAsync()
+    {
+        if (_set is null || _startedUtc == default)
+        {
+            return;
+        }
+
+        int seconds = (int)(DateTime.UtcNow - _startedUtc).TotalSeconds;
+        _startedUtc = default;
+        if (seconds < 5)
+        {
+            return;
+        }
+
+        try
+        {
+            await Api.RecordSessionAsync(new SessionDto(StudyModule.Listening, DateTime.UtcNow.AddSeconds(-seconds), Math.Min(seconds, 3600)));
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException)
+        {
+            // The session total is a statistic only; losing one is acceptable.
+        }
+    }
+
+    public async ValueTask DisposeAsync() => await SaveSessionAsync();
+}
