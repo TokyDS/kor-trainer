@@ -12,6 +12,7 @@
 // Words already present in the curated deck (Seed/words.json) are skipped; rows without a translation
 // are skipped too, so grade C can be added later just by translating it.
 
+using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -72,9 +73,15 @@ foreach (var grade in rows.GroupBy(r => r.Grade))
         {
             var (russian, irregularity) = translations[row.TranslationKey];
             var entry = new JsonArray(row.Word, russian, row.PartOfSpeech);
-            if (irregularity.Length > 0)
+            string? hanja = HanjaOf(row.Hanja);
+            if (irregularity.Length > 0 || hanja is not null)
             {
                 entry.Add(irregularity);
+            }
+
+            if (hanja is not null)
+            {
+                entry.Add(hanja);
             }
 
             entries.Add(entry);
@@ -107,6 +114,15 @@ Console.WriteLine($"{rows.Count} words in {sections.Count} sections → {output}
 foreach (var group in rows.GroupBy(r => r.Grade))
 {
     Console.WriteLine($"  grade {group.Key}: {group.Count()}");
+}
+
+// The NIKL hanja column holds either the spelling ("問題", "始作-" with '-' for the native part) or a
+// disambiguating gloss in Hangul ("방법"); only spellings are kept, normalized to unified ideographs.
+static string? HanjaOf(string column)
+{
+    string spelling = column.Split('.')[0].Trim().Normalize(NormalizationForm.FormKC);
+    bool valid = spelling.Any(c => c is >= '\u4E00' and <= '\u9FFF') && spelling.All(c => c is >= '\u4E00' and <= '\u9FFF' or '-');
+    return valid ? spelling : null;
 }
 
 internal sealed record NiklRow(string Key, string Word, string Pos, string Hanja, string Grade, int Rank)

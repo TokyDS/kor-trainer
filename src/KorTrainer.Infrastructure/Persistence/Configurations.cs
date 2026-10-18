@@ -20,6 +20,7 @@ internal sealed class WordConfiguration : IEntityTypeConfiguration<Word>
     {
         builder.HasKey(w => w.Id);
         builder.HasIndex(w => w.DeckKey).IsUnique();
+        builder.Property(w => w.Hanja).HasMaxLength(16);
         builder.HasIndex(w => new { w.Stage, w.LessonDay, w.Rank });
         builder.HasIndex(w => w.Topic);
         builder.Property(w => w.DeckKey).HasMaxLength(64);
@@ -81,6 +82,16 @@ internal sealed class StudySessionConfiguration : IEntityTypeConfiguration<Study
     {
         builder.HasKey(s => s.Id);
         builder.HasIndex(s => s.LocalDate);
+    }
+}
+
+internal sealed class WordNoteConfiguration : IEntityTypeConfiguration<WordNote>
+{
+    public void Configure(EntityTypeBuilder<WordNote> builder)
+    {
+        builder.HasKey(n => n.WordId);
+        builder.Property(n => n.Text).HasMaxLength(WordNoteLimits.MaxLength);
+        builder.HasOne(n => n.Word).WithMany().HasForeignKey(n => n.WordId).OnDelete(DeleteBehavior.Cascade);
     }
 }
 

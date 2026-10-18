@@ -1,3 +1,4 @@
+using KorTrainer.Application.Hanja;
 using System.Text.Json;
 using KorTrainer.Application.Activity;
 using KorTrainer.Application.Common;
@@ -104,6 +105,22 @@ public sealed class LocalKorTrainerApi(IServiceScopeFactory scopes, ILogger<Loca
     public Task RecordAttemptsAsync(IReadOnlyList<AttemptDto> attempts) => Run<ActivityService>((s, ct) => s.RecordAttemptsAsync(attempts, ct));
 
     public Task RecordSessionAsync(SessionDto session) => Run<ActivityService>((s, ct) => s.RecordSessionAsync(session, ct));
+
+    public Task<IReadOnlyList<HanjaRootDto>> GetHanjaRootsAsync() => Run<HanjaService, IReadOnlyList<HanjaRootDto>>((s, ct) => s.GetRootsAsync(ct));
+
+    public Task<HanjaRootDetailDto> GetHanjaRootAsync(string character) => Run<HanjaService, HanjaRootDetailDto>((s, ct) => s.GetRootAsync(character, ct));
+
+    public Task<ExerciseSetDto> GetHanjaExercisesAsync(string type, int count) =>
+        Run<HanjaService, ExerciseSetDto>((s, ct) => s.GetExercisesAsync(type, count, ct));
+
+    public Task<WordDetailsDto> GetWordDetailsAsync(int wordId) => Run<WordDetailsService, WordDetailsDto>((s, ct) => s.GetAsync(wordId, ct));
+
+    public Task SaveWordNoteAsync(int wordId, string? text) => Run<WordDetailsService>((s, ct) => s.SaveNoteAsync(wordId, new SaveNoteRequest(text), ct));
+
+    public Task<IReadOnlyList<HardWordDto>> GetHardWordsAsync() => Run<WordDetailsService, IReadOnlyList<HardWordDto>>((s, ct) => s.GetHardWordsAsync(ct));
+
+    public Task<ExerciseSetDto> GetHardExercisesAsync(string type, int count) =>
+        Run<WordDetailsService, ExerciseSetDto>((s, ct) => s.GetHardExercisesAsync(type, count, ct));
 
     public async Task<ImportResultDto> ImportProgressAsync(Stream json, CancellationToken cancellationToken)
     {

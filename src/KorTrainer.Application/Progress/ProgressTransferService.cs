@@ -32,6 +32,7 @@ public sealed class ProgressTransferService(IAppDbContext db, SettingsService se
         var reading = await db.ReadingTrials.AsNoTracking().OrderBy(r => r.Id).ToListAsync(cancellationToken);
         var sessions = await db.StudySessions.AsNoTracking().OrderBy(s => s.Id).ToListAsync(cancellationToken);
         var steps = await db.PlanSteps.AsNoTracking().OrderBy(s => s.StartedUtc).ToListAsync(cancellationToken);
+        var notes = await db.WordNotes.AsNoTracking().OrderBy(n => n.WordId).ToListAsync(cancellationToken);
         var ticks = await db.StepTaskCompletions.AsNoTracking().OrderBy(c => c.StepKey).ThenBy(c => c.TaskKey).ToListAsync(cancellationToken);
         var drafts = await db.WritingDrafts.AsNoTracking().OrderBy(d => d.Id).ToListAsync(cancellationToken);
 
@@ -50,7 +51,8 @@ public sealed class ProgressTransferService(IAppDbContext db, SettingsService se
             sessions.Select(s => new SessionExport(s.Module, s.StartedUtc, s.DurationSeconds, s.LocalDate)).ToList(),
             drafts.Select(d => new WritingDraftExport(d.TaskNumber, d.StartedUtc, d.DurationSeconds, d.Text, d.LocalDate)).ToList(),
             steps.Select(s => new PlanStepExport(s.StepKey, s.StartedUtc, s.CompletedUtc)).ToList(),
-            ticks.Select(c => new StepTaskCompletionExport(c.StepKey, c.TaskKey, c.CompletedUtc)).ToList());
+            ticks.Select(c => new StepTaskCompletionExport(c.StepKey, c.TaskKey, c.CompletedUtc)).ToList(),
+            WordNotes: notes.Where(n => keys.ContainsKey(n.WordId)).Select(n => new WordNoteExport(keys[n.WordId], n.Text, n.UpdatedUtc)).ToList());
     }
 
     /// <summary>
@@ -69,6 +71,7 @@ public sealed class ProgressTransferService(IAppDbContext db, SettingsService se
         await db.ExerciseAttempts.ExecuteDeleteAsync(cancellationToken);
         await db.ReadingTrials.ExecuteDeleteAsync(cancellationToken);
         await db.StudySessions.ExecuteDeleteAsync(cancellationToken);
+        await db.WordNotes.ExecuteDeleteAsync(cancellationToken);
         await db.PlanSteps.ExecuteDeleteAsync(cancellationToken);
         await db.StepTaskCompletions.ExecuteDeleteAsync(cancellationToken);
         await db.WritingDrafts.ExecuteDeleteAsync(cancellationToken);
@@ -136,6 +139,10 @@ public sealed class ProgressTransferService(IAppDbContext db, SettingsService se
         var steps = ImportSteps(snapshot);
         db.PlanSteps.AddRange(steps);
         db.StepTaskCompletions.AddRange(ImportTicks(snapshot));
+        db.WordNotes.AddRange((snapshot.WordNotes ?? [])
+            .Where(n => wordIds.ContainsKey(n.DeckKey))
+            .DistinctBy(n => n.DeckKey)
+            .Select(n => new WordNote { WordId = wordIds[n.DeckKey], Text = n.Text, UpdatedUtc = Utc(n.UpdatedUtc) }));
         db.WritingDrafts.AddRange(snapshot.WritingDrafts.Select(d => new WritingDraft
         {
             TaskNumber = d.TaskNumber,
@@ -246,6 +253,7 @@ public sealed class ProgressTransferService(IAppDbContext db, SettingsService se
             Enum.IsDefined(s.Module) && s.DurationSeconds is > 0 and <= MaxSessionSeconds);
         CheckSection(validator, snapshot.TaskCompletions, nameof(snapshot.TaskCompletions), c => IsKey(c.TaskKey));
         CheckSection(validator, snapshot.PlanSteps, nameof(snapshot.PlanSteps), s => IsKey(s.StepKey));
+        CheckSection(validator, snapshot.WordNotes, nameof(snapshot.WordNotes), n => IsKey(n.DeckKey) && n.Text is { Length: > 0 and <= WordNoteLimits.MaxLength });
         CheckSection(validator, snapshot.StepTaskCompletions, nameof(snapshot.StepTaskCompletions), c => IsKey(c.StepKey) && IsKey(c.TaskKey));
         CheckSection(validator, snapshot.WritingDrafts, nameof(snapshot.WritingDrafts), d =>
             d.TaskNumber is >= 51 and <= 54 && d.DurationSeconds is >= 0 and <= MaxSessionSeconds && d.Text is { Length: <= MaxDraftLength });

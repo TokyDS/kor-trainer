@@ -1,0 +1,100 @@
+# Sentences kept out of the app: learning examples should be neutral. One entry per line:
+#   a Tatoeba id (excludes that sentence), or
+#   ko:<fragment> / ru:<fragment> (excludes every sentence whose Korean / lower-cased Russian contains it).
+# Russian is checked on both human and machine translations.
+
+# Profanity and insults
+ko:씨발
+ko:시발
+ko:개새끼
+ko:새끼
+ko:좆
+ko:병신
+ko:지랄
+ko:닥쳐
+ko:꺼져
+ko:엿 먹
+ko:빌어먹
+ko:개년
+ko:년아
+ko:미친놈
+ko:미친년
+ru:хуй
+ru:хуе
+ru:хує
+ru:пизд
+ru:ебат
+ru:ёбан
+ru:ебан
+ru:еба
+ru:бляд
+ru:блять
+ru:сука
+ru:суки
+ru:мудак
+ru:мудил
+ru:говнюк
+ru:засранец
+ru:ублюд
+ru:сволоч
+ru:дерьм
+ru:заткнись
+ru:пошёл ты
+ru:пошел ты
+ru:идиот
+ru:дебил
+
+# Violence, suicide, drugs, sexual content
+ko:자살
+ko:죽이
+ko:죽여
+ko:죽일
+ko:살인
+ko:살해
+ko:마약
+ko:강간
+ko:섹스
+ko:성관계
+ru:самоуб
+ru:покончить с собой
+ru:покончил с собой
+ru:покончила с собой
+ru:убить
+ru:убью
+ru:убил
+ru:убийств
+ru:убийц
+ru:застрел
+ru:наркот
+ru:наркоман
+ru:изнасил
+ru:секс
+
+# Politics and hate
+ko:나치
+ko:테러
+ru:нацист
+ru:террорист
+ru:фашист
+
+# Slang and vulgar expressions found on review
+ko:씹
+ko:존나
+ko:졸라
+ko:조졌
+ko:애미
+ko:망해라
+ko:망할
+ru:трахн
+ru:охрен
+ru:хрен
+ru:гад!
+ru:мамаш
+
+# Excluded on review: insults, self-hatred
+500829
+3681015
+6305063
+6305164
+6305166
+8363308

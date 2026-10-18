@@ -1,5 +1,6 @@
 using KorTrainer.Application.Common;
 using KorTrainer.Infrastructure.Audio;
+using KorTrainer.Infrastructure.Content;
 using KorTrainer.Infrastructure.Persistence;
 using Microsoft.Extensions.Options;
 using Microsoft.Data.Sqlite;
@@ -23,6 +24,8 @@ public static class DependencyInjection
         services.AddScoped<IAppDbContext>(sp => sp.GetRequiredService<AppDbContext>());
         services.AddScoped<DatabaseInitializer>();
         AddAudio(services);
+        services.AddSingleton<IHanjaGlossary, EmbeddedHanjaGlossary>();
+        services.AddSingleton<ISentenceLibrary, EmbeddedSentenceLibrary>();
         return services;
     }
 

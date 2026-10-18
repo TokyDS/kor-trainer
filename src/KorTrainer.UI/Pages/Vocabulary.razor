@@ -20,7 +20,12 @@
             <div><dt>выучено (21+ дн)</dt><dd>@s.Mature</dd></div>
             <div><dt>всего в колоде</dt><dd>@s.Total</dd></div>
         </dl>
-        <a class="btn primary" href="/vocab/review">Начать повторение</a>
+        <div class="actions">
+            <a class="btn primary" href="/vocab/review">Начать повторение</a>
+            <a class="btn" href="/vocab/review?mode=reverse">RU → 한</a>
+            <a class="btn" href="/vocab/hard">Трудные слова</a>
+            <a class="btn" href="/hanja">Корни ханча</a>
+        </div>
         @if (s.Unlocked == 0)
         {
             <p class="muted">Слова откроются с урока 4, после трёх уроков хангыля.</p>

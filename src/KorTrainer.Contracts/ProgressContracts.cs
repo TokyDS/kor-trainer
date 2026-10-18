@@ -19,7 +19,8 @@ public sealed record ProgressExport(
     IReadOnlyList<WritingDraftExport> WritingDrafts,
     IReadOnlyList<PlanStepExport>? PlanSteps = null,
     IReadOnlyList<StepTaskCompletionExport>? StepTaskCompletions = null,
-    IReadOnlyList<TaskCompletionExport>? TaskCompletions = null)
+    IReadOnlyList<TaskCompletionExport>? TaskCompletions = null,
+    IReadOnlyList<WordNoteExport>? WordNotes = null)
 {
     /// <summary>2: self-paced plan steps instead of per-day task ticks.</summary>
     public const int CurrentSchemaVersion = 2;
@@ -65,6 +66,8 @@ public sealed record SessionExport(StudyModule Module, DateTime StartedUtc, int 
 
 /// <summary>A manual tick of the old calendar plan (schema version 1).</summary>
 public sealed record TaskCompletionExport(DateOnly Date, string TaskKey, DateTime CompletedUtc);
+
+public sealed record WordNoteExport(string DeckKey, string Text, DateTime UpdatedUtc);
 
 public sealed record PlanStepExport(string StepKey, DateTime StartedUtc, DateTime? CompletedUtc);
 

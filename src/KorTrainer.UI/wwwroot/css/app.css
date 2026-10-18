@@ -848,3 +848,46 @@ input[type="range"] { accent-color: var(--accent); }
 .grade.suggested { box-shadow: 0 0 0 3px var(--accent-soft); transform: translateY(-2px); }
 .segmented a { padding: var(--space-2) var(--space-4); border-radius: var(--radius-sm); color: var(--ink-soft); text-decoration: none; font: 600 0.9rem var(--font-ui); }
 .segmented a.active { background: var(--paper-raised); color: var(--ink); box-shadow: var(--shadow); }
+
+/* ---------- Word details: roots, examples, note ---------- */
+
+.word-details { display: grid; gap: var(--space-3); margin-top: var(--space-4); text-align: left; width: 100%; }
+.hard-badge { margin: 0; padding: var(--space-1) var(--space-3); border-radius: var(--radius-md); background: var(--warn-soft); font-size: 0.85rem; justify-self: start; }
+.roots { display: grid; gap: var(--space-1); }
+.root-chips { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.root-chip {
+    display: inline-flex; align-items: baseline; gap: 6px; padding: 4px 10px; border-radius: 999px;
+    border: 1px solid var(--rule); background: var(--paper-raised); color: var(--ink); text-decoration: none;
+}
+.root-chip:hover { border-color: var(--accent); }
+.root-char { font-size: 1.25rem; font-family: "Noto Serif CJK KR", "Noto Serif CJK SC", serif; color: var(--accent); }
+.root-gloss { font-size: 0.85rem; }
+.examples { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-2); }
+.examples li { display: grid; grid-template-columns: 1fr auto; gap: 2px var(--space-2); align-items: center; }
+.example-ko { font-size: 1.05rem; }
+.example-ru { grid-column: 1 / -1; color: var(--ink-soft); font-size: 0.9rem; }
+.note-form { display: flex; gap: var(--space-2); }
+.note-form input { flex: 1; min-width: 0; }
+.note-text { margin: 0; color: var(--ink-soft); }
+.tiny { font-size: 0.75rem; margin: 0; }
+
+/* ---------- Hanja ---------- */
+
+.root-grid { list-style: none; padding: 0; margin: var(--space-4) 0; display: grid; gap: var(--space-3); grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+.root-card { display: grid; gap: 2px; text-decoration: none; color: var(--ink); padding: var(--space-3); height: 100%; }
+.root-card:hover { border-color: var(--accent); }
+.root-big { font-size: 2.4rem; line-height: 1.1; font-family: "Noto Serif CJK KR", "Noto Serif CJK SC", serif; color: var(--accent); }
+.root-reading { color: var(--ink-soft); }
+.root-reading.big { font-size: 1.2rem; margin: 0; }
+.root-count { font-size: 0.8rem; color: var(--ink-faint); }
+.root-hero { display: flex; gap: var(--space-4); align-items: center; margin-top: var(--space-3); }
+.root-huge { font-size: 5rem; line-height: 1; font-family: "Noto Serif CJK KR", "Noto Serif CJK SC", serif; color: var(--accent); }
+.family-list { list-style: none; padding: 0; display: grid; gap: var(--space-2); }
+.family-list li { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-3); border-radius: var(--radius-md); background: var(--paper-raised); border: 1px solid var(--rule); }
+.family-list li.upcoming { opacity: 0.7; }
+
+/* ---------- Hard words ---------- */
+
+.hard-list { list-style: none; padding: 0; display: grid; gap: var(--space-3); margin-top: var(--space-4); }
+.hard-head { all: unset; cursor: pointer; display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-3); align-items: baseline; width: 100%; }
+.hard-head:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }

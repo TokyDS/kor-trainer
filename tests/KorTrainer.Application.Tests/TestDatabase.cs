@@ -2,6 +2,8 @@ using KorTrainer.Application.Activity;
 using KorTrainer.Application.Common;
 using KorTrainer.Application.Grammar;
 using KorTrainer.Application.Hangul;
+using KorTrainer.Application.Hanja;
+using KorTrainer.Infrastructure.Content;
 using KorTrainer.Application.Plan;
 using KorTrainer.Application.Progress;
 using KorTrainer.Application.Settings;
@@ -46,6 +48,8 @@ public sealed class TestDatabase : IAsyncDisposable
         Reminders = new ReminderService(Today, Settings);
         Hangul = new HangulService(db, Settings, Clock, new Random(42), Audio, Cursor);
         Grammar = new GrammarService(db, Cursor, new Random(42));
+        Hanja = new HanjaService(db, Glossary, Cursor, new Random(42));
+        WordDetails = new WordDetailsService(db, Glossary, Sentences, Clock, new Random(42));
         Topik = new TopikService(db, Settings, Clock);
         Stats = new StatsService(db, Settings, Vocabulary, Clock);
         Progress = new ProgressTransferService(db, Settings, Clock);
@@ -78,6 +82,15 @@ public sealed class TestDatabase : IAsyncDisposable
 
     public GrammarService Grammar { get; }
 
+    /// <summary>The bundled glosses and sentences, as in the app.</summary>
+    public static EmbeddedHanjaGlossary Glossary { get; } = new();
+
+    public static EmbeddedSentenceLibrary Sentences { get; } = new();
+
+    public HanjaService Hanja { get; }
+
+    public WordDetailsService WordDetails { get; }
+
     public TopikService Topik { get; }
 
     public StatsService Stats { get; }
@@ -101,6 +114,29 @@ public sealed class TestDatabase : IAsyncDisposable
         Db.PlanSteps.Add(new PlanStepProgress { StepKey = stepKey, StartedUtc = Clock.UtcNow });
         await Db.SaveChangesAsync();
         Db.ChangeTracker.Clear();
+    }
+
+    /// <summary>Marks deck words as studied (introduced into the SRS), optionally with lapses.</summary>
+    public async Task<List<Word>> StudyAsync(int lapses, params string[] korean)
+    {
+        var words = await Db.Words.Where(w => korean.Contains(w.Korean)).ToListAsync();
+        foreach (var word in words.DistinctBy(w => w.Korean))
+        {
+            Db.WordProgress.Add(new WordProgress
+            {
+                WordId = word.Id,
+                Phase = Domain.Srs.CardPhase.Review,
+                Ease = 2.5,
+                IntervalDays = 3,
+                Lapses = lapses,
+                DueUtc = Clock.UtcNow.AddDays(1),
+                IntroducedUtc = Clock.UtcNow,
+                LastReviewedUtc = Clock.UtcNow,
+            });
+        }
+
+        await Db.SaveChangesAsync();
+        return words;
     }
 
     public async Task<UserSettings> GetSettingsAsync() => await Settings.GetEntityAsync(CancellationToken.None);

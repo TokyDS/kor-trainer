@@ -234,6 +234,10 @@ namespace KorTrainer.Infrastructure.Persistence.Migrations
                         .HasMaxLength(64)
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("Hanja")
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT");
+
                     b.Property<int>("Irregularity")
                         .HasColumnType("INTEGER");
 
@@ -274,6 +278,24 @@ namespace KorTrainer.Infrastructure.Persistence.Migrations
                     b.HasIndex("Stage", "LessonDay", "Rank");
 
                     b.ToTable("Words");
+                });
+
+            modelBuilder.Entity("KorTrainer.Domain.Entities.WordNote", b =>
+                {
+                    b.Property<int>("WordId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("UpdatedUtc")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("WordId");
+
+                    b.ToTable("WordNotes");
                 });
 
             modelBuilder.Entity("KorTrainer.Domain.Entities.WordProgress", b =>
@@ -352,6 +374,17 @@ namespace KorTrainer.Infrastructure.Persistence.Migrations
                         .HasForeignKey("WordId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("KorTrainer.Domain.Entities.WordNote", b =>
+                {
+                    b.HasOne("KorTrainer.Domain.Entities.Word", "Word")
+                        .WithMany()
+                        .HasForeignKey("WordId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Word");
                 });
 
             modelBuilder.Entity("KorTrainer.Domain.Entities.WordProgress", b =>

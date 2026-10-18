@@ -1,3 +1,4 @@
+using KorTrainer.Application.Hanja;
 using System.Text.Json;
 using KorTrainer.Application.Activity;
 using KorTrainer.Application.Common;
@@ -38,6 +39,19 @@ public static class ApiEndpoints
         MapAudio(api.MapGroup("/audio").WithTags("Audio"));
         api.MapGroup("/listening").WithTags("Listening")
             .MapGet("/exercises/{type}", (string type, int? count, ListeningService service, CancellationToken ct) => service.GetExercisesAsync(type, count ?? 20, ct));
+        var hanja = api.MapGroup("/hanja").WithTags("Hanja");
+        hanja.MapGet("/roots", (HanjaService service, CancellationToken ct) => service.GetRootsAsync(ct));
+        hanja.MapGet("/roots/{character}", (string character, HanjaService service, CancellationToken ct) => service.GetRootAsync(character, ct));
+        hanja.MapGet("/exercises/{type}", (string type, int? count, HanjaService service, CancellationToken ct) => service.GetExercisesAsync(type, count ?? 20, ct));
+        var words = api.MapGroup("/vocab").WithTags("Vocabulary");
+        words.MapGet("/words/{id:int}/details", (int id, WordDetailsService service, CancellationToken ct) => service.GetAsync(id, ct));
+        words.MapPut("/words/{id:int}/note", async (int id, SaveNoteRequest request, WordDetailsService service, CancellationToken ct) =>
+        {
+            await service.SaveNoteAsync(id, request, ct);
+            return Results.NoContent();
+        });
+        words.MapGet("/hard", (WordDetailsService service, CancellationToken ct) => service.GetHardWordsAsync(ct));
+        words.MapGet("/hard/exercises/{type}", (string type, int? count, WordDetailsService service, CancellationToken ct) => service.GetHardExercisesAsync(type, count ?? 20, ct));
         MapTopik(api.MapGroup("/topik").WithTags("TOPIK"));
         MapStats(api.MapGroup("/stats").WithTags("Statistics"));
         MapActivity(api.MapGroup(string.Empty).WithTags("Activity"));

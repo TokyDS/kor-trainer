@@ -13,7 +13,8 @@ public sealed record DeckEntry(
     Irregularity Irregularity,
     PlanStage Stage,
     int? LessonDay,
-    int Rank);
+    int Rank,
+    string? Hanja = null);
 
 /// <summary>
 /// Reads the bundled vocabulary decks: the curated beginner deck first, then the frequency deck
@@ -68,9 +69,9 @@ public static class DeckLoader
             var stage = Enum.Parse<PlanStage>(section.Stage);
             foreach (var word in section.Words)
             {
-                if (word.Length is < 3 or > 4)
+                if (word.Length is < 3 or > 5)
                 {
-                    throw new InvalidDataException($"Deck entry [{string.Join(", ", word)}] must have 3 or 4 fields.");
+                    throw new InvalidDataException($"Deck entry [{string.Join(", ", word)}] must have 3 to 5 fields.");
                 }
 
                 string korean = word[0].Trim();
@@ -83,10 +84,11 @@ public static class DeckLoader
                     word[1].Trim(),
                     section.Topic,
                     ParsePartOfSpeech(word[2]),
-                    word.Length == 4 ? ParseIrregularity(word[3]) : Irregularity.None,
+                    word.Length >= 4 ? ParseIrregularity(word[3]) : Irregularity.None,
                     stage,
                     section.Day,
-                    entries.Count + 1));
+                    entries.Count + 1,
+                    word.Length == 5 && word[4].Trim().Length > 0 ? word[4].Trim() : null));
             }
         }
     }
@@ -98,6 +100,7 @@ public static class DeckLoader
 
     private static Irregularity ParseIrregularity(string value) => value switch
     {
+        "" => Irregularity.None,
         "b" => Irregularity.Bieup,
         "d" => Irregularity.Digeut,
         "reu" => Irregularity.Reu,

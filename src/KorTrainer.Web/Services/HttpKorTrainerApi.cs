@@ -108,6 +108,22 @@ public sealed class HttpKorTrainerApi(HttpClient http) : IKorTrainerApi
 
     public Task RecordSessionAsync(SessionDto session) => SendAsync(HttpMethod.Post, "api/sessions", session);
 
+    public Task<IReadOnlyList<HanjaRootDto>> GetHanjaRootsAsync() => GetAsync<IReadOnlyList<HanjaRootDto>>("api/hanja/roots");
+
+    public Task<HanjaRootDetailDto> GetHanjaRootAsync(string character) => GetAsync<HanjaRootDetailDto>($"api/hanja/roots/{Uri.EscapeDataString(character)}");
+
+    public Task<ExerciseSetDto> GetHanjaExercisesAsync(string type, int count) =>
+        GetAsync<ExerciseSetDto>($"api/hanja/exercises/{Uri.EscapeDataString(type)}?count={count}");
+
+    public Task<WordDetailsDto> GetWordDetailsAsync(int wordId) => GetAsync<WordDetailsDto>($"api/vocab/words/{wordId}/details");
+
+    public Task SaveWordNoteAsync(int wordId, string? text) => SendAsync(HttpMethod.Put, $"api/vocab/words/{wordId}/note", new SaveNoteRequest(text));
+
+    public Task<IReadOnlyList<HardWordDto>> GetHardWordsAsync() => GetAsync<IReadOnlyList<HardWordDto>>("api/vocab/hard");
+
+    public Task<ExerciseSetDto> GetHardExercisesAsync(string type, int count) =>
+        GetAsync<ExerciseSetDto>($"api/vocab/hard/exercises/{Uri.EscapeDataString(type)}?count={count}");
+
     public async Task<ImportResultDto> ImportProgressAsync(Stream json, CancellationToken cancellationToken)
     {
         using var content = new StreamContent(json);

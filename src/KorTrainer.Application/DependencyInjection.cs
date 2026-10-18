@@ -1,3 +1,4 @@
+using KorTrainer.Application.Hanja;
 using KorTrainer.Application.Activity;
 using KorTrainer.Application.Common;
 using KorTrainer.Application.Grammar;
@@ -40,6 +41,8 @@ public static class DependencyInjection
         services.AddScoped<PlanCursor>();
         services.AddScoped<TodayService>();
         services.AddScoped<ReminderService>();
+        services.AddScoped<HanjaService>();
+        services.AddScoped<WordDetailsService>();
         services.AddScoped<ProgressTransferService>();
         return services;
     }

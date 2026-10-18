@@ -1,0 +1,128 @@
+@* Memory aids for a word: hanja roots, example sentences and the learner's own note. *@
+@inject IKorTrainerApi Api
+
+@if (_details is { } d)
+{
+    <div class="word-details">
+        @if (d.HardReason is not null)
+        {
+            <p class="hard-badge" title="Это слово часто забывается">Трудное слово: @d.HardReason</p>
+        }
+
+        @if (d.Roots.Count > 0)
+        {
+            <div class="roots" aria-label="Корни ханча">
+                <span class="muted small">Корни@(d.Hanja is not null ? $" · {d.Hanja}" : string.Empty)</span>
+                <div class="root-chips">
+                    @foreach (var root in d.Roots)
+                    {
+                        <a class="root-chip" href="/hanja/@Uri.EscapeDataString(root.Character)" title="Все слова с этим корнем">
+                            <span class="root-char" lang="zh">@root.Character</span>
+                            <span lang="ko">@root.Syllable</span>
+                            <span class="root-gloss">@(root.Russian ?? "—")</span>
+                            @if (root.FamilySize > 1)
+                            {
+                                <small class="muted">@root.FamilySize сл.</small>
+                            }
+                        </a>
+                    }
+                </div>
+            </div>
+        }
+
+        @if (d.Examples.Count > 0)
+        {
+            <ul class="examples" aria-label="Примеры">
+                @foreach (var example in d.Examples)
+                {
+                    <li>
+                        <span class="example-ko" lang="ko">@example.Korean</span>
+                        <SpeakButton Text="@example.Korean" />
+                        <span class="example-ru">@example.Russian@(example.MachineTranslated ? " *" : string.Empty)</span>
+                    </li>
+                }
+            </ul>
+            @if (d.Examples.Any(e => e.MachineTranslated))
+            {
+                <p class="muted tiny">Примеры — Tatoeba (CC BY 2.0 FR); * машинный перевод.</p>
+            }
+        }
+
+        @if (ShowNote)
+        {
+            <form class="note-form" @onsubmit="SaveNoteAsync">
+                <input type="text" maxlength="300" placeholder="Своя подсказка: ассоциация, созвучие…" aria-label="Своя подсказка"
+                       @bind="_note" @bind:event="oninput" />
+                <button type="submit" class="btn small" disabled="@(_saving || _note == (d.Note ?? string.Empty))">Сохранить</button>
+            </form>
+            @if (_noteError is not null)
+            {
+                <p class="notice error small">@_noteError</p>
+            }
+        }
+        else if (d.Note is not null)
+        {
+            <p class="note-text">💡 @d.Note</p>
+        }
+    </div>
+}
+
+@code {
+    private WordDetailsDto? _details;
+    private int _loadedFor;
+    private string _note = string.Empty;
+    private string? _noteError;
+    private bool _saving;
+
+    [Parameter, EditorRequired]
+    public int WordId { get; set; }
+
+    [Parameter]
+    public bool ShowNote { get; set; } = true;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (WordId == _loadedFor)
+        {
+            return;
+        }
+
+        _loadedFor = WordId;
+        _details = null;
+        _noteError = null;
+        try
+        {
+            _details = await Api.GetWordDetailsAsync(WordId);
+            _note = _details.Note ?? string.Empty;
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException)
+        {
+            // Memory aids are optional: the card works without them.
+            _details = null;
+        }
+    }
+
+    private async Task SaveNoteAsync()
+    {
+        if (_details is null)
+        {
+            return;
+        }
+
+        _saving = true;
+        _noteError = null;
+        try
+        {
+            await Api.SaveWordNoteAsync(_details.WordId, _note);
+            _details = _details with { Note = _note.Trim().Length == 0 ? null : _note.Trim() };
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException)
+        {
+            _noteError = ex.Message;
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+}

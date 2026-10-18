@@ -82,5 +82,19 @@ public interface IKorTrainerApi
 
     Task RecordSessionAsync(SessionDto session);
 
+    Task<IReadOnlyList<HanjaRootDto>> GetHanjaRootsAsync();
+
+    Task<HanjaRootDetailDto> GetHanjaRootAsync(string character);
+
+    Task<ExerciseSetDto> GetHanjaExercisesAsync(string type, int count);
+
+    Task<WordDetailsDto> GetWordDetailsAsync(int wordId);
+
+    Task SaveWordNoteAsync(int wordId, string? text);
+
+    Task<IReadOnlyList<HardWordDto>> GetHardWordsAsync();
+
+    Task<ExerciseSetDto> GetHardExercisesAsync(string type, int count);
+
     Task<ImportResultDto> ImportProgressAsync(Stream json, CancellationToken cancellationToken);
 }

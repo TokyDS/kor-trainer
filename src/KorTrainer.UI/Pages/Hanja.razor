@@ -1,0 +1,97 @@
+@page "/hanja"
+@inject IKorTrainerApi Api
+
+<PageTitle>Ханча — KorTrainer</PageTitle>
+
+<header class="page-header">
+    <h1>Корни ханча</h1>
+    <p class="muted">
+        Около 60% корейской лексики — сино-корейские слова из китайских корней. Один корень открывает целое семейство:
+        學 학 «учёба» — 학교, 학생, 대학, 방학. Сначала корни слов, которые вы уже учите.
+    </p>
+</header>
+
+<div class="mode-grid">
+    <a class="mode-card feature" href="/hanja/drill/@ExerciseTypes.HanjaRoot">
+        <span class="mode-glyph" lang="zh">學</span>
+        <strong>Общий корень</strong>
+        <span>학교, 학생, 대학 — что их объединяет?</span>
+    </a>
+    <a class="mode-card" href="/hanja/drill/@ExerciseTypes.HanjaMeaning">
+        <span class="mode-glyph" lang="ko">대학</span>
+        <strong>Значение по корням</strong>
+        <span class="muted">大 большой + 學 учёба → ?</span>
+    </a>
+</div>
+
+<StatusViews IsLoading="_roots is null && _error is null" Error="@_error" OnRetry="LoadAsync" />
+
+@if (_roots is { } roots)
+{
+    <div class="filters">
+        <input type="search" placeholder="Поиск: 學, 학 или учёба" @bind="_search" @bind:event="oninput" aria-label="Поиск корня" />
+        <label class="toggle">
+            <input type="checkbox" @bind="_mineOnly" />
+            <span>Только корни моих слов</span>
+        </label>
+    </div>
+
+    var shown = Filter(roots).Take(_limit).ToList();
+    @if (shown.Count == 0)
+    {
+        <p class="muted">@(_mineOnly ? "Пока нет выученных слов с ханча — снимите флажок, чтобы увидеть все корни." : "Ничего не найдено.")</p>
+    }
+    <ul class="root-grid">
+        @foreach (var root in shown)
+        {
+            <li>
+                <a class="card root-card" href="/hanja/@Uri.EscapeDataString(root.Character)">
+                    <span class="root-big" lang="zh">@root.Character</span>
+                    <span class="root-reading"><span lang="ko">@root.Hun @root.Reading</span></span>
+                    <strong>@(root.Russian ?? "—")</strong>
+                    <span class="muted small" lang="ko">@string.Join(", ", root.Examples)</span>
+                    <span class="root-count">@root.StudiedWords / @root.TotalWords слов</span>
+                </a>
+            </li>
+        }
+    </ul>
+    @if (Filter(roots).Count() > _limit)
+    {
+        <button type="button" class="btn wide" @onclick="() => _limit += PageSize">Показать ещё</button>
+    }
+}
+
+@code {
+    private const int PageSize = 60;
+
+    private IReadOnlyList<HanjaRootDto>? _roots;
+    private string? _error;
+    private string _search = string.Empty;
+    private bool _mineOnly = true;
+    private int _limit = PageSize;
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _error = null;
+        try
+        {
+            _roots = await Api.GetHanjaRootsAsync();
+            _mineOnly = _roots.Any(r => r.StudiedWords > 0);
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    private IEnumerable<HanjaRootDto> Filter(IReadOnlyList<HanjaRootDto> roots)
+    {
+        string query = _search.Trim();
+        return roots.Where(r => (!_mineOnly || r.StudiedWords > 0)
+            && (query.Length == 0 || r.Character == query || r.Reading == query
+                || (r.Russian?.Contains(query, StringComparison.OrdinalIgnoreCase) ?? false)
+                || r.Examples.Any(e => e.Contains(query, StringComparison.Ordinal))));
+    }
+}

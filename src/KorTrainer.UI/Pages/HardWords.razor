@@ -1,0 +1,84 @@
+@page "/vocab/hard"
+@inject IKorTrainerApi Api
+
+<PageTitle>Трудные слова — KorTrainer</PageTitle>
+
+<header class="page-header">
+    <h1>Трудные слова</h1>
+    <p class="muted">
+        Слова, которые забываются снова и снова. Здесь у каждого — корни, примеры и место для своей подсказки:
+        созвучие, картинка, история. Тренировка не сдвигает их расписание повторений.
+    </p>
+</header>
+
+<StatusViews IsLoading="_words is null && _error is null" Error="@_error" OnRetry="LoadAsync" />
+
+@if (_words is { } words)
+{
+    @if (words.Count == 0)
+    {
+        <div class="notice success">
+            <strong>Трудных слов нет.</strong>
+            <p>Слово попадает сюда, если его забыли дважды после выучивания или трижды нажали «Снова».</p>
+        </div>
+    }
+    else
+    {
+        <div class="mode-grid">
+            <a class="mode-card feature" href="/vocab/hard/@ExerciseTypes.HardMeaning">
+                <span class="mode-glyph">@words.Count</span>
+                <strong>Вспомнить значение</strong>
+                <span>Слово → перевод, каждое дважды</span>
+            </a>
+            <a class="mode-card" href="/vocab/hard/@ExerciseTypes.HardSpelling">
+                <span class="mode-glyph" lang="ko">바다?</span>
+                <strong>Узнать написание</strong>
+                <span class="muted">Перевод → слово среди похожих по звучанию</span>
+            </a>
+        </div>
+
+        <ul class="hard-list">
+            @foreach (var word in words)
+            {
+                <li class="card">
+                    <button type="button" class="hard-head" @onclick="() => Toggle(word.WordId)" aria-expanded="@(_open == word.WordId ? "true" : "false")">
+                        <HangulText Text="@word.Korean" />
+                        <span>@word.Russian</span>
+                        <small class="muted">@word.Reason</small>
+                    </button>
+                    @if (_open == word.WordId)
+                    {
+                        <WordDetails WordId="word.WordId" />
+                    }
+                    else if (word.Note is not null)
+                    {
+                        <p class="note-text">💡 @word.Note</p>
+                    }
+                </li>
+            }
+        </ul>
+    }
+}
+
+@code {
+    private IReadOnlyList<HardWordDto>? _words;
+    private string? _error;
+    private int? _open;
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private void Toggle(int wordId) => _open = _open == wordId ? null : wordId;
+
+    private async Task LoadAsync()
+    {
+        _error = null;
+        try
+        {
+            _words = await Api.GetHardWordsAsync();
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException)
+        {
+            _error = ex.Message;
+        }
+    }
+}

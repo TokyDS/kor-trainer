@@ -14,6 +14,8 @@ public interface IAppDbContext
 
     DbSet<WordProgress> WordProgress { get; }
 
+    DbSet<WordNote> WordNotes { get; }
+
     DbSet<ReviewLog> ReviewLogs { get; }
 
     DbSet<ExerciseAttempt> ExerciseAttempts { get; }
