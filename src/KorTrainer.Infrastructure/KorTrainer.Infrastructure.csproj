@@ -17,6 +17,8 @@
     <EmbeddedResource Include="Seed\audio-lingualibre.json" />
     <EmbeddedResource Include="Seed\hanja-glosses.tsv" />
     <EmbeddedResource Include="Seed\sentences-tatoeba.json" />
+    <EmbeddedResource Include="Seed\texts.json" />
+    <EmbeddedResource Include="Seed\topik-reading.json" />
   </ItemGroup>
 
   <PropertyGroup>

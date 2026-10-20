@@ -129,6 +129,15 @@ public sealed class HttpKorTrainerApi(HttpClient http) : IKorTrainerApi
 
     public Task<TypingSetDto> GetTypingSetAsync(int level, int count) => GetAsync<TypingSetDto>($"api/typing/{level}?count={count}");
 
+    public Task<IReadOnlyList<TextSummaryDto>> GetTextsAsync() => GetAsync<IReadOnlyList<TextSummaryDto>>("api/texts");
+
+    public Task<ReadingTextDto> GetTextAsync(string id) => GetAsync<ReadingTextDto>($"api/texts/{Uri.EscapeDataString(id)}");
+
+    public Task<bool> AddWordToStudyAsync(int wordId) => SendAsync<bool>(HttpMethod.Post, $"api/vocab/words/{wordId}/study", new { });
+
+    public Task<ExerciseSetDto> GetTopikReadingAsync(string format, int count) =>
+        GetAsync<ExerciseSetDto>($"api/topik/reading/{Uri.EscapeDataString(format)}?count={count}");
+
     public async Task<ImportResultDto> ImportProgressAsync(Stream json, CancellationToken cancellationToken)
     {
         using var content = new StreamContent(json);

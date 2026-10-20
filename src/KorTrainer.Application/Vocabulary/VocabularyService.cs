@@ -78,6 +78,30 @@ public sealed class VocabularyService(IAppDbContext db, SettingsService settings
         return new VocabularyQueueDto(cards, dueLearning.Count + reviews.Count, Math.Min(newRemaining, newWords.Count), nextLearningDue);
     }
 
+    /// <summary>
+    /// Puts a word into learning right away (e.g. met in a text), outside the plan's order and the daily
+    /// new-word limit. Returns false when it is already being studied.
+    /// </summary>
+    public async Task<bool> AddToStudyAsync(int wordId, CancellationToken cancellationToken)
+    {
+        if (!await db.Words.AnyAsync(w => w.Id == wordId, cancellationToken))
+        {
+            throw new NotFoundException("Такого слова нет в колоде.");
+        }
+
+        if (await db.WordProgress.AnyAsync(p => p.WordId == wordId, cancellationToken))
+        {
+            return false;
+        }
+
+        var now = clock.UtcNow;
+        var progress = new WordProgress { WordId = wordId, IntroducedUtc = now };
+        progress.Apply(CardState.New(now) with { Phase = CardPhase.Learning }, now);
+        db.WordProgress.Add(progress);
+        await db.SaveChangesAsync(cancellationToken);
+        return true;
+    }
+
     public async Task<ReviewResultDto> ReviewAsync(ReviewRequest request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);

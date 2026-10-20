@@ -101,7 +101,8 @@ public sealed class WordIndex
     {
         ArgumentNullException.ThrowIfNull(korean);
         var forms = new HashSet<string>(StringComparer.Ordinal) { korean };
-        bool conjugates = partOfSpeech is PartOfSpeech.Verb or PartOfSpeech.Adjective
+        // Auxiliaries such as 싶다 are listed as phrases in the deck but conjugate like verbs.
+        bool conjugates = partOfSpeech is PartOfSpeech.Verb or PartOfSpeech.Adjective or PartOfSpeech.Phrase
             && korean.Length >= 2 && korean[^1] == '다' && korean.All(Syllable.IsSyllable);
         if (!conjugates)
         {

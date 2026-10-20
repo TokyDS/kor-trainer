@@ -37,7 +37,7 @@
 
             <div class="card prompt">
                 <div class="prompt-main">
-                    <HangulText Text="@item.Prompt" Romanization="@item.PromptRomanization" Size="@(IsKorean(item.Prompt) || item.Prompt.Length <= 12 ? "xl" : "lg")" />
+                    <HangulText Text="@item.Prompt" Romanization="@item.PromptRomanization" Size="@(item.Prompt.Length > LongPromptLength ? "passage" : IsKorean(item.Prompt) || item.Prompt.Length <= 12 ? "xl" : "lg")" />
                     @if (item.SpeakText is not null && (item.AutoSpeak || _selected is not null))
                     {
                         <SpeakButton Text="@item.SpeakText" />
@@ -60,7 +60,7 @@
                             title="@(playable ? "Послушать этот вариант" : null)" @onclick="() => OnOptionAsync(index)">
                         <span class="key">@(playable ? "▶" : (index + 1).ToString())</span>
                         <span class="option-body">
-                            <HangulText Text="@option.Text" Romanization="@option.Romanization" Size="lg" />
+                            <HangulText Text="@option.Text" Romanization="@option.Romanization" Size="@(option.Text.Length > LongOptionLength ? "sentence" : "lg")" />
                             @if (option.Hint is not null)
                             {
                                 <small class="muted">@option.Hint</small>
@@ -101,6 +101,12 @@
 
 @code {
     private const int MaxCountedResponseMs = 60_000;
+
+    /// <summary>Longer prompts (TOPIK passages, notices) are set as running text.</summary>
+    private const int LongPromptLength = 30;
+
+    /// <summary>Whole-sentence options (TOPIK statements) use running-text size.</summary>
+    private const int LongOptionLength = 12;
 
     private readonly System.Diagnostics.Stopwatch _itemTimer = new();
     private readonly HashSet<string> _retried = [];

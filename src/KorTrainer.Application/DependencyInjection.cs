@@ -1,3 +1,4 @@
+using KorTrainer.Application.Reading;
 using KorTrainer.Application.Typing;
 using KorTrainer.Application.Sentences;
 using KorTrainer.Application.Hanja;
@@ -47,6 +48,8 @@ public static class DependencyInjection
         services.AddScoped<WordDetailsService>();
         services.AddScoped<SentenceService>();
         services.AddScoped<TypingService>();
+        services.AddScoped<ReadingService>();
+        services.AddScoped<TopikReadingService>();
         services.AddScoped<ProgressTransferService>();
         return services;
     }

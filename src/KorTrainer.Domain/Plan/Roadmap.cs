@@ -63,6 +63,8 @@ public sealed class Roadmap
 
     public static string StageGoal(PlanStage stage) => PlanContent.StageGoal(stage);
 
+    public static string StageTitle(PlanStage stage) => PlanContent.StageTitle(stage);
+
     public PlanStep? Find(string key) => _byKey.GetValueOrDefault(key);
 
     public PlanStep? Next(PlanStep step) => step.Index + 1 < Steps.Count ? Steps[step.Index + 1] : null;

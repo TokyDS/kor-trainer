@@ -56,7 +56,11 @@ public sealed class StatsService(IAppDbContext db, SettingsService settingsServi
 
         return new StatsOverviewDto(
             await vocabularyService.GetSummaryAsync(cancellationToken),
-            accuracy.OrderBy(a => a.Module).ToList(),
+            // Flashcards and hard-word drills both count as vocabulary: merge them into one row.
+            accuracy.GroupBy(a => a.Module)
+                .Select(g => new ModuleAccuracyDto(g.Key, g.Sum(a => a.Answers), g.Sum(a => a.Correct), g.Sum(a => a.AnswersLast7Days), g.Sum(a => a.CorrectLast7Days)))
+                .OrderBy(a => a.Module)
+                .ToList(),
             ToMinutesRoundedUp(sessionSeconds + writingSeconds),
             activeDays.Count,
             StudyRhythm.ActiveDays(activeDays, today),

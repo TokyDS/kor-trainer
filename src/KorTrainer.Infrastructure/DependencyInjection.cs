@@ -26,6 +26,9 @@ public static class DependencyInjection
         AddAudio(services);
         services.AddSingleton<IHanjaGlossary, EmbeddedHanjaGlossary>();
         services.AddSingleton<ISentenceLibrary, EmbeddedSentenceLibrary>();
+        services.AddSingleton<ITextLibrary, EmbeddedTextLibrary>();
+        services.AddSingleton<ITopikItemBank, EmbeddedTopikItemBank>();
+        services.AddSingleton<IWordIndexProvider, BundledWordIndex>();
         return services;
     }
 

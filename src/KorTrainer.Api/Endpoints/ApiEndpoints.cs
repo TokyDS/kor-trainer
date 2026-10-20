@@ -1,3 +1,4 @@
+using KorTrainer.Application.Reading;
 using KorTrainer.Application.Typing;
 using KorTrainer.Application.Sentences;
 using KorTrainer.Application.Hanja;
@@ -58,6 +59,11 @@ public static class ApiEndpoints
             .MapGet("/{type}", (string type, int? count, SentenceService service, CancellationToken ct) => service.GetPracticeAsync(type, count ?? 10, ct));
         api.MapGroup("/typing").WithTags("Typing")
             .MapGet("/{level:int}", (int level, int? count, TypingService service, CancellationToken ct) => service.GetSetAsync(level, count ?? 15, ct));
+        var texts = api.MapGroup("/texts").WithTags("Reading");
+        texts.MapGet("/", (ReadingService service, CancellationToken ct) => service.GetTextsAsync(ct));
+        texts.MapGet("/{id}", (string id, ReadingService service, CancellationToken ct) => service.GetTextAsync(id, ct));
+        api.MapPost("/vocab/words/{id:int}/study", (int id, VocabularyService service, CancellationToken ct) => service.AddToStudyAsync(id, ct)).WithTags("Vocabulary");
+        api.MapGet("/topik/reading/{format}", (string format, int? count, TopikReadingService service, CancellationToken ct) => service.GetExercisesAsync(format, count ?? 10, ct)).WithTags("TOPIK");
         MapTopik(api.MapGroup("/topik").WithTags("TOPIK"));
         MapStats(api.MapGroup("/stats").WithTags("Statistics"));
         MapActivity(api.MapGroup(string.Empty).WithTags("Activity"));

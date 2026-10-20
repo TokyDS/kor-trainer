@@ -1,3 +1,4 @@
+using KorTrainer.Application.Reading;
 using KorTrainer.Application.Typing;
 using KorTrainer.Application.Sentences;
 using KorTrainer.Application.Hanja;
@@ -128,6 +129,15 @@ public sealed class LocalKorTrainerApi(IServiceScopeFactory scopes, ILogger<Loca
         Run<SentenceService, SentenceSetDto>((s, ct) => s.GetPracticeAsync(type, count, ct));
 
     public Task<TypingSetDto> GetTypingSetAsync(int level, int count) => Run<TypingService, TypingSetDto>((s, ct) => s.GetSetAsync(level, count, ct));
+
+    public Task<IReadOnlyList<TextSummaryDto>> GetTextsAsync() => Run<ReadingService, IReadOnlyList<TextSummaryDto>>((s, ct) => s.GetTextsAsync(ct));
+
+    public Task<ReadingTextDto> GetTextAsync(string id) => Run<ReadingService, ReadingTextDto>((s, ct) => s.GetTextAsync(id, ct));
+
+    public Task<bool> AddWordToStudyAsync(int wordId) => Run<VocabularyService, bool>((s, ct) => s.AddToStudyAsync(wordId, ct));
+
+    public Task<ExerciseSetDto> GetTopikReadingAsync(string format, int count) =>
+        Run<TopikReadingService, ExerciseSetDto>((s, ct) => s.GetExercisesAsync(format, count, ct));
 
     public async Task<ImportResultDto> ImportProgressAsync(Stream json, CancellationToken cancellationToken)
     {

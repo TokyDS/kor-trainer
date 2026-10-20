@@ -100,5 +100,13 @@ public interface IKorTrainerApi
 
     Task<TypingSetDto> GetTypingSetAsync(int level, int count);
 
+    Task<IReadOnlyList<TextSummaryDto>> GetTextsAsync();
+
+    Task<ReadingTextDto> GetTextAsync(string id);
+
+    Task<bool> AddWordToStudyAsync(int wordId);
+
+    Task<ExerciseSetDto> GetTopikReadingAsync(string format, int count);
+
     Task<ImportResultDto> ImportProgressAsync(Stream json, CancellationToken cancellationToken);
 }

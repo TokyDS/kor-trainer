@@ -4,6 +4,30 @@
 <PageTitle>TOPIK — KorTrainer</PageTitle>
 
 <header class="page-header">
+    <h1>TOPIK I: чтение</h1>
+    <p class="muted">
+        Задания в форматах экзамена 읽기 — авторские, из слов и грамматики вашего этапа (не копии реальных вариантов).
+        После ответа — разбор и перевод.
+    </p>
+</header>
+
+<div class="mode-grid">
+    <a class="mode-card feature" href="/topik/reading/@ExerciseTypes.Mixed">
+        <span class="mode-glyph" lang="ko">읽기</span>
+        <strong>Вперемешку</strong>
+        <span>10 заданий разных форматов</span>
+    </a>
+    @foreach (var (format, title, questions, description) in ReadingFormats)
+    {
+        <a class="mode-card" href="/topik/reading/@format">
+            <span class="mode-glyph">@questions</span>
+            <strong>@title</strong>
+            <span class="muted">@description</span>
+        </a>
+    }
+</div>
+
+<header class="page-header">
     <h1>Подготовка к TOPIK II: письмо</h1>
     <p class="muted">Секция 쓰기 длится @(_guide?.SectionMinutes ?? 50) минут на четыре задания. Тренируйтесь на официальных прошлых вариантах и пишите ответы здесь на таймере: тренажёр считает знаки как на 원고지 и сохраняет черновики.</p>
     <a class="btn primary" href="@(_guide?.PastPapersUrl ?? "https://www.topik.go.kr/")" target="_blank" rel="noopener noreferrer">Прошлые варианты на topik.go.kr ↗</a>
@@ -68,6 +92,15 @@
 }
 
 @code {
+    private static readonly (string Format, string Title, string Questions, string Description)[] ReadingFormats =
+    [
+        (ExerciseTypes.TopikTopic, "О чём текст", "31–33", "Две фразы — выберите тему"),
+        (ExerciseTypes.TopikCloze, "Пропуск", "34–39", "Слово, частица или форма в пропуске"),
+        (ExerciseTypes.TopikNotice, "Объявление", "40–42", "Что не совпадает с объявлением"),
+        (ExerciseTypes.TopikSameMeaning, "То же содержание", "43–45", "Что совпадает с текстом"),
+        (ExerciseTypes.TopikMainIdea, "Главная мысль", "46–48", "Что хочет сказать автор"),
+    ];
+
     private WritingGuideDto? _guide;
     private IReadOnlyList<WritingDraftDto>? _drafts;
     private string? _error;
