@@ -63,6 +63,22 @@ public sealed class WordIndexTests
     public void Lookup_UnknownToken_IsEmpty() =>
         Index.Lookup("컴퓨터").Should().BeEmpty();
 
+    [Theory]
+    [InlineData("가수")]
+    [InlineData("보리")]
+    [InlineData("시장")]
+    public void Lookup_DoesNotLinkUnknownWordsToAOneSyllableStem(string token) =>
+        Index.Lookup(token).Should().BeEmpty();
+
+    [Theory]
+    [InlineData("가서", "가다#1")]
+    [InlineData("가고", "가다#1")]
+    [InlineData("보면", "보다#1")]
+    [InlineData("시에", "시#1")]
+    [InlineData("눈도", "눈#1")]
+    public void Lookup_OneSyllableStem_WithAParticleOrEnding_IsStillFound(string token, string key) =>
+        Index.Lookup(token).Select(w => w.Key).Should().Contain(key);
+
     [Fact]
     public void Analyze_SplitsPunctuationDigitsAndSpaces()
     {

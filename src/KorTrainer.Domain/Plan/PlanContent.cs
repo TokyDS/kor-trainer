@@ -184,21 +184,28 @@ internal static class PlanContent
             new("Сборка слога", $"/hangul/{Compose}?level={day}"),
             new("Три ряда согласных", $"/hangul/{ConsonantSeries}?level=2"),
             new("Чтение на время", $"/hangul/reading?level={day}"),
+            new("Раскладка клавиатуры", "/typing/1"),
         ],
         PlanStage.TopikPrep or PlanStage.MockExam =>
         [
             new("Повторение слов", "/vocab/review"),
+            new("TOPIK I: чтение", "/topik/reading/mixed"),
             new("Письмо 51–54", "/topik/writing"),
-            new("Грамматика", "/grammar"),
-            new("Статистика", "/stats"),
+            new("Тексты", "/read"),
+            new("Диктант", "/listening/dictation"),
+            new("Трудные слова", "/vocab/hard"),
         ],
         _ =>
         [
             new("Повторение слов", "/vocab/review"),
             new("Грамматика", "/grammar"),
             new("Числа", "/numbers"),
-            new("Аудирование", "/listening"),
-            new("Чтение на время", "/hangul/reading?level=3"),
+            new("Тексты", "/read"),
+            new("Диктант", "/listening/dictation"),
+            new("Повтори вслух", "/listening/shadowing"),
+            new("Корни ханча", "/hanja"),
+            new("Трудные слова", "/vocab/hard"),
+            new("TOPIK I: чтение", "/topik/reading/mixed"),
         ],
     };
 

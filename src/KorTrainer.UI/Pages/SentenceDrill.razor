@@ -54,7 +54,7 @@
                 {
                     <form class="answer-form" @onsubmit="CheckDictation">
                         <input @ref="_input" type="text" lang="ko" autocomplete="off" autocapitalize="off" spellcheck="false"
-                               placeholder="Запишите услышанное по-корейски" aria-label="Ответ" @bind="_answer" @bind:event="oninput" />
+                               placeholder="Запишите услышанное по-корейски" aria-label="Ответ" maxlength="200" @bind="_answer" @bind:event="oninput" />
                         <button type="submit" class="btn primary">Проверить</button>
                     </form>
                     <p class="keys-hint">Пробелы и знаки препинания не проверяются. <kbd>Enter</kbd> — проверить.</p>
@@ -146,18 +146,23 @@
 
     private bool IsDictation => Navigation.Uri.Contains("/dictation", StringComparison.Ordinal);
 
+    private string? _loadedType;
+
     private string Type => IsDictation ? ExerciseTypes.Dictation : ExerciseTypes.Shadowing;
 
     private PracticeSentenceDto? Current => _set is not null && _position < _set.Items.Count ? _set.Items[_position] : null;
 
-    protected override async Task OnInitializedAsync()
+    // Both routes share this component: reload when the mode in the URL changes.
+    protected override async Task OnParametersSetAsync()
     {
-        await State.InitializeAsync();
-        if (!IsDictation)
+        if (_loadedType == Type)
         {
-            _recognitionAvailable = await SpeechInput.IsAvailableAsync();
+            return;
         }
 
+        _loadedType = Type;
+        await State.InitializeAsync();
+        _recognitionAvailable = IsDictation ? null : await SpeechInput.IsAvailableAsync();
         await LoadAsync();
     }
 
@@ -218,8 +223,16 @@
         _listening = true;
         _heardError = null;
         StateHasChanged();
-        var result = await SpeechInput.ListenAsync();
-        _listening = false;
+        SpeechInputResult result;
+        try
+        {
+            result = await SpeechInput.ListenAsync();
+        }
+        finally
+        {
+            _listening = false;
+        }
+
         if (result.Text is null)
         {
             _heardError = result.Error;

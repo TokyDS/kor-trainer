@@ -57,7 +57,7 @@ public sealed class WordIndex
         string hangul = HangulCore(token);
         for (int length = hangul.Length; length > 0; length--)
         {
-            if (_forms.TryGetValue(hangul[..length], out var words))
+            if (_forms.TryGetValue(hangul[..length], out var words) && Plausible(hangul, length))
             {
                 return words;
             }
@@ -65,6 +65,34 @@ public sealed class WordIndex
 
         return [];
     }
+
+    /// <summary>
+    /// A one-syllable match (가, 보, 시) only counts when what follows looks like a particle or ending —
+    /// otherwise an unknown word such as 가수 would be read as 가다 + 수.
+    /// </summary>
+    private static bool Plausible(string token, int matched)
+    {
+        if (matched > 1 || matched == token.Length)
+        {
+            return true;
+        }
+
+        string rest = token[matched..];
+        return Particles.Contains(rest) || EndingStarts.Contains(rest[0]);
+    }
+
+    private static readonly HashSet<string> Particles = new(StringComparer.Ordinal)
+    {
+        "이", "가", "은", "는", "을", "를", "에", "에서", "의", "도", "와", "과", "로", "으로", "하고", "랑", "이랑",
+        "에게", "한테", "까지", "부터", "만", "보다", "처럼", "요", "께", "께서", "이에요", "예요", "이다", "입니다",
+    };
+
+    // First syllables of common verb endings after a bare or contracted stem.
+    private static readonly HashSet<char> EndingStarts =
+    [
+        '어', '아', '여', '었', '았', '였', '고', '지', '게', '기', '는', '니', '면', '서', '세', '시', '습', '겠', '네', '다', '던', '도', '요', '죠', '자',
+        '라', '러', '려', '며', '야', '냐', '나', '셨', '십', '실', '신', '를', '에', '은', '이', '가', '을', '의', '와', '과', '로', '만',
+    ];
 
     /// <summary>Splits text at spaces and recognizes every token; multi-word deck phrases become one token.</summary>
     public IReadOnlyList<TextToken> Analyze(string text)

@@ -164,18 +164,19 @@
             return;
         }
 
+        // Move on before any await, so keys typed meanwhile go to the next text and nothing is recorded twice.
+        var attempt = new AttemptDto(StudyModule.Typing, ExerciseTypes.Typing, $"typing:{Level}", _itemBackspaces == 0, (int)Math.Min(_itemClock.ElapsedMilliseconds, MaxCountedMs));
+        _position++;
+        ResetItem();
         try
         {
-            int ms = (int)Math.Min(_itemClock.ElapsedMilliseconds, MaxCountedMs);
-            await Api.RecordAttemptsAsync([new AttemptDto(StudyModule.Typing, ExerciseTypes.Typing, $"typing:{Level}", _itemBackspaces == 0, ms)]);
+            await Api.RecordAttemptsAsync([attempt]);
         }
         catch (Exception ex) when (ex is ApiException or HttpRequestException)
         {
             // Typing statistics are optional; keep going.
         }
 
-        _position++;
-        ResetItem();
         if (Current is null)
         {
             _clock.Stop();

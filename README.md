@@ -83,6 +83,32 @@ Romanization is **off by default** — the point is to learn to read Hangul with
 > Fix them in `src/KorTrainer.Infrastructure/Seed/words.json` or `tools/deck/nikl.ru.tsv` (then run
 > `dotnet run tools/deck/BuildNiklDeck.cs`); the next start updates words in place without losing progress.
 
+**Iteration 6 — learning tools**
+
+- **Hanja roots** — 3,200 Sino-Korean deck words carry their hanja (from the NIKL list) and 1,333
+  characters have a 훈 and a Russian gloss. `/hanja` lists the roots of the words you study with their
+  families (學 학 «учёба» → 학교, 학생, 대학, 방학…); drills ask for the common root of a word family or the
+  meaning of a word from its roots. Review cards show a word's roots.
+- **Example sentences** — 4,750 short sentences from Tatoeba, each built only from deck words, appear on
+  review cards (up to three per word).
+- **Dictation and shadowing** — a sentence made of your words is played and you type it, or you repeat it
+  aloud and speech recognition checks you (Web Speech API in the browser, Android's recognizer in the app).
+  `SentenceComparer` aligns syllables by longest common subsequence, so one missed syllable is one mistake.
+- **Keyboard trainer** — the 두벌식 layout row by row, then your words and sentences, with the next key
+  highlighted. `HangulComposer` reproduces a Korean keyboard's syllable automaton (patchim moves to the next
+  syllable, ㅗ+ㅏ → ㅘ, ㄹ+ㄱ → ㄺ), so no Korean layout has to be installed on the computer.
+- **Hard words** — words forgotten twice or answered "Again" three times get a page with roots, examples and
+  a personal memory note (kept in backups), plus meaning and sound-alike spelling drills that leave the review
+  schedule alone.
+- **Reading** — 36 original graded texts from the first phrases to TOPIK II level. Tap a word to see its
+  dictionary form (먹었어요 → 먹다), translation and roots, and add it to study; comprehension questions follow.
+- **TOPIK I reading** — 135 original items in the exam's formats (31–33 topic, 34–39 cloze, 40–42 notice,
+  43–45 same meaning, 46–48 main idea) with explanations and translations.
+
+`WordIndex` links running text to the deck: it generates the stems every deck verb and adjective takes
+(via the `Conjugator`: 가/갔/간/갈/가는, 먹어/먹었/먹은/먹을/먹는 …) and matches the longest stem or noun a
+token starts with, so particles and endings simply follow. It recognizes 99% of the words in the texts.
+
 ### Data sources
 
 - **«한국어 학습용 어휘 목록»** — Korean Learner's Vocabulary List, National Institute of Korean Language
@@ -91,6 +117,12 @@ Romanization is **off by default** — the point is to learn to read Hangul with
   [`tools/deck`](tools/deck/README.md) for the export and the build script.
 - **Lingua Libre** pronunciation recordings via Wikimedia Commons — CC0 and CC BY-SA 4.0, author and
   license of every file on the in-app `/credits` page.
+- **Tatoeba** example sentences — [CC BY 2.0 FR](https://creativecommons.org/licenses/by/2.0/fr/); sentence
+  ids and authors are kept and shown. Russian for sentences without a Tatoeba translation is machine-made
+  (marked *). Profanity, violence and politics are filtered out (`tools/sentences/excluded.txt`).
+- **Unihan** (© Unicode, Inc., Unicode License v3) — English definitions used as hints for the Russian
+  hanja glosses, which are machine-written.
+- Reading texts and TOPIK I items are original; they are not copied from real exams.
 
 ## Quick start
 
@@ -198,6 +230,14 @@ with direct service calls and the system text-to-speech engine.
 | POST | `/api/attempts` · `/api/sessions` | activity log |
 | GET | `/api/topik/writing` · GET/POST `/api/topik/drafts` | TOPIK writing guide and drafts |
 | GET | `/api/stats/overview` · `/api/stats/daily?days=` · `/api/stats/forecast` | statistics and goal forecast |
+| GET | `/api/hanja/roots` · `/api/hanja/roots/{char}` · `/api/hanja/exercises/{hanja-root\|hanja-meaning}` | hanja roots and drills |
+| GET · PUT | `/api/vocab/words/{id}/details` · `/api/vocab/words/{id}/note` | roots, examples, own note of a word |
+| POST | `/api/vocab/words/{id}/study` | put a word into learning now (from a text) |
+| GET | `/api/vocab/hard` · `/api/vocab/hard/exercises/{hard-meaning\|hard-spelling}` | hard words and their drills |
+| GET | `/api/sentences/{dictation\|shadowing}?count=` | sentences made of the learner's words |
+| GET | `/api/typing/{level}?count=` | keyboard trainer texts (levels 1–6) |
+| GET | `/api/texts` · `/api/texts/{id}` | reading texts with tokens linked to the deck |
+| GET | `/api/topik/reading/{format\|mixed}?count=` | TOPIK I reading items |
 | GET | `/api/audio/words` · `/api/audio/{word}` · `/api/audio/credits` | native-speaker recordings |
 | GET/POST | `/api/progress/export` · `/api/progress/import` | JSON backup |
 
@@ -208,7 +248,7 @@ In Development the OpenAPI document is at `/openapi/v1.json`.
 
 ```bash
 dotnet build                                        # warnings are errors
-dotnet test                                         # 477 tests (xUnit v3, Microsoft.Testing.Platform)
+dotnet test                                         # ~600 tests (xUnit v3, Microsoft.Testing.Platform)
 dotnet test -- --coverage --coverage-output-format cobertura
 dotnet tool restore
 dotnet ef migrations add <Name> -p src/KorTrainer.Infrastructure -s src/KorTrainer.Api -o Persistence/Migrations

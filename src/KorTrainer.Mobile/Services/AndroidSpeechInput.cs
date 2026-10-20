@@ -9,6 +9,10 @@ namespace KorTrainer.Mobile.Services;
 public sealed class AndroidSpeechInput : ISpeechInput
 {
     private const string Korean = "ko-KR";
+    private const string NoSpeech = "Не услышал речь — попробуйте ещё раз, ближе к микрофону.";
+
+    /// <summary>The recognizer stops by itself after silence; this only guards against a hung service.</summary>
+    private static readonly TimeSpan ListenTimeout = TimeSpan.FromSeconds(15);
 
     public ValueTask<bool> IsAvailableAsync() => ValueTask.FromResult(SpeechRecognizer.IsRecognitionAvailable(Platform.AppContext));
 
@@ -21,27 +25,30 @@ public sealed class AndroidSpeechInput : ISpeechInput
 
         var result = new TaskCompletionSource<SpeechInputResult>(TaskCreationOptions.RunContinuationsAsynchronously);
         SpeechRecognizer? recognizer = null;
-        await MainThread.InvokeOnMainThreadAsync(() =>
-        {
-            recognizer = SpeechRecognizer.CreateSpeechRecognizer(Platform.AppContext);
-            if (recognizer is null)
-            {
-                result.TrySetResult(new SpeechInputResult(null, "Распознавание речи недоступно на этом телефоне."));
-                return;
-            }
-
-            recognizer.SetRecognitionListener(new Listener(result));
-            var intent = new Intent(RecognizerIntent.ActionRecognizeSpeech);
-            intent.PutExtra(RecognizerIntent.ExtraLanguageModel, RecognizerIntent.LanguageModelFreeForm);
-            intent.PutExtra(RecognizerIntent.ExtraLanguage, Korean);
-            intent.PutExtra(RecognizerIntent.ExtraLanguagePreference, Korean);
-            intent.PutExtra(RecognizerIntent.ExtraMaxResults, 1);
-            recognizer.StartListening(intent);
-        });
-
         try
         {
-            return await result.Task;
+            await MainThread.InvokeOnMainThreadAsync(() =>
+            {
+                recognizer = SpeechRecognizer.CreateSpeechRecognizer(Platform.AppContext)
+                    ?? throw new InvalidOperationException("Speech recognizer is not available.");
+                recognizer.SetRecognitionListener(new Listener(result));
+                var intent = new Intent(RecognizerIntent.ActionRecognizeSpeech);
+                intent.PutExtra(RecognizerIntent.ExtraLanguageModel, RecognizerIntent.LanguageModelFreeForm);
+                intent.PutExtra(RecognizerIntent.ExtraLanguage, Korean);
+                intent.PutExtra(RecognizerIntent.ExtraLanguagePreference, Korean);
+                intent.PutExtra(RecognizerIntent.ExtraMaxResults, 1);
+                recognizer.StartListening(intent);
+            });
+
+            return await result.Task.WaitAsync(ListenTimeout);
+        }
+        catch (TimeoutException)
+        {
+            return new SpeechInputResult(null, NoSpeech);
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or Java.Lang.Exception)
+        {
+            return new SpeechInputResult(null, "Распознавание речи недоступно на этом телефоне.");
         }
         finally
         {
@@ -58,14 +65,12 @@ public sealed class AndroidSpeechInput : ISpeechInput
         public void OnResults(Bundle? results)
         {
             string? text = results?.GetStringArrayList(SpeechRecognizer.ResultsRecognition)?.FirstOrDefault();
-            result.TrySetResult(text is { Length: > 0 }
-                ? new SpeechInputResult(text, null)
-                : new SpeechInputResult(null, "Не услышал речь — попробуйте ещё раз."));
+            result.TrySetResult(text is { Length: > 0 } ? new SpeechInputResult(text, null) : new SpeechInputResult(null, NoSpeech));
         }
 
         public void OnError(SpeechRecognizerError error) => result.TrySetResult(new SpeechInputResult(null, error switch
         {
-            SpeechRecognizerError.NoMatch or SpeechRecognizerError.SpeechTimeout => "Не услышал речь — попробуйте ещё раз, ближе к микрофону.",
+            SpeechRecognizerError.NoMatch or SpeechRecognizerError.SpeechTimeout => NoSpeech,
             SpeechRecognizerError.InsufficientPermissions => "Нет доступа к микрофону.",
             SpeechRecognizerError.Network or SpeechRecognizerError.NetworkTimeout => "Для распознавания нужен интернет или офлайн-пакет корейского языка.",
             _ => $"Ошибка распознавания ({error}).",
