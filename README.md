@@ -276,4 +276,5 @@ and does not copy exam content.
 ## License
 
 Code is released under the [MIT License](LICENSE). Bundled vocabulary, sentence and hanja data keep
-their own licenses (KOGL Type 1, CC BY 2.0 FR, Unicode License v3) — see [Data sources](#data-sources).
+their own licenses (KOGL Type 1, CC BY 2.0 FR, Unicode License v3) — see
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) and [Data sources](#data-sources).
