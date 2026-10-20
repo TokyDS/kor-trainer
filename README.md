@@ -272,3 +272,8 @@ where your current pace leads. Learners of the earlier calendar version keep the
 on their day and continue from the first unfinished one.
 Official past papers are available at [topik.go.kr](https://www.topik.go.kr) — the app links to them
 and does not copy exam content.
+
+## License
+
+Code is released under the [MIT License](LICENSE). Bundled vocabulary, sentence and hanja data keep
+their own licenses (KOGL Type 1, CC BY 2.0 FR, Unicode License v3) — see [Data sources](#data-sources).
