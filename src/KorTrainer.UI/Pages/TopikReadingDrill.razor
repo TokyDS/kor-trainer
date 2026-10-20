@@ -1,0 +1,15 @@
+@page "/topik/reading/{Format}"
+@inject IKorTrainerApi Api
+
+<PageTitle>TOPIK I: чтение — KorTrainer</PageTitle>
+
+<ChoiceDrill @key="Format" Load="LoadAsync" BackHref="/topik" />
+
+@code {
+    private const int SetSize = 10;
+
+    [Parameter]
+    public string Format { get; set; } = string.Empty;
+
+    private Task<ExerciseSetDto> LoadAsync() => Api.GetTopikReadingAsync(Format, SetSize);
+}

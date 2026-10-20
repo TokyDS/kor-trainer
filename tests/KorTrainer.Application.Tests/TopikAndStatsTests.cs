@@ -26,7 +26,7 @@ public sealed class TopikAndStatsTests
     public async Task SaveDraft_StoresTextAndCountsTowardsWritingTask()
     {
         await using var t = await TestDatabase.CreateAsync();
-        await t.SetPlanDayAsync(StudyPlan.TopikPrepStart.DayNumber - StudyPlan.DefaultStartDate.DayNumber + 1);
+        await t.SetPlanStepAsync("topik-1");
         var now = t.Time.GetUtcNow().UtcDateTime;
 
         var draft = await t.Topik.SaveDraftAsync(new SaveDraftRequest(53, now.AddMinutes(-16), 16 * 60, "최근 조사에 따르면 …"), Ct);
@@ -51,7 +51,7 @@ public sealed class TopikAndStatsTests
     public async Task Overview_ReportsAccuracyMinutesAndStreaks()
     {
         await using var t = await TestDatabase.CreateAsync();
-        await t.SetPlanDayAsync(4);
+        await t.SetPlanStepAsync("lesson-4");
         await t.Activity.RecordAttemptsAsync(
         [
             new AttemptDto(StudyModule.Hangul, ExerciseTypes.Compose, "a", true, 1000),
@@ -68,7 +68,8 @@ public sealed class TopikAndStatsTests
         hangul.Correct.Should().Be(1);
         overview.Accuracy.Single(a => a.Module == StudyModule.Vocabulary).Correct.Should().Be(1);
         overview.TotalStudyMinutes.Should().Be(10);
-        overview.CurrentStreak.Should().Be(1);
+        overview.ActiveDaysThisWeek.Should().Be(1);
+        overview.ActiveDaysThisMonth.Should().Be(1);
         overview.Vocabulary.Learning.Should().Be(1);
     }
 
@@ -87,11 +88,23 @@ public sealed class TopikAndStatsTests
     }
 
     [Fact]
-    public void LongestStreak_FindsTheLongestRun()
+    public async Task Forecast_DatesTheGoalsAtTheRecentPace()
     {
-        var start = new DateOnly(2026, 10, 1);
-        var days = new[] { 0, 1, 2, 5, 6, 7, 8, 12 }.Select(d => start.AddDays(d)).ToHashSet();
+        await using var t = await TestDatabase.CreateAsync();
+        await t.SetPlanStepAsync("lesson-4");
+        foreach (var card in (await t.Vocabulary.GetQueueAsync(3, Ct)).Cards)
+        {
+            await t.Vocabulary.ReviewAsync(new ReviewRequest(card.WordId, Grade.Good, 1000), Ct);
+        }
 
-        StatsService.LongestStreak(days).Should().Be(4);
+        var forecast = await t.Stats.GetForecastAsync(Ct);
+
+        forecast.WordsStudied.Should().Be(3);
+        forecast.PacePerDay.Should().Be(3);
+        forecast.Goals.Select(g => g.Goal).Should().Equal(800, 1500, 3000);
+        forecast.Goals[0].Reached.Should().BeFalse();
+        forecast.Goals[0].ExpectedOn.Should().Be(new DateOnly(2026, 10, 13).AddDays(266), "797 words at 3 a day");
+        forecast.ExamDate.Should().Be(new DateOnly(2027, 4, 30));
+        forecast.WordsByExam.Should().Be(3 + (3 * 199));
     }
 }

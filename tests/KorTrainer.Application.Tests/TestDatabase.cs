@@ -2,6 +2,9 @@ using KorTrainer.Application.Activity;
 using KorTrainer.Application.Common;
 using KorTrainer.Application.Grammar;
 using KorTrainer.Application.Hangul;
+using KorTrainer.Application.Hanja;
+using KorTrainer.Infrastructure.Content;
+using KorTrainer.Application.Plan;
 using KorTrainer.Application.Progress;
 using KorTrainer.Application.Settings;
 using KorTrainer.Application.Stats;
@@ -37,15 +40,23 @@ public sealed class TestDatabase : IAsyncDisposable
         Time = time;
         Clock = new StudyClock(time);
         Settings = new SettingsService(db);
-        Vocabulary = new VocabularyService(db, Settings, Clock, new SrsScheduler());
+        Evaluator = new StepEvaluator(db);
+        Cursor = new PlanCursor(db, Settings, Clock, Evaluator);
+        Vocabulary = new VocabularyService(db, Settings, Clock, new SrsScheduler(), Cursor);
         Activity = new ActivityService(db, Settings, Clock);
-        Today = new TodayService(db, Settings, Vocabulary, Clock);
-        Hangul = new HangulService(db, Settings, Clock, new Random(42));
-        Grammar = new GrammarService(db, Settings, Clock, new Random(42));
+        Today = new TodayService(db, Cursor, Evaluator, Vocabulary, Clock);
+        Reminders = new ReminderService(Today, Settings);
+        Hangul = new HangulService(db, Settings, Clock, new Random(42), Audio, Cursor);
+        Grammar = new GrammarService(db, Cursor, new Random(42));
+        Hanja = new HanjaService(db, Glossary, Cursor, new Random(42));
+        WordDetails = new WordDetailsService(db, Glossary, Sentences, Clock, new Random(42));
         Topik = new TopikService(db, Settings, Clock);
         Stats = new StatsService(db, Settings, Vocabulary, Clock);
         Progress = new ProgressTransferService(db, Settings, Clock);
     }
+
+    /// <summary>Recorded words used by the listening drill; replace before calling Hangul to test recordings.</summary>
+    public FakeAudioLibrary Audio { get; } = new();
 
     public AppDbContext Db { get; }
 
@@ -59,11 +70,26 @@ public sealed class TestDatabase : IAsyncDisposable
 
     public ActivityService Activity { get; }
 
+    public StepEvaluator Evaluator { get; }
+
+    public PlanCursor Cursor { get; }
+
     public TodayService Today { get; }
+
+    public ReminderService Reminders { get; }
 
     public HangulService Hangul { get; }
 
     public GrammarService Grammar { get; }
+
+    /// <summary>The bundled glosses and sentences, as in the app.</summary>
+    public static EmbeddedHanjaGlossary Glossary { get; } = new();
+
+    public static EmbeddedSentenceLibrary Sentences { get; } = new();
+
+    public HanjaService Hanja { get; }
+
+    public WordDetailsService WordDetails { get; }
 
     public TopikService Topik { get; }
 
@@ -81,12 +107,36 @@ public sealed class TestDatabase : IAsyncDisposable
         return new TestDatabase(connection, db, new FakeTimeProvider(now ?? DayOneMorning));
     }
 
-    /// <summary>Moves the plan start so that "now" falls on the given plan day.</summary>
-    public async Task SetPlanDayAsync(int day)
+    /// <summary>Makes the given step current, as if the learner had moved there just now.</summary>
+    public async Task SetPlanStepAsync(string stepKey)
     {
-        var settings = await Settings.GetEntityAsync(CancellationToken.None);
-        settings.StartDate = Clock.Today(settings).AddDays(1 - day);
+        await Db.PlanSteps.ExecuteDeleteAsync();
+        Db.PlanSteps.Add(new PlanStepProgress { StepKey = stepKey, StartedUtc = Clock.UtcNow });
         await Db.SaveChangesAsync();
+        Db.ChangeTracker.Clear();
+    }
+
+    /// <summary>Marks deck words as studied (introduced into the SRS), optionally with lapses.</summary>
+    public async Task<List<Word>> StudyAsync(int lapses, params string[] korean)
+    {
+        var words = await Db.Words.Where(w => korean.Contains(w.Korean)).ToListAsync();
+        foreach (var word in words.DistinctBy(w => w.Korean))
+        {
+            Db.WordProgress.Add(new WordProgress
+            {
+                WordId = word.Id,
+                Phase = Domain.Srs.CardPhase.Review,
+                Ease = 2.5,
+                IntervalDays = 3,
+                Lapses = lapses,
+                DueUtc = Clock.UtcNow.AddDays(1),
+                IntroducedUtc = Clock.UtcNow,
+                LastReviewedUtc = Clock.UtcNow,
+            });
+        }
+
+        await Db.SaveChangesAsync();
+        return words;
     }
 
     public async Task<UserSettings> GetSettingsAsync() => await Settings.GetEntityAsync(CancellationToken.None);

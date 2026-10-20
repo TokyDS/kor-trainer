@@ -1,0 +1,240 @@
+using KorTrainer.Domain.Common;
+using KorTrainer.Domain.Grammar;
+using static KorTrainer.Domain.Common.ExerciseTypes;
+
+namespace KorTrainer.Domain.Plan;
+
+/// <summary>One step of the plan, done at the learner's own pace.</summary>
+/// <param name="Index">Position in <see cref="Roadmap.Steps"/>, from 0.</param>
+/// <param name="Key">Stable id stored with the learner's progress: <c>lesson-3</c>, <c>level1-2</c>, <c>mock-exam</c>, …</param>
+/// <param name="Title">Name within the stage: "Урок 3: …" or "Блок 2 из 8".</param>
+/// <param name="WordTarget">Words in the deck the block works towards (blocks only).</param>
+public sealed record PlanStep(
+    int Index,
+    string Key,
+    PlanStage Stage,
+    string StageTitle,
+    string Title,
+    string Goal,
+    LessonInfo? Lesson,
+    IReadOnlyList<PlanTask> Tasks,
+    IReadOnlyList<QuickLink> QuickLinks,
+    WordUnlock WordUnlock,
+    int? WordTarget = null);
+
+/// <summary>
+/// The study plan towards TOPIK as an ordered list of steps instead of calendar days: ten lessons
+/// (Hangul and first phrases), blocks of about a hundred words with one grammar topic each for
+/// levels 1 and 2, a mock exam, TOPIK II preparation and maintenance. The learner moves on when ready.
+/// </summary>
+public sealed class Roadmap
+{
+    public const int LessonCount = 10;
+    public const int HangulLessons = 3;
+    public const int WordsPerBlock = 100;
+    public const int Level1Blocks = 8;
+    public const int Level2Blocks = 7;
+    public const int TopikPrepBlocks = 15;
+
+    /// <summary>Words studied at the end of level 1, level 2 and TOPIK II preparation.</summary>
+    public const int Level1Words = Level1Blocks * WordsPerBlock;
+    public const int Level2Words = Level1Words + Level2Blocks * WordsPerBlock;
+    public const int TopikWords = Level2Words + TopikPrepBlocks * WordsPerBlock;
+
+    private const int WritingRotationLength = 3;
+
+    private readonly Dictionary<string, PlanStep> _byKey;
+
+    public Roadmap(int newWordsPerDay = 10)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(newWordsPerDay);
+        NewWordsPerDay = newWordsPerDay;
+        Steps = Build();
+        _byKey = Steps.ToDictionary(s => s.Key, StringComparer.Ordinal);
+    }
+
+    public int NewWordsPerDay { get; }
+
+    public IReadOnlyList<PlanStep> Steps { get; }
+
+    public PlanStep First => Steps[0];
+
+    public static IReadOnlyList<LessonInfo> Lessons => PlanContent.Lessons;
+
+    public static string StageGoal(PlanStage stage) => PlanContent.StageGoal(stage);
+
+    public static string StageTitle(PlanStage stage) => PlanContent.StageTitle(stage);
+
+    public PlanStep? Find(string key) => _byKey.GetValueOrDefault(key);
+
+    public PlanStep? Next(PlanStep step) => step.Index + 1 < Steps.Count ? Steps[step.Index + 1] : null;
+
+    public PlanStep? Previous(PlanStep step) => step.Index > 0 ? Steps[step.Index - 1] : null;
+
+    /// <summary>Grammar topics practiced by this step or an earlier one, in catalog order.</summary>
+    public IReadOnlyList<GrammarTopic> GrammarUnlocked(PlanStep step)
+    {
+        ArgumentNullException.ThrowIfNull(step);
+        var introduced = Steps
+            .Take(step.Index + 1)
+            .SelectMany(s => s.Tasks)
+            .Where(t => t.Target.Module == StudyModule.Grammar && t.Target.ExerciseType is not null)
+            .Select(t => t.Target.ExerciseType!)
+            .ToHashSet(StringComparer.Ordinal);
+
+        // Every topic of a finished level counts as introduced, even if a block mixed it in.
+        return GrammarCatalog.Topics
+            .Where(t => introduced.Contains(t.Type) || (t.Stage < step.Stage && step.Stage > PlanStage.FirstPhrases))
+            .ToList();
+    }
+
+    private List<PlanStep> Build()
+    {
+        var steps = new List<PlanStep>();
+        void Add(Func<int, PlanStep> create) => steps.Add(create(steps.Count));
+
+        foreach (var lesson in PlanContent.Lessons)
+        {
+            Add(index => LessonStep(index, lesson));
+        }
+
+        var level1Topics = TopicsOf(PlanStage.Level1);
+        for (int k = 1; k <= Level1Blocks; k++)
+        {
+            int block = k;
+            Add(index => LevelBlock(index, PlanStage.Level1, "level1", block, Level1Blocks, block * WordsPerBlock, level1Topics,
+                new PlanTask("numbers", "Числа: 15 упражнений", TaskTarget.Answers(StudyModule.Numbers, 15), "/numbers/mixed")));
+        }
+
+        var level2Topics = TopicsOf(PlanStage.Level2);
+        for (int k = 1; k <= Level2Blocks; k++)
+        {
+            int block = k;
+            Add(index => LevelBlock(index, PlanStage.Level2, "level2", block, Level2Blocks, Level1Words + block * WordsPerBlock, level2Topics,
+                new PlanTask("numbers", "Время и деньги: 15 упражнений", TaskTarget.Answers(StudyModule.Numbers, 15), "/numbers/mixed")));
+        }
+
+        Add(MockExamStep);
+        for (int k = 1; k <= TopikPrepBlocks; k++)
+        {
+            int block = k;
+            Add(index => TopikBlock(index, block));
+        }
+
+        Add(MaintenanceStep);
+        return steps;
+    }
+
+    private PlanStep LessonStep(int index, LessonInfo lesson)
+    {
+        var stage = lesson.Day <= HangulLessons ? PlanStage.Hangul : PlanStage.FirstPhrases;
+        var unlock = stage == PlanStage.Hangul ? WordUnlock.None : new WordUnlock(PlanStage.FirstPhrases, lesson.Day);
+        return new PlanStep(
+            index,
+            $"lesson-{lesson.Day}",
+            stage,
+            PlanContent.StageTitle(stage),
+            $"Урок {lesson.Day}: {lesson.Title}",
+            PlanContent.StageGoal(stage),
+            lesson,
+            PlanContent.LessonTasks(lesson.Day, NewWordsPerDay),
+            PlanContent.QuickLinks(stage, lesson.Day),
+            unlock);
+    }
+
+    private static PlanStep LevelBlock(
+        int index, PlanStage stage, string prefix, int block, int blocks, int words, IReadOnlyList<GrammarTopic> topics, PlanTask numbers)
+    {
+        var grammar = block <= topics.Count
+            ? new PlanTask("grammar", $"Грамматика: {topics[block - 1].Title} — 20 упражнений",
+                TaskTarget.Answers(StudyModule.Grammar, 20, topics[block - 1].Type), $"/grammar/{topics[block - 1].Type}")
+            : new PlanTask("grammar", "Грамматика вперемешку: 30 упражнений", TaskTarget.Answers(StudyModule.Grammar, 30), "/grammar/mixed");
+
+        // Reading and listening take turns so a block stays short.
+        var practice = block % 2 == 1
+            ? CommonTasks.Reading(10)
+            : new PlanTask("listening", "Аудирование: 20 упражнений", TaskTarget.Answers(StudyModule.Listening, 20), "/listening");
+
+        string topic = block <= topics.Count ? $" · грамматика: {topics[block - 1].Title}" : " · повторение грамматики";
+        return new PlanStep(
+            index,
+            $"{prefix}-{block}",
+            stage,
+            PlanContent.StageTitle(stage),
+            $"Блок {block} из {blocks}",
+            $"До {words} слов в колоде{topic}.",
+            null,
+            [WordsTask(words), CommonTasks.ReviewDue, grammar, numbers, practice],
+            PlanContent.QuickLinks(stage, 0),
+            new WordUnlock(stage, int.MaxValue),
+            words);
+    }
+
+    private static PlanStep MockExamStep(int index) => new(
+        index,
+        "mock-exam",
+        PlanStage.MockExam,
+        PlanContent.StageTitle(PlanStage.MockExam),
+        "Пробный экзамен",
+        PlanContent.StageGoal(PlanStage.MockExam),
+        null,
+        [
+            CommonTasks.ReviewDue,
+            new("mock-topik1", "Пробный TOPIK I: прошлый вариант с topik.go.kr (чтение 60 мин, аудирование 40 мин)", TaskTarget.Manual(), "/topik"),
+            new("mock-writing", "Пробное письмо TOPIK II, задания 51–54 на таймере", new TaskTarget(TaskMetric.WritingMinutes, 50), "/topik/writing?task=54"),
+            new("decide", "Решение: сдаю TOPIK I или TOPIK II (сравни результаты пробников)", TaskTarget.Manual(), "/stats"),
+        ],
+        PlanContent.QuickLinks(PlanStage.MockExam, 0),
+        new WordUnlock(PlanStage.Level2, int.MaxValue));
+
+    private static PlanStep TopikBlock(int index, int block)
+    {
+        int words = Level2Words + block * WordsPerBlock;
+        var writing = (block % WritingRotationLength) switch
+        {
+            1 => new PlanTask("writing", "Письмо: задания 51–52 (15 минут)", new TaskTarget(TaskMetric.WritingMinutes, 15), "/topik/writing?task=51"),
+            2 => new PlanTask("writing", "Письмо: задание 53, описание графика (15 минут)", new TaskTarget(TaskMetric.WritingMinutes, 15), "/topik/writing?task=53"),
+            _ => new PlanTask("writing", "Письмо: эссе, задание 54 (30 минут)", new TaskTarget(TaskMetric.WritingMinutes, 30), "/topik/writing?task=54"),
+        };
+
+        return new PlanStep(
+            index,
+            $"topik-{block}",
+            PlanStage.TopikPrep,
+            PlanContent.StageTitle(PlanStage.TopikPrep),
+            $"Блок {block} из {TopikPrepBlocks}",
+            $"До {words} слов в колоде · письмо, чтение и аудирование TOPIK II.",
+            null,
+            [
+                WordsTask(words),
+                CommonTasks.ReviewDue,
+                writing,
+                new("reading", "Чтение: один блок заданий TOPIK II из прошлых вариантов", TaskTarget.Manual(), "/topik"),
+                new("listening", "Аудирование: 20 упражнений на слух", TaskTarget.Answers(StudyModule.Listening, 20), "/listening"),
+            ],
+            PlanContent.QuickLinks(PlanStage.TopikPrep, 0),
+            new WordUnlock(PlanStage.TopikPrep, int.MaxValue),
+            words);
+    }
+
+    private static PlanStep MaintenanceStep(int index) => new(
+        index,
+        "maintenance",
+        PlanStage.Maintenance,
+        PlanContent.StageTitle(PlanStage.Maintenance),
+        "Поддержание формы",
+        PlanContent.StageGoal(PlanStage.Maintenance),
+        null,
+        [
+            CommonTasks.ReviewDue,
+            new("grammar", "Грамматика: 10 упражнений", TaskTarget.Answers(StudyModule.Grammar, 10), "/grammar/mixed"),
+        ],
+        PlanContent.QuickLinks(PlanStage.Maintenance, 0),
+        new WordUnlock(PlanStage.TopikPrep, int.MaxValue));
+
+    private static PlanTask WordsTask(int words) =>
+        new("words", $"Слова: довести колоду до {words}", new TaskTarget(TaskMetric.WordsStudied, words), "/vocab/review");
+
+    private static IReadOnlyList<GrammarTopic> TopicsOf(PlanStage stage) =>
+        GrammarCatalog.Topics.Where(t => t.Stage == stage).ToList();
+}

@@ -14,6 +14,7 @@ public sealed class StatsService(IAppDbContext db, SettingsService settingsServi
 {
     public const int MaxDays = 366;
     private const int RecentDays = 7;
+    private const int MonthDays = 30;
     private const int SecondsPerMinute = 60;
 
     public async Task<StatsOverviewDto> GetOverviewAsync(CancellationToken cancellationToken)
@@ -55,11 +56,15 @@ public sealed class StatsService(IAppDbContext db, SettingsService settingsServi
 
         return new StatsOverviewDto(
             await vocabularyService.GetSummaryAsync(cancellationToken),
-            accuracy.OrderBy(a => a.Module).ToList(),
+            // Flashcards and hard-word drills both count as vocabulary: merge them into one row.
+            accuracy.GroupBy(a => a.Module)
+                .Select(g => new ModuleAccuracyDto(g.Key, g.Sum(a => a.Answers), g.Sum(a => a.Correct), g.Sum(a => a.AnswersLast7Days), g.Sum(a => a.CorrectLast7Days)))
+                .OrderBy(a => a.Module)
+                .ToList(),
             ToMinutesRoundedUp(sessionSeconds + writingSeconds),
             activeDays.Count,
-            Streak.Calculate(activeDays, today),
-            LongestStreak(activeDays),
+            StudyRhythm.ActiveDays(activeDays, today),
+            StudyRhythm.ActiveDays(activeDays, today, MonthDays),
             readingSyllables > 0 ? Math.Round((double)readingMs / readingSyllables) : null,
             await db.WritingDrafts.CountAsync(cancellationToken));
     }
@@ -97,28 +102,36 @@ public sealed class StatsService(IAppDbContext db, SettingsService settingsServi
             .ToList();
     }
 
+    /// <summary>When each vocabulary goal is reached at the recent pace of new words (informational, no deadlines).</summary>
+    public async Task<ForecastDto> GetForecastAsync(CancellationToken cancellationToken)
+    {
+        var settings = await settingsService.GetEntityAsync(cancellationToken);
+        var today = clock.Today(settings);
+        var windowStart = today.AddDays(1 - Forecast.PaceWindowDays);
+
+        int studied = await db.WordProgress.CountAsync(cancellationToken);
+        int deckSize = await db.Words.CountAsync(cancellationToken);
+        int recentNew = await db.ReviewLogs.CountAsync(r => r.LocalDate >= windowStart && r.PhaseBefore == CardPhase.New, cancellationToken);
+        var firstNew = await db.ReviewLogs
+            .Where(r => r.PhaseBefore == CardPhase.New)
+            .OrderBy(r => r.LocalDate)
+            .Select(r => (DateOnly?)r.LocalDate)
+            .FirstOrDefaultAsync(cancellationToken);
+        int daysSinceFirst = firstNew is { } first ? today.DayNumber - first.DayNumber + 1 : 0;
+
+        double pace = Forecast.Pace(recentNew, daysSinceFirst);
+        var goals = Forecast.Project(studied, pace, today)
+            .Select(g => new GoalForecastDto(g.Goal.Title, g.Goal.Words, g.Reached, g.ExpectedOn))
+            .ToList();
+        return new ForecastDto(
+            studied,
+            Math.Round(pace, 1),
+            settings.NewWordsPerDay,
+            goals,
+            Forecast.ExamDate,
+            Forecast.WordsBy(Forecast.ExamDate, studied, pace, today, deckSize));
+    }
+
     // A day with 40 seconds of practice should still show up on the chart.
     private static int ToMinutesRoundedUp(long seconds) => (int)Math.Min(int.MaxValue, (seconds + SecondsPerMinute - 1) / SecondsPerMinute);
-
-    public static int LongestStreak(IReadOnlySet<DateOnly> activeDays)
-    {
-        int longest = 0;
-        foreach (var day in activeDays)
-        {
-            if (activeDays.Contains(day.AddDays(-1)))
-            {
-                continue;
-            }
-
-            int length = 1;
-            while (activeDays.Contains(day.AddDays(length)))
-            {
-                length++;
-            }
-
-            longest = Math.Max(longest, length);
-        }
-
-        return longest;
-    }
 }

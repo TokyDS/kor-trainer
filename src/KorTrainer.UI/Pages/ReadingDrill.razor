@@ -1,0 +1,242 @@
+@page "/hangul/reading"
+@inherits KeyboardComponentBase
+@inject IKorTrainerApi Api
+@inject AppState State
+
+<PageTitle>Чтение на время — KorTrainer</PageTitle>
+
+<header class="page-header">
+    <a class="back" href="/hangul">← Хангыль</a>
+    <h1>Чтение на время</h1>
+    <p class="muted">Прочитайте слово вслух и сразу нажмите <kbd>Enter</kbd>. Затем сверьтесь с озвучкой и честно оцените себя.</p>
+</header>
+
+<StatusViews IsLoading="_loading" Error="@_error" OnRetry="LoadAsync" />
+
+@if (!_loading && _error is null)
+{
+    @if (_finished)
+    {
+        <div class="card summary">
+            <h2>Готово</h2>
+            <p class="big-number">@SessionSpeed</p>
+            <p class="muted">мс на слог в этом подходе · верно @_correct из @_items.Count</p>
+            @if (_stats is { Trials: > 0 } stats)
+            {
+                <p class="muted">В среднем за всё время: @stats.AverageMsPerSyllable мс на слог, точность @((int)(stats.Accuracy * 100))%.</p>
+            }
+            <div class="actions">
+                <button type="button" class="btn primary" @onclick="LoadAsync">Ещё подход <kbd>Enter</kbd></button>
+                <a class="btn" href="/">К задачам дня</a>
+            </div>
+        </div>
+    }
+    else if (_position < _items.Count)
+    {
+        var item = _items[_position];
+        <div class="progress-track" aria-hidden="true"><div class="progress-fill" style="width: @(_position * 100 / _items.Count)%"></div></div>
+        <p class="counter muted">@(_position + 1) из @_items.Count</p>
+
+        <div class="card prompt reading">
+            <span class="reading-word" lang="ko">@item.Text</span>
+            @if (_revealed)
+            {
+                <div class="reveal">
+                    @if (item.Pronounced != item.Text)
+                    {
+                        <p lang="ko" class="pronounced">[@item.Pronounced]</p>
+                    }
+                    @if (State.Settings.ShowRomanization)
+                    {
+                        <p class="romanization">@item.Romanization</p>
+                    }
+                    <p>@(item.Translation ?? "псевдослово — тренировка чтения")</p>
+                    <p class="muted">@_elapsedMs мс · @(_elapsedMs / Math.Max(1, item.SyllableCount)) мс на слог</p>
+                    <SpeakButton Text="@item.Text" />
+                </div>
+            }
+        </div>
+
+        @if (!_revealed)
+        {
+            <button type="button" class="btn primary wide" @onclick="Reveal">Прочитал <kbd>Enter</kbd></button>
+        }
+        else
+        {
+            <div class="options two">
+                <button type="button" class="option" @onclick="() => GradeAsync(true)"><span class="key">1</span> Прочитал верно</button>
+                <button type="button" class="option" @onclick="() => GradeAsync(false)"><span class="key">2</span> Ошибся</button>
+            </div>
+        }
+
+        @if (_syncError is not null)
+        {
+            <p class="notice error small">Результат не сохранился: @_syncError</p>
+        }
+    }
+}
+
+@code {
+    private const int SetSize = 10;
+
+    private readonly System.Diagnostics.Stopwatch _timer = new();
+    private List<ReadingItemDto> _items = [];
+    private ReadingStatsDto? _stats;
+    private int _position;
+    private bool _revealed;
+    private bool _finished;
+    private bool _loading = true;
+    private string? _error;
+    private string? _syncError;
+    private int _elapsedMs;
+    private int _correct;
+    private long _correctMs;
+    private int _correctSyllables;
+    private DateTime _sessionStartUtc;
+    private long _activeMs;
+
+    [SupplyParameterFromQuery]
+    public int? Level { get; set; }
+
+    private string SessionSpeed => _correctSyllables == 0 ? "—" : (_correctMs / _correctSyllables).ToString();
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    protected override async Task HandleKeyAsync(string key)
+    {
+        if (_finished)
+        {
+            if (key == "Enter")
+            {
+                await LoadAsync();
+            }
+
+            return;
+        }
+
+        if (!_revealed && key is "Enter" or "Space")
+        {
+            Reveal();
+        }
+        else if (_revealed && key is "1" or "y")
+        {
+            await GradeAsync(true);
+        }
+        else if (_revealed && key is "2" or "n")
+        {
+            await GradeAsync(false);
+        }
+        else if (_revealed && key == "Space" && _position < _items.Count)
+        {
+            await State.SpeakAsync(_items[_position].Text);
+        }
+    }
+
+    private async Task LoadAsync()
+    {
+        await SaveSessionAsync();
+        _loading = true;
+        _error = null;
+        try
+        {
+            _items = [.. await Api.GetReadingAsync(Math.Clamp(Level ?? 3, 1, 3), SetSize)];
+            _position = 0;
+            _revealed = false;
+            _finished = false;
+            _correct = 0;
+            _correctMs = 0;
+            _correctSyllables = 0;
+            _sessionStartUtc = DateTime.UtcNow;
+            _activeMs = 0;
+            _timer.Restart();
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void Reveal()
+    {
+        _timer.Stop();
+        _elapsedMs = (int)Math.Min(_timer.ElapsedMilliseconds, int.MaxValue);
+        _activeMs += Math.Min(_elapsedMs, 60_000);
+        _revealed = true;
+        _ = State.SpeakAsync(_items[_position].Text).AsTask();
+    }
+
+    private async Task GradeAsync(bool readCorrectly)
+    {
+        var item = _items[_position];
+        if (readCorrectly)
+        {
+            _correct++;
+            _correctMs += _elapsedMs;
+            _correctSyllables += item.SyllableCount;
+        }
+
+        try
+        {
+            await Api.RecordReadingTrialAsync(new ReadingTrialDto(item.Text, item.SyllableCount, Math.Max(1, _elapsedMs), readCorrectly));
+            _syncError = null;
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException)
+        {
+            _syncError = ex.Message;
+        }
+
+        _position++;
+        _revealed = false;
+        if (_position >= _items.Count)
+        {
+            _finished = true;
+            await SaveSessionAsync();
+            _stats = await TryGetStatsAsync();
+        }
+        else
+        {
+            _timer.Restart();
+        }
+    }
+
+    private async Task<ReadingStatsDto?> TryGetStatsAsync()
+    {
+        try
+        {
+            return await Api.GetReadingStatsAsync();
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException)
+        {
+            return null;
+        }
+    }
+
+    private async Task SaveSessionAsync()
+    {
+        int seconds = (int)(_activeMs / 1000);
+        if (seconds < 1)
+        {
+            return;
+        }
+
+        _activeMs = 0;
+        try
+        {
+            await Api.RecordSessionAsync(new SessionDto(StudyModule.Hangul, _sessionStartUtc, seconds));
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException)
+        {
+            _syncError = ex.Message;
+        }
+    }
+
+    public override async ValueTask DisposeAsync()
+    {
+        await SaveSessionAsync();
+        await base.DisposeAsync();
+    }
+}

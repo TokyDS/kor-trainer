@@ -15,24 +15,7 @@ namespace KorTrainer.Infrastructure.Persistence.Migrations
         protected override void BuildModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
-            modelBuilder.HasAnnotation("ProductVersion", "10.0.12");
-
-            modelBuilder.Entity("KorTrainer.Domain.Entities.DailyTaskCompletion", b =>
-                {
-                    b.Property<DateOnly>("Date")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("TaskKey")
-                        .HasMaxLength(64)
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("CompletedUtc")
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Date", "TaskKey");
-
-                    b.ToTable("TaskCompletions");
-                });
+            modelBuilder.HasAnnotation("ProductVersion", "10.0.13");
 
             modelBuilder.Entity("KorTrainer.Domain.Entities.ExerciseAttempt", b =>
                 {
@@ -70,6 +53,23 @@ namespace KorTrainer.Infrastructure.Persistence.Migrations
                     b.HasIndex("LocalDate", "Module");
 
                     b.ToTable("ExerciseAttempts");
+                });
+
+            modelBuilder.Entity("KorTrainer.Domain.Entities.PlanStepProgress", b =>
+                {
+                    b.Property<string>("StepKey")
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("CompletedUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("StartedUtc")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("StepKey");
+
+                    b.ToTable("PlanSteps");
                 });
 
             modelBuilder.Entity("KorTrainer.Domain.Entities.ReadingTrial", b =>
@@ -144,6 +144,24 @@ namespace KorTrainer.Infrastructure.Persistence.Migrations
                     b.ToTable("ReviewLogs");
                 });
 
+            modelBuilder.Entity("KorTrainer.Domain.Entities.StepTaskCompletion", b =>
+                {
+                    b.Property<string>("StepKey")
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("TaskKey")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CompletedUtc")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("StepKey", "TaskKey");
+
+                    b.ToTable("StepTaskCompletions");
+                });
+
             modelBuilder.Entity("KorTrainer.Domain.Entities.StudySession", b =>
                 {
                     b.Property<long>("Id")
@@ -180,6 +198,9 @@ namespace KorTrainer.Infrastructure.Persistence.Migrations
                     b.Property<int>("NewWordsPerDay")
                         .HasColumnType("INTEGER");
 
+                    b.Property<bool>("RemindersEnabled")
+                        .HasColumnType("INTEGER");
+
                     b.Property<bool>("ShowRomanization")
                         .HasColumnType("INTEGER");
 
@@ -211,6 +232,10 @@ namespace KorTrainer.Infrastructure.Persistence.Migrations
                     b.Property<string>("DeckKey")
                         .IsRequired()
                         .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Hanja")
+                        .HasMaxLength(16)
                         .HasColumnType("TEXT");
 
                     b.Property<int>("Irregularity")
@@ -253,6 +278,24 @@ namespace KorTrainer.Infrastructure.Persistence.Migrations
                     b.HasIndex("Stage", "LessonDay", "Rank");
 
                     b.ToTable("Words");
+                });
+
+            modelBuilder.Entity("KorTrainer.Domain.Entities.WordNote", b =>
+                {
+                    b.Property<int>("WordId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("UpdatedUtc")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("WordId");
+
+                    b.ToTable("WordNotes");
                 });
 
             modelBuilder.Entity("KorTrainer.Domain.Entities.WordProgress", b =>
@@ -331,6 +374,17 @@ namespace KorTrainer.Infrastructure.Persistence.Migrations
                         .HasForeignKey("WordId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("KorTrainer.Domain.Entities.WordNote", b =>
+                {
+                    b.HasOne("KorTrainer.Domain.Entities.Word", "Word")
+                        .WithMany()
+                        .HasForeignKey("WordId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Word");
                 });
 
             modelBuilder.Entity("KorTrainer.Domain.Entities.WordProgress", b =>

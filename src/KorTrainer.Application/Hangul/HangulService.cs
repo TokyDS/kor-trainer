@@ -1,4 +1,5 @@
 using KorTrainer.Application.Common;
+using KorTrainer.Application.Plan;
 using KorTrainer.Application.Settings;
 using KorTrainer.Contracts;
 using KorTrainer.Domain.Common;
@@ -9,7 +10,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace KorTrainer.Application.Hangul;
 
-public sealed class HangulService(IAppDbContext db, SettingsService settingsService, StudyClock clock, Random random)
+public sealed class HangulService(IAppDbContext db, SettingsService settingsService, StudyClock clock, Random random, IAudioLibrary audio, PlanCursor cursor)
 {
     public const int MaxCount = 50;
     public const int MaxAnalyzeLength = 40;
@@ -35,9 +36,10 @@ public sealed class HangulService(IAppDbContext db, SettingsService settingsServ
             .Require(count is >= 1 and <= MaxCount, nameof(count), $"Количество: от 1 до {MaxCount}.")
             .ThrowIfInvalid();
 
-        var words = await db.Words.Select(w => w.Korean).ToListAsync(cancellationToken);
+        var maxStage = await MaxWordStageAsync(cancellationToken);
+        var words = await db.Words.Where(w => w.Stage <= maxStage).Select(w => w.Korean).ToListAsync(cancellationToken);
         var generator = new HangulExerciseGenerator(random);
-        var items = generator.Generate(type, (HangulLevel)level, count, words).Select(ExerciseMapper.ToDto).ToList();
+        var items = generator.Generate(type, (HangulLevel)level, count, words, audio.Words).Select(ExerciseMapper.ToDto).ToList();
         return new ExerciseSetDto(StudyModule.Hangul, type, TitleOf(type), items);
     }
 
@@ -48,7 +50,9 @@ public sealed class HangulService(IAppDbContext db, SettingsService settingsServ
             .Require(count is >= 1 and <= MaxCount, nameof(count), $"Количество: от 1 до {MaxCount}.")
             .ThrowIfInvalid();
 
+        var maxStage = await MaxWordStageAsync(cancellationToken);
         var words = await db.Words
+            .Where(w => w.Stage <= maxStage)
             .Select(w => new { w.Korean, w.Russian })
             .ToListAsync(cancellationToken);
         var generator = new HangulExerciseGenerator(random);
@@ -80,6 +84,11 @@ public sealed class HangulService(IAppDbContext db, SettingsService settingsServ
             todayCorrect.Count == 0 ? null : Math.Round((double)todayCorrect.Sum(t => t.ElapsedMs) / todayCorrect.Sum(t => t.SyllableCount)));
     }
 
+    private async Task<PlanStage> MaxWordStageAsync(CancellationToken cancellationToken)
+    {
+        return StudyScope.MaxWordStage((await cursor.GetAsync(cancellationToken)).Step.Stage);
+    }
+
     public static HangulAnalysisDto Analyze(string? text)
     {
         if (string.IsNullOrWhiteSpace(text))
@@ -106,7 +115,7 @@ public sealed class HangulService(IAppDbContext db, SettingsService settingsServ
     {
         new Validator().Require(Enum.IsDefined((HangulLevel)level), nameof(level), "Уровень: 1, 2 или 3.").ThrowIfInvalid();
 
-        var lesson = new StudyPlan(StudyPlan.DefaultStartDate).Lessons.Single(l => l.Day == level);
+        var lesson = Roadmap.Lessons.Single(l => l.Day == level);
         var letters = (HangulLevel)level switch
         {
             HangulLevel.Basics => JamoCatalog.ForLevel(HangulLevel.Basics),

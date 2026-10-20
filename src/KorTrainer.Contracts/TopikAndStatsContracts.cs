@@ -30,7 +30,21 @@ public sealed record StatsOverviewDto(
     IReadOnlyList<ModuleAccuracyDto> Accuracy,
     int TotalStudyMinutes,
     int ActiveDays,
-    int CurrentStreak,
-    int LongestStreak,
+    int ActiveDaysThisWeek,
+    int ActiveDaysThisMonth,
     double? ReadingMsPerSyllable,
     int WritingDrafts);
+
+/// <param name="ExpectedOn">When the goal is reached at the recent pace; null when reached or without a pace.</param>
+public sealed record GoalForecastDto(string Title, int Goal, bool Reached, DateOnly? ExpectedOn);
+
+/// <param name="WordsStudied">Words introduced so far (any SRS state).</param>
+/// <param name="PacePerDay">Average new words per day recently.</param>
+/// <param name="WordsByExam">Words in the deck by <paramref name="ExamDate"/> at this pace.</param>
+public sealed record ForecastDto(
+    int WordsStudied,
+    double PacePerDay,
+    int NewWordsPerDaySetting,
+    IReadOnlyList<GoalForecastDto> Goals,
+    DateOnly ExamDate,
+    int WordsByExam);

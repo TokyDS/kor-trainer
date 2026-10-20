@@ -20,6 +20,7 @@ public sealed class ConjugatorTests
     [InlineData("기다리다", Irregularity.None, "기다려요")]
     [InlineData("배우다", Irregularity.None, "배워요")]
     [InlineData("주다", Irregularity.None, "줘요")]
+    [InlineData("푸다", Irregularity.None, "퍼요")]
     [InlineData("되다", Irregularity.None, "돼요")]
     [InlineData("쉬다", Irregularity.None, "쉬어요")]
     [InlineData("보내다", Irregularity.None, "보내요")]

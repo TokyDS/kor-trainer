@@ -9,4 +9,5 @@ public sealed record SettingsDto(
     ThemePreference Theme,
     int NewWordsPerDay,
     int MaxReviewsPerDay,
-    double SpeechRate);
+    double SpeechRate,
+    bool RemindersEnabled = true);

@@ -130,7 +130,51 @@ public sealed class HangulExerciseGeneratorTests
         {
             exercise.AutoSpeak.Should().BeTrue();
             exercise.SpeakText.Should().Be(exercise.Correct.Text);
-            exercise.Options[0].Hint.Should().Be("обычная");
+            var order = new[] { "обычная", "с придыханием", "напряжённая" };
+            exercise.Options.Select(o => Array.FindIndex(order, s => o.Hint!.StartsWith(s, StringComparison.Ordinal)))
+                .Should().BeInAscendingOrder().And.NotContain(-1);
+            exercise.Options.Should().OnlyContain(o => MinimalPairs.Sets.SelectMany(s => s).Any(w => w.Korean == o.Text));
+        }
+    }
+
+    [Fact]
+    public void ConsonantSeries_WithRecordings_NeverMixesRecordedAndSynthesizedWords()
+    {
+        var recorded = new HashSet<string> { "가다", "까다", "자다", "짜다", "바다", "파다", "비", "피", "덜다", "털다", "떨다", "도끼", "토끼", "불" };
+        var generator = new HangulExerciseGenerator(new Random(31));
+
+        var exercises = generator.Generate(ExerciseTypes.ConsonantSeries, HangulLevel.Full, SampleSize, recordedWords: recorded);
+
+        exercises.SelectMany(e => e.Options).Should().OnlyContain(o => recorded.Contains(o.Text));
+        exercises.Should().OnlyContain(e => e.Options.Count >= 2);
+    }
+
+    [Fact]
+    public void MinimalPairs_FallBackToSynthesisWhenTooFewSetsAreRecorded()
+    {
+        MinimalPairs.Playable(new HashSet<string> { "가다", "까다" }).Should().BeSameAs(MinimalPairs.Sets);
+        MinimalPairs.Playable(null).Should().BeSameAs(MinimalPairs.Sets);
+    }
+
+    [Fact]
+    public void MinimalPairs_DifferOnlyInTheInitialConsonantOfOneSeries()
+    {
+        foreach (var set in MinimalPairs.Sets)
+        {
+            set.Count.Should().BeInRange(2, 3);
+            var first = set[0];
+            foreach (var word in set)
+            {
+                var syllable = Syllable.Decompose(word.Korean[0]);
+                var reference = Syllable.Decompose(first.Korean[0]);
+                word.Korean.Length.Should().Be(first.Korean.Length);
+                word.Korean[1..].Should().Be(first.Korean[1..], "only the first consonant may differ");
+                syllable.Medial.Should().Be(reference.Medial);
+                syllable.Final.Should().Be(reference.Final);
+            }
+
+            var series = JamoCatalog.ConsonantSeries.Single(s => s.Contains(first.Consonant));
+            set.Select(w => series.ToList().IndexOf(w.Consonant)).Should().BeInAscendingOrder().And.OnlyHaveUniqueItems().And.NotContain(-1);
         }
     }
 

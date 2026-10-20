@@ -1,6 +1,12 @@
+using KorTrainer.Application.Reading;
+using KorTrainer.Application.Typing;
+using KorTrainer.Application.Sentences;
+using KorTrainer.Application.Hanja;
 using System.Text.Json;
 using KorTrainer.Application.Activity;
+using KorTrainer.Application.Common;
 using KorTrainer.Application.Grammar;
+using KorTrainer.Application.Listening;
 using KorTrainer.Application.Numbers;
 using KorTrainer.Application.Stats;
 using KorTrainer.Application.Topik;
@@ -33,6 +39,31 @@ public static class ApiEndpoints
         MapGrammar(api.MapGroup("/grammar").WithTags("Grammar"));
         api.MapGroup("/numbers").WithTags("Numbers")
             .MapGet("/exercises/{type}", (string type, int? count, NumbersService service) => service.GetExercises(type, count ?? 20));
+        MapAudio(api.MapGroup("/audio").WithTags("Audio"));
+        api.MapGroup("/listening").WithTags("Listening")
+            .MapGet("/exercises/{type}", (string type, int? count, ListeningService service, CancellationToken ct) => service.GetExercisesAsync(type, count ?? 20, ct));
+        var hanja = api.MapGroup("/hanja").WithTags("Hanja");
+        hanja.MapGet("/roots", (HanjaService service, CancellationToken ct) => service.GetRootsAsync(ct));
+        hanja.MapGet("/roots/{character}", (string character, HanjaService service, CancellationToken ct) => service.GetRootAsync(character, ct));
+        hanja.MapGet("/exercises/{type}", (string type, int? count, HanjaService service, CancellationToken ct) => service.GetExercisesAsync(type, count ?? 20, ct));
+        var words = api.MapGroup("/vocab").WithTags("Vocabulary");
+        words.MapGet("/words/{id:int}/details", (int id, WordDetailsService service, CancellationToken ct) => service.GetAsync(id, ct));
+        words.MapPut("/words/{id:int}/note", async (int id, SaveNoteRequest request, WordDetailsService service, CancellationToken ct) =>
+        {
+            await service.SaveNoteAsync(id, request, ct);
+            return Results.NoContent();
+        });
+        words.MapGet("/hard", (WordDetailsService service, CancellationToken ct) => service.GetHardWordsAsync(ct));
+        words.MapGet("/hard/exercises/{type}", (string type, int? count, WordDetailsService service, CancellationToken ct) => service.GetHardExercisesAsync(type, count ?? 20, ct));
+        api.MapGroup("/sentences").WithTags("Sentences")
+            .MapGet("/{type}", (string type, int? count, SentenceService service, CancellationToken ct) => service.GetPracticeAsync(type, count ?? 10, ct));
+        api.MapGroup("/typing").WithTags("Typing")
+            .MapGet("/{level:int}", (int level, int? count, TypingService service, CancellationToken ct) => service.GetSetAsync(level, count ?? 15, ct));
+        var texts = api.MapGroup("/texts").WithTags("Reading");
+        texts.MapGet("/", (ReadingService service, CancellationToken ct) => service.GetTextsAsync(ct));
+        texts.MapGet("/{id}", (string id, ReadingService service, CancellationToken ct) => service.GetTextAsync(id, ct));
+        api.MapPost("/vocab/words/{id:int}/study", (int id, VocabularyService service, CancellationToken ct) => service.AddToStudyAsync(id, ct)).WithTags("Vocabulary");
+        api.MapGet("/topik/reading/{format}", (string format, int? count, TopikReadingService service, CancellationToken ct) => service.GetExercisesAsync(format, count ?? 10, ct)).WithTags("TOPIK");
         MapTopik(api.MapGroup("/topik").WithTags("TOPIK"));
         MapStats(api.MapGroup("/stats").WithTags("Statistics"));
         MapActivity(api.MapGroup(string.Empty).WithTags("Activity"));
@@ -51,8 +82,10 @@ public static class ApiEndpoints
 
     private static void MapToday(RouteGroupBuilder group)
     {
-        group.MapGet("/today", (TodayService service, CancellationToken ct) => service.GetTodayAsync(ct));
+        group.MapGet("/today", (string? step, TodayService service, CancellationToken ct) => service.GetStepAsync(step, ct));
         group.MapGet("/plan", (TodayService service, CancellationToken ct) => service.GetPlanAsync(ct));
+        group.MapPost("/plan/advance", (AdvanceRequest request, TodayService service, CancellationToken ct) => service.AdvanceAsync(request, ct));
+        group.MapGet("/reminder", (ReminderService service, CancellationToken ct) => service.GetAsync(ct));
         group.MapPut("/today/tasks/{taskKey}", async (string taskKey, SetTaskDoneRequest request, TodayService service, CancellationToken ct) =>
         {
             await service.SetTaskDoneAsync(taskKey, request, ct);
@@ -94,6 +127,29 @@ public static class ApiEndpoints
             service.GetExercisesAsync(type, count ?? 20, ct));
     }
 
+    private static void MapAudio(RouteGroupBuilder group)
+    {
+        group.MapGet("/words", (IAudioLibrary audio) => audio.Words.Order(StringComparer.Ordinal));
+        group.MapGet("/credits", (IAudioLibrary audio) => audio.Credits);
+        group.MapGet("/{word}", async (string word, IAudioLibrary audio, HttpContext http, CancellationToken ct) =>
+        {
+            if (!audio.Words.Contains(word))
+            {
+                return Results.Problem(statusCode: StatusCodes.Status404NotFound, title: "Для этого слова нет записи.");
+            }
+
+            var file = await audio.OpenAsync(word, ct);
+            if (file is null)
+            {
+                return Results.Problem(statusCode: StatusCodes.Status503ServiceUnavailable, title: "Запись пока недоступна (нет связи с Wikimedia).");
+            }
+
+            // Recordings never change for a word: let the browser keep them.
+            http.Response.Headers.CacheControl = "public, max-age=2592000";
+            return Results.Stream(file.Content, file.ContentType, enableRangeProcessing: true);
+        });
+    }
+
     private static void MapTopik(RouteGroupBuilder group)
     {
         group.MapGet("/writing", () => TopikService.GetGuide());
@@ -105,6 +161,7 @@ public static class ApiEndpoints
     {
         group.MapGet("/overview", (StatsService service, CancellationToken ct) => service.GetOverviewAsync(ct));
         group.MapGet("/daily", (int? days, StatsService service, CancellationToken ct) => service.GetDailyAsync(days ?? 30, ct));
+        group.MapGet("/forecast", (StatsService service, CancellationToken ct) => service.GetForecastAsync(ct));
     }
 
     private static void MapActivity(RouteGroupBuilder group)

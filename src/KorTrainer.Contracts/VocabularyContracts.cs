@@ -63,3 +63,23 @@ public sealed record VocabularySummaryDto(
     int DueNow,
     int NewToday,
     int ReviewsToday);
+
+/// <param name="FamilySize">Deck words that share this character.</param>
+public sealed record HanjaPartDto(string Syllable, string Character, string? Hun, string? Russian, int FamilySize);
+
+public sealed record ExampleDto(int Id, string Korean, string Russian, bool MachineTranslated, string Author);
+
+/// <summary>Everything that helps to remember a word: roots, examples, the learner's note, why it is hard.</summary>
+public sealed record WordDetailsDto(
+    int WordId,
+    string Korean,
+    string Russian,
+    string? Hanja,
+    IReadOnlyList<HanjaPartDto> Roots,
+    IReadOnlyList<ExampleDto> Examples,
+    string? Note,
+    string? HardReason);
+
+public sealed record SaveNoteRequest(string? Text);
+
+public sealed record HardWordDto(int WordId, string Korean, string Russian, string Reason, int Lapses, string? Note, DateTime DueUtc);

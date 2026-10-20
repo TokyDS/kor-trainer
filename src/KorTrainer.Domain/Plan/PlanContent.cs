@@ -6,17 +6,17 @@ namespace KorTrainer.Domain.Plan;
 /// <summary>Tasks shared by several stages.</summary>
 internal static class CommonTasks
 {
-    public static DailyTask ReviewDue { get; } =
+    public static PlanTask ReviewDue { get; } =
         new("vocab-due", "Повторить все слова к повторению", new TaskTarget(TaskMetric.VocabularyDueCleared), "/vocab/review");
 
-    public static DailyTask NewWords(int count) =>
+    public static PlanTask NewWords(int count) =>
         new("vocab-new", $"Выучить новые слова: {count}", new TaskTarget(TaskMetric.NewWords, count), "/vocab/review");
 
-    public static DailyTask Reading(int count, int level = 3) =>
+    public static PlanTask Reading(int count, int level = 3) =>
         new("reading", $"Чтение на время: {count} слов", new TaskTarget(TaskMetric.ReadingTrials, count), $"/hangul/reading?level={level}");
 }
 
-/// <summary>Russian learning content of the plan: stage names, lesson notes and day tasks.</summary>
+/// <summary>Russian learning content of the plan: stage names, lesson notes and lesson tasks.</summary>
 internal static class PlanContent
 {
     public static IReadOnlyList<LessonInfo> Lessons { get; } =
@@ -97,7 +97,7 @@ internal static class PlanContent
         ]),
     ];
 
-    public static IReadOnlyList<DailyTask> LessonTasks(int day, int newWordsPerDay) => day switch
+    public static IReadOnlyList<PlanTask> LessonTasks(int day, int newWordsPerDay) => day switch
     {
         1 =>
         [
@@ -184,20 +184,28 @@ internal static class PlanContent
             new("Сборка слога", $"/hangul/{Compose}?level={day}"),
             new("Три ряда согласных", $"/hangul/{ConsonantSeries}?level=2"),
             new("Чтение на время", $"/hangul/reading?level={day}"),
+            new("Раскладка клавиатуры", "/typing/1"),
         ],
         PlanStage.TopikPrep or PlanStage.MockExam =>
         [
             new("Повторение слов", "/vocab/review"),
+            new("TOPIK I: чтение", "/topik/reading/mixed"),
             new("Письмо 51–54", "/topik/writing"),
-            new("Грамматика", "/grammar"),
-            new("Статистика", "/stats"),
+            new("Тексты", "/read"),
+            new("Диктант", "/listening/dictation"),
+            new("Трудные слова", "/vocab/hard"),
         ],
         _ =>
         [
             new("Повторение слов", "/vocab/review"),
             new("Грамматика", "/grammar"),
             new("Числа", "/numbers"),
-            new("Чтение на время", "/hangul/reading?level=3"),
+            new("Тексты", "/read"),
+            new("Диктант", "/listening/dictation"),
+            new("Повтори вслух", "/listening/shadowing"),
+            new("Корни ханча", "/hanja"),
+            new("Трудные слова", "/vocab/hard"),
+            new("TOPIK I: чтение", "/topik/reading/mixed"),
         ],
     };
 
@@ -216,7 +224,7 @@ internal static class PlanContent
 
     public static string StageGoal(PlanStage stage) => stage switch
     {
-        PlanStage.NotStarted => "Обучение начнётся в дату старта из настроек.",
+        PlanStage.NotStarted => "Начните с первого урока.",
         PlanStage.Hangul => "Читать любой слог без подсказок.",
         PlanStage.FirstPhrases => "Приветствия, «это …», числа, рассказ о себе.",
         PlanStage.Level1 => "Уровень 1, около 800 слов.",
@@ -227,15 +235,15 @@ internal static class PlanContent
         _ => string.Empty,
     };
 
-    private static DailyTask Guide(int level) =>
+    private static PlanTask Guide(int level) =>
         new("guide", "Прочитать памятку урока и прослушать буквы", TaskTarget.Manual(), $"/hangul/guide?level={level}");
 
-    private static DailyTask Hangul(string type, string title, int count, int level) =>
+    private static PlanTask Hangul(string type, string title, int count, int level) =>
         new(type, $"{title}: {count}", TaskTarget.Answers(StudyModule.Hangul, count, type), $"/hangul/{type}?level={level}");
 
-    private static DailyTask Grammar(string type, string title, int count) =>
+    private static PlanTask Grammar(string type, string title, int count) =>
         new(type, $"Грамматика {title}: {count} упражнений", TaskTarget.Answers(StudyModule.Grammar, count, type), $"/grammar/{type}");
 
-    private static DailyTask Numbers(string type, string title, int count) =>
+    private static PlanTask Numbers(string type, string title, int count) =>
         new(type, $"{title}: {count} упражнений", TaskTarget.Answers(StudyModule.Numbers, count, type), $"/numbers/{type}");
 }

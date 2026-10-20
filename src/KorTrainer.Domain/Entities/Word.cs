@@ -53,7 +53,27 @@ public sealed class Word
     /// <summary>Order of introduction within a stage (lower first).</summary>
     public int Rank { get; set; }
 
+    /// <summary>Hanja spelling of Sino-Korean words ("學校", "始作-"); null for native words.</summary>
+    public string? Hanja { get; set; }
+
     public WordProgress? Progress { get; set; }
+}
+
+public static class WordNoteLimits
+{
+    public const int MaxLength = 300;
+}
+
+/// <summary>The learner's own memory aid for a word (mnemonic, association).</summary>
+public sealed class WordNote
+{
+    public int WordId { get; set; }
+
+    public Word? Word { get; set; }
+
+    public required string Text { get; set; }
+
+    public DateTime UpdatedUtc { get; set; }
 }
 
 /// <summary>SRS state of a word that has been introduced to the learner.</summary>

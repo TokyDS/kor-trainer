@@ -38,6 +38,7 @@ public sealed class DatabaseInitializer(AppDbContext db, ILogger<DatabaseInitial
             word.Stage = entry.Stage;
             word.LessonDay = entry.LessonDay;
             word.Rank = entry.Rank;
+            word.Hanja = entry.Hanja;
         }
 
         int changes = await db.SaveChangesAsync(cancellationToken);

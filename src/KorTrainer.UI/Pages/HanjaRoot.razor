@@ -1,0 +1,61 @@
+@page "/hanja/{Character}"
+@inject IKorTrainerApi Api
+
+<PageTitle>@Character — ханча — KorTrainer</PageTitle>
+
+<StatusViews IsLoading="_detail is null && _error is null" Error="@_error" OnRetry="LoadAsync" />
+
+@if (_detail is { } d)
+{
+    <header class="page-header root-header">
+        <a class="btn small" href="/hanja">← Все корни</a>
+        <div class="root-hero">
+            <span class="root-huge" lang="zh">@d.Root.Character</span>
+            <div>
+                <p class="root-reading big"><span lang="ko">@d.Root.Hun @d.Root.Reading</span></p>
+                <h1>@(d.Root.Russian ?? "—")</h1>
+                <p class="muted">Слов с этим корнем в колоде: @d.Root.TotalWords, из них вы учите @d.Root.StudiedWords.</p>
+            </div>
+        </div>
+    </header>
+
+    <ul class="family-list">
+        @foreach (var word in d.Words)
+        {
+            <li class="@(word.Studied ? "studied" : "upcoming")">
+                <HangulText Text="@word.Korean" />
+                <SpeakButton Text="@word.Korean" ShowKeyHint="false" />
+                <span class="muted" lang="zh">@word.Hanja</span>
+                <span>@word.Russian</span>
+                @if (!word.Studied)
+                {
+                    <small class="muted">впереди</small>
+                }
+            </li>
+        }
+    </ul>
+}
+
+@code {
+    private HanjaRootDetailDto? _detail;
+    private string? _error;
+
+    [Parameter]
+    public string Character { get; set; } = string.Empty;
+
+    protected override Task OnParametersSetAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _error = null;
+        _detail = null;
+        try
+        {
+            _detail = await Api.GetHanjaRootAsync(Character);
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException)
+        {
+            _error = ex.Message;
+        }
+    }
+}

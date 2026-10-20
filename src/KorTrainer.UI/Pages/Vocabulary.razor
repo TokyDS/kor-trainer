@@ -1,0 +1,152 @@
+@page "/vocab"
+@inject IKorTrainerApi Api
+
+<PageTitle>Словарь — KorTrainer</PageTitle>
+
+<header class="page-header">
+    <h1>Словарь</h1>
+    <p class="muted">Интервальные повторения в духе Anki. Новые слова открываются по плану: сначала слова уроков 4–9, затем лексика этапа 1.</p>
+</header>
+
+<StatusViews IsLoading="_summary is null && _error is null" Error="@_error" OnRetry="LoadAsync" />
+
+@if (_summary is { } s)
+{
+    <section class="card vocab-summary">
+        <dl class="stats-row">
+            <div><dt>к повторению</dt><dd>@s.DueNow</dd></div>
+            <div><dt>новых доступно</dt><dd>@s.Unseen</dd></div>
+            <div><dt>в изучении</dt><dd>@(s.Learning + s.Young)</dd></div>
+            <div><dt>выучено (21+ дн)</dt><dd>@s.Mature</dd></div>
+            <div><dt>всего в колоде</dt><dd>@s.Total</dd></div>
+        </dl>
+        <div class="actions">
+            <a class="btn primary" href="/vocab/review">Начать повторение</a>
+            <a class="btn" href="/vocab/review?mode=reverse">RU → 한</a>
+            <a class="btn" href="/vocab/hard">Трудные слова</a>
+            <a class="btn" href="/hanja">Корни ханча</a>
+        </div>
+        @if (s.Unlocked == 0)
+        {
+            <p class="muted">Слова откроются с урока 4, после трёх уроков хангыля.</p>
+        }
+    </section>
+
+    <section class="word-list" aria-labelledby="words-heading">
+        <h2 id="words-heading">Все слова</h2>
+        <form class="filters" @onsubmit="SearchAsync">
+            <input type="search" placeholder="Поиск: 학교 или школа" @bind="_search" aria-label="Поиск" />
+            <select @bind="_topic" @bind:after="ResetAndLoadWordsAsync" aria-label="Тема">
+                <option value="">Все темы</option>
+                @foreach (var topic in _topics)
+                {
+                    <option value="@topic.Topic">@topic.Topic (@topic.Learned/@topic.Total)</option>
+                }
+            </select>
+            <select @bind="_status" @bind:after="ResetAndLoadWordsAsync" aria-label="Статус">
+                <option value="">Любой статус</option>
+                @foreach (var status in Enum.GetValues<WordStatus>())
+                {
+                    <option value="@status">@StatusLabel(status)</option>
+                }
+            </select>
+        </form>
+
+        @if (_page is { } wordPage)
+        {
+            <table class="words">
+                <thead><tr><th>Слово</th><th>Перевод</th><th class="hide-sm">Тема</th><th>Статус</th></tr></thead>
+                <tbody>
+                    @foreach (var word in wordPage.Items)
+                    {
+                        <tr class="status-@word.Status.ToString().ToLowerInvariant()">
+                            <td><HangulText Text="@word.Korean" /></td>
+                            <td>@(word.Status == WordStatus.Locked ? "🔒 откроется позже" : word.Russian)</td>
+                            <td class="hide-sm muted">@word.Topic</td>
+                            <td><span class="badge">@StatusLabel(word.Status)</span></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            <div class="pager">
+                <button type="button" class="btn small" disabled="@(wordPage.Page <= 1)" @onclick="() => GoToPageAsync(wordPage.Page - 1)">← Назад</button>
+                <span class="muted">@wordPage.Page / @Math.Max(1, (wordPage.Total + PageSize - 1) / PageSize) · @wordPage.Total слов</span>
+                <button type="button" class="btn small" disabled="@(wordPage.Page * PageSize >= wordPage.Total)" @onclick="() => GoToPageAsync(wordPage.Page + 1)">Вперёд →</button>
+            </div>
+        }
+    </section>
+}
+
+@code {
+    private const int PageSize = 30;
+
+    private VocabularySummaryDto? _summary;
+    private IReadOnlyList<TopicDto> _topics = [];
+    private WordPageDto? _page;
+    private string? _error;
+    private string _search = string.Empty;
+    private string _topic = string.Empty;
+    private string _status = string.Empty;
+    private int _pageNumber = 1;
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _error = null;
+        try
+        {
+            var summary = Api.GetVocabularySummaryAsync();
+            var topics = Api.GetTopicsAsync();
+            _summary = await summary;
+            _topics = await topics;
+            await LoadWordsAsync();
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    private async Task LoadWordsAsync()
+    {
+        WordStatus? status = Enum.TryParse<WordStatus>(_status, out var parsed) ? parsed : null;
+        _page = await Api.GetWordsAsync(_topic, null, status, _search, _pageNumber, PageSize);
+    }
+
+    private Task SearchAsync() => ResetAndLoadWordsAsync();
+
+    private async Task ResetAndLoadWordsAsync()
+    {
+        _pageNumber = 1;
+        await SafeLoadWordsAsync();
+    }
+
+    private async Task GoToPageAsync(int page)
+    {
+        _pageNumber = page;
+        await SafeLoadWordsAsync();
+    }
+
+    private async Task SafeLoadWordsAsync()
+    {
+        try
+        {
+            await LoadWordsAsync();
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    private static string StatusLabel(WordStatus status) => status switch
+    {
+        WordStatus.Locked => "закрыто",
+        WordStatus.New => "новое",
+        WordStatus.Learning => "изучается",
+        WordStatus.Young => "повторяется",
+        WordStatus.Mature => "выучено",
+        _ => status.ToString(),
+    };
+}

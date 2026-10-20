@@ -21,7 +21,11 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
 
     public DbSet<StudySession> StudySessions => Set<StudySession>();
 
-    public DbSet<DailyTaskCompletion> TaskCompletions => Set<DailyTaskCompletion>();
+    public DbSet<PlanStepProgress> PlanSteps => Set<PlanStepProgress>();
+
+    public DbSet<WordNote> WordNotes => Set<WordNote>();
+
+    public DbSet<StepTaskCompletion> StepTaskCompletions => Set<StepTaskCompletion>();
 
     public DbSet<WritingDraft> WritingDrafts => Set<WritingDraft>();
 

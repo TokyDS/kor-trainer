@@ -1,5 +1,7 @@
 namespace KorTrainer.Contracts;
 
+public sealed record AudioCreditDto(string Word, string Speaker, string License, string LicenseUrl, string Source);
+
 public sealed record ReadingItemDto(string Text, int SyllableCount, string Pronounced, string? Translation, string Romanization);
 
 public sealed record ReadingTrialDto(string Text, int SyllableCount, int ElapsedMs, bool ReadCorrectly);

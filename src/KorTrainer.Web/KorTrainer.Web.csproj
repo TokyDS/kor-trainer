@@ -6,16 +6,21 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <!-- Plain script URLs: the API serves index.html as a file, where build-time placeholders would not be replaced. -->
     <OverrideHtmlAssetPlaceholders>false</OverrideHtmlAssetPlaceholders>
+    <!-- PWA: the build lists every asset with its hash for the published service worker. -->
+    <ServiceWorkerAssetsManifest>service-worker-assets.js</ServiceWorkerAssetsManifest>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.12" />
-    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="10.0.12" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.13" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="10.0.13" PrivateAssets="all" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\KorTrainer.Contracts\KorTrainer.Contracts.csproj" />
-    <ProjectReference Include="..\KorTrainer.Domain\KorTrainer.Domain.csproj" />
+    <ServiceWorker Include="wwwroot\service-worker.js" PublishedContent="wwwroot\service-worker.published.js" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\KorTrainer.UI\KorTrainer.UI.csproj" />
   </ItemGroup>
 
 </Project>

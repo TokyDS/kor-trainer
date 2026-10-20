@@ -1,0 +1,66 @@
+@page "/read"
+@inject IKorTrainerApi Api
+
+<PageTitle>Чтение — KorTrainer</PageTitle>
+
+<header class="page-header">
+    <h1>Чтение</h1>
+    <p class="muted">
+        Короткие тексты из слов вашего этапа. Нажмите на любое слово — появится словарная форма и перевод,
+        незнакомое можно сразу добавить в изучение. После текста — вопросы на понимание.
+    </p>
+</header>
+
+<StatusViews IsLoading="_texts is null && _error is null" Error="@_error" OnRetry="LoadAsync" />
+
+@if (_texts is { } texts)
+{
+    @foreach (var group in texts.GroupBy(t => t.Stage))
+    {
+        <section class="text-stage">
+            <h2>@group.First().StageTitle</h2>
+            <ul class="text-list">
+                @foreach (var text in group)
+                {
+                    <li>
+                        <a class="card text-card @(text.IsOpen ? string.Empty : "upcoming")" href="/read/@text.Id">
+                            <span class="text-title-ko" lang="ko">@text.TitleKorean</span>
+                            <strong>@text.Title</strong>
+                            <span class="muted small">
+                                @text.Sentences фраз · знакомых слов @text.KnownPercent%
+                                @if (!text.IsOpen)
+                                {
+                                    <span> · впереди</span>
+                                }
+                            </span>
+                            @if (text.IsRead)
+                            {
+                                <span class="text-read" title="Вопросы пройдены">✓</span>
+                            }
+                        </a>
+                    </li>
+                }
+            </ul>
+        </section>
+    }
+}
+
+@code {
+    private IReadOnlyList<TextSummaryDto>? _texts;
+    private string? _error;
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _error = null;
+        try
+        {
+            _texts = await Api.GetTextsAsync();
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException)
+        {
+            _error = ex.Message;
+        }
+    }
+}

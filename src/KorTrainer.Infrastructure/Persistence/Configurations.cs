@@ -20,6 +20,7 @@ internal sealed class WordConfiguration : IEntityTypeConfiguration<Word>
     {
         builder.HasKey(w => w.Id);
         builder.HasIndex(w => w.DeckKey).IsUnique();
+        builder.Property(w => w.Hanja).HasMaxLength(16);
         builder.HasIndex(w => new { w.Stage, w.LessonDay, w.Rank });
         builder.HasIndex(w => w.Topic);
         builder.Property(w => w.DeckKey).HasMaxLength(64);
@@ -84,11 +85,31 @@ internal sealed class StudySessionConfiguration : IEntityTypeConfiguration<Study
     }
 }
 
-internal sealed class DailyTaskCompletionConfiguration : IEntityTypeConfiguration<DailyTaskCompletion>
+internal sealed class WordNoteConfiguration : IEntityTypeConfiguration<WordNote>
 {
-    public void Configure(EntityTypeBuilder<DailyTaskCompletion> builder)
+    public void Configure(EntityTypeBuilder<WordNote> builder)
     {
-        builder.HasKey(c => new { c.Date, c.TaskKey });
+        builder.HasKey(n => n.WordId);
+        builder.Property(n => n.Text).HasMaxLength(WordNoteLimits.MaxLength);
+        builder.HasOne(n => n.Word).WithMany().HasForeignKey(n => n.WordId).OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+internal sealed class PlanStepProgressConfiguration : IEntityTypeConfiguration<PlanStepProgress>
+{
+    public void Configure(EntityTypeBuilder<PlanStepProgress> builder)
+    {
+        builder.HasKey(p => p.StepKey);
+        builder.Property(p => p.StepKey).HasMaxLength(32);
+    }
+}
+
+internal sealed class StepTaskCompletionConfiguration : IEntityTypeConfiguration<StepTaskCompletion>
+{
+    public void Configure(EntityTypeBuilder<StepTaskCompletion> builder)
+    {
+        builder.HasKey(c => new { c.StepKey, c.TaskKey });
+        builder.Property(c => c.StepKey).HasMaxLength(32);
         builder.Property(c => c.TaskKey).HasMaxLength(64);
     }
 }

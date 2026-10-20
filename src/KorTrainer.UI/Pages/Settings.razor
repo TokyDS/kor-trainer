@@ -1,0 +1,275 @@
+@page "/settings"
+@using KorTrainer.Domain.Entities
+@inject AppState State
+@inject IKorTrainerApi Api
+@inject IBackupExporter Backup
+
+<PageTitle>Настройки — KorTrainer</PageTitle>
+
+<header class="page-header">
+    <h1>Настройки</h1>
+</header>
+
+@if (_model is { } m)
+{
+    <form class="card settings-form" @onsubmit="SaveAsync">
+        <label>
+            <span>Часовой пояс</span>
+            <select @bind="m.TimeZoneId">
+                @foreach (var zone in TimeZones.Append(m.TimeZoneId).Distinct())
+                {
+                    <option value="@zone">@zone</option>
+                }
+            </select>
+            <small class="muted">Определяет, когда начинается новый учебный день.</small>
+        </label>
+
+        <label class="toggle">
+            <input type="checkbox" @bind="m.RemindersEnabled" />
+            <span>Мягкие напоминания по вечерам</span>
+        </label>
+        <small class="muted">Вечером, если сегодня ещё не занимались: баннер здесь, уведомление на телефоне и на компьютере.</small>
+
+        <label class="toggle">
+            <input type="checkbox" @bind="m.ShowRomanization" />
+            <span>Показывать латиницу (романизацию)</span>
+        </label>
+        <small class="muted">По умолчанию выключено: так быстрее привыкаешь читать хангыль без подсказок.</small>
+
+        <label>
+            <span>Тема</span>
+            <select @bind="m.Theme">
+                <option value="@ThemePreference.System">Как в системе</option>
+                <option value="@ThemePreference.Light">Светлая</option>
+                <option value="@ThemePreference.Dark">Тёмная</option>
+            </select>
+        </label>
+
+        <div class="two-columns">
+            <label>
+                <span>Новых слов в день</span>
+                <input type="number" min="1" max="100" @bind="m.NewWordsPerDay" />
+            </label>
+            <label>
+                <span>Максимум повторений в день</span>
+                <input type="number" min="10" max="5000" @bind="m.MaxReviewsPerDay" />
+            </label>
+        </div>
+        <small class="muted">Темп под план: 10 слов в день дают ~800 слов к 31 декабря (этап 1); чтобы к 21 февраля выйти на 1500–2000 слов (этап 2), с января ставьте 15–20.</small>
+
+        <label>
+            <span>Скорость речи: @m.SpeechRate.ToString("0.0#")</span>
+            <input type="range" min="0.5" max="1.5" step="0.05" @bind="m.SpeechRate" @bind:event="oninput" />
+        </label>
+
+        <div class="actions">
+            <button type="submit" class="btn primary" disabled="@_saving">Сохранить</button>
+            <button type="button" class="btn" @onclick="TestVoiceAsync">Проверить голос: 안녕하세요</button>
+        </div>
+        @if (_message is not null)
+        {
+            <p class="notice @(_isError ? "error" : "success") small">@_message</p>
+        }
+    </form>
+
+    <section class="card">
+        <h2>Озвучка</h2>
+        @if (_voices.Count > 0)
+        {
+            <label class="voice-select">
+                <span>Корейский голос на этом устройстве</span>
+                <select value="@State.Speech?.VoiceName" @onchange="ChooseVoiceAsync">
+                    @foreach (var voice in _voices)
+                    {
+                        <option value="@voice.Name">@voice.Name@(voice.Local ? string.Empty : " (онлайн)")</option>
+                    }
+                </select>
+            </label>
+            <div class="actions">
+                <button type="button" class="btn" @onclick="CompareSeriesAsync">Сравнить 불 · 풀 · 뿔</button>
+            </div>
+            <p class="muted small">
+                Голоса сильно различаются: в одних 가/카/까 звучат почти одинаково, в других — отчётливо. Лучше всего
+                обычно «нейронные» и онлайн-голоса (Edge: Microsoft … Online (Natural), Chrome: Google 한국의).
+                Выбор запоминается для этого браузера.
+            </p>
+        }
+        <p class="muted small">
+            Для ~900 слов звучат живые записи носителей (Lingua Libre) — на кнопке озвучки метка «носитель».
+            <a href="/credits">Источники и лицензии</a>
+        </p>
+        <VoiceNotice />
+    </section>
+
+    <section class="card">
+        <h2>Резервная копия прогресса</h2>
+        <p class="muted">Экспорт сохраняет повторения слов, ответы, сессии и настройки в JSON-файл. Импорт полностью заменяет текущий прогресс.</p>
+        <div class="actions">
+            <button type="button" class="btn" @onclick="ExportAsync">Сохранить JSON</button>
+        </div>
+        <label class="toggle">
+            <input type="checkbox" @bind="_confirmImport" />
+            <span>Я понимаю, что текущий прогресс будет заменён</span>
+        </label>
+        <InputFile OnChange="ImportAsync" accept="application/json,.json" disabled="@(!_confirmImport || _importing)" />
+        @if (_importMessage is not null)
+        {
+            <p class="notice @(_importError ? "error" : "success") small">@_importMessage</p>
+        }
+    </section>
+}
+
+@code {
+    private const long MaxImportBytes = 20 * 1024 * 1024;
+
+    private static readonly string[] TimeZones =
+    [
+        "Europe/Kaliningrad", "Europe/Moscow", "Europe/Samara", "Asia/Yekaterinburg", "Asia/Omsk",
+        "Asia/Novosibirsk", "Asia/Krasnoyarsk", "Asia/Irkutsk", "Asia/Yakutsk", "Asia/Vladivostok",
+        "Asia/Seoul", "Europe/Minsk", "Asia/Almaty", "Asia/Tashkent", "UTC",
+    ];
+
+    private const int SeriesPauseMs = 1100;
+
+    private IReadOnlyList<VoiceInfo> _voices = [];
+    private SettingsModel? _model;
+    private bool _saving;
+    private bool _isError;
+    private string? _message;
+    private bool _confirmImport;
+    private bool _importing;
+    private bool _importError;
+    private string? _importMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await State.InitializeAsync();
+        _model = SettingsModel.From(State.Settings);
+        try
+        {
+            _voices = await State.GetKoreanVoicesAsync();
+        }
+        catch (JSException)
+        {
+            _voices = [];
+        }
+    }
+
+    private async Task ChooseVoiceAsync(ChangeEventArgs e)
+    {
+        if (e.Value is string name && name.Length > 0)
+        {
+            await State.ChooseVoiceAsync(name);
+            await State.SpeakAsync("안녕하세요");
+        }
+    }
+
+    // Plays a plain / aspirated / tense minimal triple with pauses, to judge how well the voice separates them.
+    private async Task CompareSeriesAsync()
+    {
+        foreach (string word in new[] { "불", "풀", "뿔" })
+        {
+            await State.SpeakAsync(word, slow: true);
+            await Task.Delay(SeriesPauseMs);
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        if (_model is null)
+        {
+            return;
+        }
+
+        _saving = true;
+        try
+        {
+            await State.SaveSettingsAsync(_model.ToDto());
+            _model = SettingsModel.From(State.Settings);
+            (_message, _isError) = ("Сохранено.", false);
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException)
+        {
+            (_message, _isError) = (ex.Message, true);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private async Task TestVoiceAsync() =>
+        await State.SpeakAsync("안녕하세요");
+
+    private async Task ExportAsync()
+    {
+        _importMessage = null;
+        try
+        {
+            await Backup.ExportAsync();
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException or IOException)
+        {
+            _importError = true;
+            _importMessage = ex.Message;
+        }
+    }
+
+    private async Task ImportAsync(InputFileChangeEventArgs e)
+    {
+        _importing = true;
+        _importMessage = null;
+        try
+        {
+            await using var stream = e.File.OpenReadStream(MaxImportBytes);
+            var result = await Api.ImportProgressAsync(stream, CancellationToken.None);
+            _importError = false;
+            _importMessage = $"Импортировано: слов {result.Words} (пропущено {result.SkippedWords}), повторений {result.Reviews}, ответов {result.Attempts}, сессий {result.Sessions}.";
+            _confirmImport = false;
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException or IOException)
+        {
+            _importError = true;
+            _importMessage = ex.Message;
+        }
+        finally
+        {
+            _importing = false;
+        }
+    }
+
+    /// <summary>Mutable form model; the settings DTO itself is immutable.</summary>
+    private sealed class SettingsModel
+    {
+        public DateOnly StartDate { get; set; }
+
+        public string TimeZoneId { get; set; } = string.Empty;
+
+        public bool ShowRomanization { get; set; }
+
+        public ThemePreference Theme { get; set; }
+
+        public int NewWordsPerDay { get; set; }
+
+        public int MaxReviewsPerDay { get; set; }
+
+        public double SpeechRate { get; set; }
+
+        public bool RemindersEnabled { get; set; }
+
+        public static SettingsModel From(SettingsDto s) => new()
+        {
+            StartDate = s.StartDate,
+            TimeZoneId = s.TimeZoneId,
+            ShowRomanization = s.ShowRomanization,
+            Theme = s.Theme,
+            NewWordsPerDay = s.NewWordsPerDay,
+            MaxReviewsPerDay = s.MaxReviewsPerDay,
+            SpeechRate = s.SpeechRate,
+            RemindersEnabled = s.RemindersEnabled,
+        };
+
+        public SettingsDto ToDto() =>
+            new(StartDate, TimeZoneId, ShowRomanization, Theme, NewWordsPerDay, MaxReviewsPerDay, SpeechRate, RemindersEnabled);
+    }
+}

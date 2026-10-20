@@ -1,4 +1,5 @@
 using KorTrainer.Application.Common;
+using KorTrainer.Application.Plan;
 using KorTrainer.Application.Settings;
 using KorTrainer.Contracts;
 using KorTrainer.Domain.Entities;
@@ -9,7 +10,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace KorTrainer.Application.Vocabulary;
 
-public sealed class VocabularyService(IAppDbContext db, SettingsService settingsService, StudyClock clock, SrsScheduler scheduler)
+public sealed class VocabularyService(IAppDbContext db, SettingsService settingsService, StudyClock clock, SrsScheduler scheduler, PlanCursor cursor)
 {
     public const int DefaultQueueSize = 50;
     public const int MaxQueueSize = 200;
@@ -28,7 +29,7 @@ public sealed class VocabularyService(IAppDbContext db, SettingsService settings
         var now = clock.UtcNow;
         var today = clock.Today(settings);
         var endOfDay = StudyClock.EndOfLocalDayUtc(settings, today);
-        var unlock = new StudyPlan(settings.StartDate, settings.NewWordsPerDay).WordUnlockOn(today);
+        var unlock = (await cursor.GetAsync(cancellationToken)).Step.WordUnlock;
 
         int reviewsToday = await db.ReviewLogs.CountAsync(r => r.LocalDate == today && r.PhaseBefore == CardPhase.Review, cancellationToken);
         int introducedToday = await CountIntroducedAsync(today, cancellationToken);
@@ -75,6 +76,30 @@ public sealed class VocabularyService(IAppDbContext db, SettingsService settings
                 .FirstOrDefaultAsync(cancellationToken);
 
         return new VocabularyQueueDto(cards, dueLearning.Count + reviews.Count, Math.Min(newRemaining, newWords.Count), nextLearningDue);
+    }
+
+    /// <summary>
+    /// Puts a word into learning right away (e.g. met in a text), outside the plan's order and the daily
+    /// new-word limit. Returns false when it is already being studied.
+    /// </summary>
+    public async Task<bool> AddToStudyAsync(int wordId, CancellationToken cancellationToken)
+    {
+        if (!await db.Words.AnyAsync(w => w.Id == wordId, cancellationToken))
+        {
+            throw new NotFoundException("Такого слова нет в колоде.");
+        }
+
+        if (await db.WordProgress.AnyAsync(p => p.WordId == wordId, cancellationToken))
+        {
+            return false;
+        }
+
+        var now = clock.UtcNow;
+        var progress = new WordProgress { WordId = wordId, IntroducedUtc = now };
+        progress.Apply(CardState.New(now) with { Phase = CardPhase.Learning }, now);
+        db.WordProgress.Add(progress);
+        await db.SaveChangesAsync(cancellationToken);
+        return true;
     }
 
     public async Task<ReviewResultDto> ReviewAsync(ReviewRequest request, CancellationToken cancellationToken)
@@ -132,7 +157,7 @@ public sealed class VocabularyService(IAppDbContext db, SettingsService settings
         var now = clock.UtcNow;
         var today = clock.Today(settings);
         var endOfDay = StudyClock.EndOfLocalDayUtc(settings, today);
-        var unlock = new StudyPlan(settings.StartDate, settings.NewWordsPerDay).WordUnlockOn(today);
+        var unlock = (await cursor.GetAsync(cancellationToken)).Step.WordUnlock;
 
         var phases = await db.WordProgress
             .Select(p => new { p.Phase, p.IntervalDays, p.DueUtc })
@@ -173,7 +198,7 @@ public sealed class VocabularyService(IAppDbContext db, SettingsService settings
             .ThrowIfInvalid();
 
         var settings = await settingsService.GetEntityAsync(cancellationToken);
-        var unlock = new StudyPlan(settings.StartDate, settings.NewWordsPerDay).WordUnlockOn(clock.Today(settings));
+        var unlock = (await cursor.GetAsync(cancellationToken)).Step.WordUnlock;
 
         var query = db.Words.Include(w => w.Progress).AsQueryable();
         if (!string.IsNullOrWhiteSpace(topic))

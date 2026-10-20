@@ -1,0 +1,245 @@
+@page "/"
+@inject IKorTrainerApi Api
+@inject NavigationManager Navigation
+
+<PageTitle>KorTrainer</PageTitle>
+
+<StatusViews IsLoading="_today is null && _error is null" Error="@_error" OnRetry="LoadAsync" />
+
+@if (_today is { } today)
+{
+    var step = today.Step;
+    <nav class="day-nav" aria-label="Шаги плана">
+        @if (step.PreviousKey is { } previous)
+        {
+            <a class="btn small" href="@StepHref(previous, today.CurrentKey)" aria-label="Предыдущий шаг">←</a>
+        }
+        <span class="day-nav-label">
+            @(step.State switch
+            {
+                StepState.Current => "Текущий шаг",
+                StepState.Done => "Пройденный шаг",
+                _ => "Впереди — предпросмотр",
+            })
+        </span>
+        @if (step.NextKey is { } next)
+        {
+            <a class="btn small" href="@StepHref(next, today.CurrentKey)" aria-label="Следующий шаг">→</a>
+        }
+        @if (!today.IsCurrent)
+        {
+            <a class="btn small primary" href="/">К текущему шагу</a>
+        }
+    </nav>
+
+    @if (today.IsCurrent && _reminder is { ShouldRemind: true } reminder)
+    {
+        <div class="notice warning reminder" role="status">
+            <strong>@reminder.Title</strong>
+            <p>@reminder.Message</p>
+        </div>
+    }
+
+    <header class="today-hero @(today.IsCurrent ? string.Empty : "other-day")">
+        <div>
+            <p class="eyebrow">@step.StageTitle</p>
+            <h1>@step.Title</h1>
+            <p class="muted">Шаг @step.Number из @step.TotalSteps · @step.Goal</p>
+        </div>
+        <div class="streak @(today.StudiedToday ? "lit" : string.Empty)" title="Дней с занятиями за последние 7 дней">
+            <span class="streak-number">@today.ActiveDaysThisWeek<small>/7</small></span>
+            <span class="streak-label">@DaysWord(today.ActiveDaysThisWeek) за неделю</span>
+        </div>
+    </header>
+
+    @if (today.ReadyForNext)
+    {
+        <div class="notice success step-done" role="status">
+            <strong>Шаг пройден!</strong>
+            <p>Дальше: @step.NextTitle. Можно перейти сейчас или ещё позаниматься здесь — как удобно.</p>
+            <button type="button" class="btn primary" disabled="@_saving" @onclick="AdvanceAsync">Перейти дальше</button>
+        </div>
+    }
+
+    <div class="today-grid">
+        <section class="card tasks" aria-labelledby="tasks-heading">
+            <div class="section-head">
+                <h2 id="tasks-heading">Задачи шага</h2>
+                <span class="muted">@step.Tasks.Count(t => t.IsDone) из @step.Tasks.Count</span>
+            </div>
+            <p class="muted small">Делайте в своём темпе: прогресс копится, пока шаг открыт, хоть за один вечер, хоть за неделю.</p>
+            <ul class="task-list">
+                @foreach (var task in step.Tasks)
+                {
+                    <li class="task @(task.IsDone ? "done" : string.Empty)">
+                        <button type="button" class="check" role="checkbox" aria-checked="@task.IsDone.ToString().ToLowerInvariant()"
+                                aria-label="Отметить вручную" disabled="@(_saving || step.State == StepState.Upcoming)" @onclick="() => ToggleAsync(task)">
+                            @(task.IsDone ? "✓" : string.Empty)
+                        </button>
+                        <div class="task-body">
+                            <span class="task-title">@task.Title</span>
+                            @if (!task.IsManualOnly && task.Target > 0)
+                            {
+                                <span class="task-progress">
+                                    <span class="progress-track small"><span class="progress-fill" style="width: @(task.Progress * 100 / task.Target)%"></span></span>
+                                    <span class="muted">@task.Progress / @task.Target</span>
+                                </span>
+                            }
+                        </div>
+                        @if (task.Route is not null)
+                        {
+                            <a class="btn small" href="@task.Route">@(task.IsDone ? "Ещё" : "Начать")</a>
+                        }
+                    </li>
+                }
+            </ul>
+
+            @if (today.IsCurrent && !today.ReadyForNext && step.NextKey is not null)
+            {
+                <div class="step-skip">
+                    @if (_confirmSkip)
+                    {
+                        <p class="small">Не все задачи выполнены — ничего страшного, к ним можно вернуться. Перейти к шагу «@step.NextTitle»?</p>
+                        <div class="actions">
+                            <button type="button" class="btn primary small" disabled="@_saving" @onclick="AdvanceAsync">Да, дальше</button>
+                            <button type="button" class="btn small" @onclick="() => _confirmSkip = false">Остаться</button>
+                        </div>
+                    }
+                    else
+                    {
+                        <button type="button" class="link-button" @onclick="() => _confirmSkip = true">Материал уже знаком? Перейти дальше</button>
+                    }
+                </div>
+            }
+        </section>
+
+        @if (step.Lesson is { } lesson)
+        {
+            <section class="card lesson" aria-labelledby="lesson-heading">
+                <p class="eyebrow">Конспект урока</p>
+                <h2 id="lesson-heading">@lesson.Title</h2>
+                <ul>
+                    @foreach (var point in lesson.KeyPoints)
+                    {
+                        <li>@point</li>
+                    }
+                </ul>
+            </section>
+        }
+
+        <section class="card vocab-mini" aria-labelledby="vocab-heading">
+            <h2 id="vocab-heading">Словарь</h2>
+            <dl class="stats-row">
+                <div><dt>к повторению</dt><dd>@today.Vocabulary.DueNow</dd></div>
+                <div><dt>в изучении</dt><dd>@(today.Vocabulary.Learning + today.Vocabulary.Young)</dd></div>
+                <div><dt>выучено</dt><dd>@today.Vocabulary.Mature</dd></div>
+            </dl>
+            <a class="btn primary" href="/vocab/review">Повторять слова</a>
+        </section>
+
+        <section class="card quick" aria-labelledby="quick-heading">
+            <h2 id="quick-heading">Быстрый переход</h2>
+            <div class="quick-links">
+                @foreach (var link in step.QuickLinks)
+                {
+                    <a class="chip" href="@link.Route">@link.Title</a>
+                }
+            </div>
+        </section>
+    </div>
+
+    @if (_saveError is not null)
+    {
+        <p class="notice error">@_saveError</p>
+    }
+}
+
+@code {
+    private const int ReminderHour = 18;
+
+    private TodayDto? _today;
+    private ReminderDto? _reminder;
+    private string? _error;
+    private string? _saveError;
+    private bool _saving;
+    private bool _confirmSkip;
+
+    [SupplyParameterFromQuery(Name = "step")]
+    public string? StepParameter { get; set; }
+
+    // The page is reused when only ?step= changes, so reload on every parameter change.
+    protected override Task OnParametersSetAsync() => LoadAsync();
+
+    private static string StepHref(string key, string currentKey) => key == currentKey ? "/" : $"/?step={Uri.EscapeDataString(key)}";
+
+    private async Task LoadAsync()
+    {
+        _error = null;
+        _confirmSkip = false;
+        try
+        {
+            _today = await Api.GetTodayAsync(StepParameter);
+            // Evening nudge, mirroring the desktop and phone reminders.
+            _reminder = _today.IsCurrent && DateTime.Now.Hour >= ReminderHour ? await Api.GetReminderAsync() : null;
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    private async Task AdvanceAsync()
+    {
+        if (_today is null)
+        {
+            return;
+        }
+
+        await SaveAsync(async () =>
+        {
+            _today = await Api.AdvanceAsync(_today.Step.Key);
+            _confirmSkip = false;
+            Navigation.NavigateTo("/");
+        });
+    }
+
+    private async Task ToggleAsync(PlanTaskDto task)
+    {
+        if (_today is null)
+        {
+            return;
+        }
+
+        var step = _today.Step.Key;
+        await SaveAsync(async () =>
+        {
+            await Api.SetTaskDoneAsync(task.Key, step, !task.IsDone);
+            _today = await Api.GetTodayAsync(StepParameter);
+        });
+    }
+
+    private async Task SaveAsync(Func<Task> action)
+    {
+        _saving = true;
+        _saveError = null;
+        try
+        {
+            await action();
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException)
+        {
+            _saveError = ex.Message;
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private static string DaysWord(int n) => (n % 10, n % 100) switch
+    {
+        (1, not 11) => "день",
+        (2 or 3 or 4, not (12 or 13 or 14)) => "дня",
+        _ => "дней",
+    };
+}

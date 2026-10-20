@@ -1,0 +1,30 @@
+@implements IDisposable
+@inject AppState State
+
+<button type="button" class="speak-button" title="Озвучить@(ShowKeyHint ? " (пробел)" : string.Empty)" aria-label="Озвучить" @onclick="SpeakAsync">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4zm12.5 3a4.5 4.5 0 0 0-2.5-4v8a4.5 4.5 0 0 0 2.5-4zM14 3.2v2.1a7 7 0 0 1 0 13.4v2.1a9 9 0 0 0 0-17.6z" /></svg>
+    @if (State.HasRecording(Text))
+    {
+        <span class="voice-badge" title="Запись носителя языка (Lingua Libre)">носитель</span>
+    }
+    @if (ShowKeyHint)
+    {
+        <kbd>Пробел</kbd>
+    }
+</button>
+
+@code {
+    [Parameter, EditorRequired]
+    public string? Text { get; set; }
+
+    [Parameter]
+    public bool ShowKeyHint { get; set; } = true;
+
+    private async Task SpeakAsync() => await State.SpeakAsync(Text);
+
+    protected override void OnInitialized() => State.Changed += OnStateChanged;
+
+    public void Dispose() => State.Changed -= OnStateChanged;
+
+    private void OnStateChanged() => InvokeAsync(StateHasChanged);
+}

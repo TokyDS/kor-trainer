@@ -1,5 +1,6 @@
 using KorTrainer.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 
 namespace KorTrainer.Application.Common;
@@ -13,6 +14,8 @@ public interface IAppDbContext
 
     DbSet<WordProgress> WordProgress { get; }
 
+    DbSet<WordNote> WordNotes { get; }
+
     DbSet<ReviewLog> ReviewLogs { get; }
 
     DbSet<ExerciseAttempt> ExerciseAttempts { get; }
@@ -21,11 +24,18 @@ public interface IAppDbContext
 
     DbSet<StudySession> StudySessions { get; }
 
-    DbSet<DailyTaskCompletion> TaskCompletions { get; }
+    DbSet<PlanStepProgress> PlanSteps { get; }
+
+    DbSet<StepTaskCompletion> StepTaskCompletions { get; }
 
     DbSet<WritingDraft> WritingDrafts { get; }
 
     DatabaseFacade Database { get; }
+
+    ChangeTracker ChangeTracker { get; }
+
+    EntityEntry<TEntity> Entry<TEntity>(TEntity entity)
+        where TEntity : class;
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

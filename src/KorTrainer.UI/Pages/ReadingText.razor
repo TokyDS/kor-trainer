@@ -1,0 +1,193 @@
+@page "/read/{Id}"
+@inject IKorTrainerApi Api
+@inject AppState State
+
+<PageTitle>@(_text?.Title ?? "Чтение") — KorTrainer</PageTitle>
+
+<StatusViews IsLoading="_text is null && _error is null" Error="@_error" OnRetry="LoadAsync" />
+
+@if (_text is { } text)
+{
+    <header class="page-header">
+        <a class="btn small" href="/read">← Все тексты</a>
+        <p class="eyebrow">@text.StageTitle</p>
+        <h1 lang="ko">@text.TitleKorean</h1>
+        <p class="muted">@text.Title</p>
+        <label class="toggle">
+            <input type="checkbox" @bind="_showTranslation" />
+            <span>Показывать перевод фраз</span>
+        </label>
+    </header>
+
+    <article class="card reader">
+        @for (int i = 0; i < text.Sentences.Count; i++)
+        {
+            int index = i;
+            var sentence = text.Sentences[i];
+            <p class="reader-sentence">
+                @foreach (var token in sentence.Tokens)
+                {
+                    @if (token.WordId is not null)
+                    {
+                        <button type="button" class="token @(token.Studied ? "studied" : "new") @(_selected == token ? "selected" : string.Empty)"
+                                lang="ko" @onclick="() => Select(token)">@token.Text</button>
+                    }
+                    else
+                    {
+                        <span class="token plain" lang="ko">@token.Text</span>
+                    }
+                    @(" ")
+                }
+                <button type="button" class="sentence-tools" title="Озвучить фразу" aria-label="Озвучить фразу" @onclick="() => State.SpeakAsync(sentence.Korean).AsTask()">🔊</button>
+                <button type="button" class="sentence-tools" title="Перевод фразы" aria-label="Перевод фразы" @onclick="() => ToggleSentence(index)">RU</button>
+                @if (_showTranslation || _openSentences.Contains(index))
+                {
+                    <span class="reader-ru">@sentence.Russian</span>
+                }
+            </p>
+        }
+    </article>
+    <p class="muted tiny">Подчёркнуты слова из колоды: <span class="token new">пунктиром</span> — ещё не изучаете, <span class="token studied">сплошной</span> — уже учите.</p>
+
+    @if (text.Questions.Count > 0)
+    {
+        <section class="card questions" aria-labelledby="questions-heading">
+            <h2 id="questions-heading">Вопросы</h2>
+            @for (int q = 0; q < text.Questions.Count; q++)
+            {
+                int qi = q;
+                var question = text.Questions[q];
+                <fieldset class="question">
+                    <legend>@(qi + 1). @question.Question</legend>
+                    @for (int o = 0; o < question.Options.Count; o++)
+                    {
+                        int oi = o;
+                        bool answered = _answers.ContainsKey(qi);
+                        string state = !answered ? string.Empty : oi == question.Answer ? "correct" : _answers[qi] == oi ? "wrong" : string.Empty;
+                        <button type="button" class="option @state" disabled="@answered" @onclick="() => AnswerAsync(qi, oi)">@question.Options[oi]</button>
+                    }
+                </fieldset>
+            }
+            @if (_answers.Count == text.Questions.Count)
+            {
+                <p class="notice @(Correct == text.Questions.Count ? "success" : "warning")">Верно @Correct из @text.Questions.Count.</p>
+            }
+        </section>
+    }
+
+    @if (_selected is { } word)
+    {
+        <aside class="word-sheet" role="dialog" aria-label="Слово">
+            <button type="button" class="sheet-close" aria-label="Закрыть" @onclick="() => _selected = null">×</button>
+            <div class="sheet-head">
+                <HangulText Text="@word.Lemma" Size="lg" />
+                <SpeakButton Text="@word.Lemma" ShowKeyHint="false" />
+            </div>
+            @if (word.Lemma != word.Text.Trim('.', ',', '?', '!'))
+            {
+                <p class="muted small">в тексте: <span lang="ko">@word.Text</span></p>
+            }
+            <p class="translation">@word.Russian</p>
+            @if (word.Studied || _added.Contains(word.WordId!.Value))
+            {
+                <p class="muted small">✓ Слово уже в изучении</p>
+            }
+            else
+            {
+                <button type="button" class="btn primary" disabled="@_adding" @onclick="() => AddAsync(word.WordId!.Value)">Учить это слово</button>
+            }
+            @if (_sheetError is not null)
+            {
+                <p class="notice error small">@_sheetError</p>
+            }
+            <WordDetails WordId="word.WordId!.Value" ShowNote="false" />
+        </aside>
+    }
+}
+
+@code {
+    private readonly Dictionary<int, int> _answers = [];
+    private readonly HashSet<int> _openSentences = [];
+    private readonly HashSet<int> _added = [];
+    private ReadingTextDto? _text;
+    private TextTokenDto? _selected;
+    private string? _error;
+    private string? _sheetError;
+    private bool _showTranslation;
+    private bool _adding;
+
+    [Parameter]
+    public string Id { get; set; } = string.Empty;
+
+    private int Correct => _text is null ? 0 : _answers.Count(a => _text.Questions[a.Key].Answer == a.Value);
+
+    protected override Task OnParametersSetAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _error = null;
+        _answers.Clear();
+        _openSentences.Clear();
+        _selected = null;
+        try
+        {
+            await State.InitializeAsync();
+            _text = await Api.GetTextAsync(Id);
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    private void Select(TextTokenDto token)
+    {
+        _selected = _selected == token ? null : token;
+        _sheetError = null;
+    }
+
+    private void ToggleSentence(int index)
+    {
+        if (!_openSentences.Remove(index))
+        {
+            _openSentences.Add(index);
+        }
+    }
+
+    private async Task AddAsync(int wordId)
+    {
+        _adding = true;
+        _sheetError = null;
+        try
+        {
+            await Api.AddWordToStudyAsync(wordId);
+            _added.Add(wordId);
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException)
+        {
+            _sheetError = ex.Message;
+        }
+        finally
+        {
+            _adding = false;
+        }
+    }
+
+    private async Task AnswerAsync(int question, int option)
+    {
+        if (_text is null || !_answers.TryAdd(question, option))
+        {
+            return;
+        }
+
+        try
+        {
+            bool correct = _text.Questions[question].Answer == option;
+            await Api.RecordAttemptsAsync([new AttemptDto(StudyModule.Reading, ExerciseTypes.TextReading, $"text:{_text.Id}:{question}", correct, 0)]);
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException)
+        {
+            _sheetError = $"Ответ не сохранился: {ex.Message}";
+        }
+    }
+}
