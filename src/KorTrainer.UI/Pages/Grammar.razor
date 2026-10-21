@@ -5,7 +5,7 @@
 
 <header class="page-header">
     <h1>Грамматика</h1>
-    <p class="muted">Упражнения собираются из слов колоды по правилам: частицы выбираются по патчиму, глаголы спрягаются с учётом неправильных классов. При ошибке показывается правило.</p>
+    <p class="muted">Упражнения собираются из слов колоды по правилам: частицы выбираются по патчиму, глаголы спрягаются с учётом неправильных классов. Часть вопросов — пропуски в настоящих фразах из Tatoeba. При ошибке показывается правило.</p>
 </header>
 
 <StatusViews IsLoading="_topics is null && _error is null" Error="@_error" OnRetry="LoadAsync" />
@@ -17,6 +17,11 @@
             <span class="mode-glyph" lang="ko">섞기</span>
             <strong>Вперемешку</strong>
             <span>Все темы, уже открытые планом · @topics.Count(t => t.IsOpen) из @topics.Count</span>
+        </a>
+        <a class="mode-card" href="/grammar/@ExerciseTypes.GrammarSentences">
+            <span class="mode-glyph" lang="ko">___</span>
+            <strong>В предложениях</strong>
+            <span class="muted">Пропуск в настоящей фразе: форму выбираете по смыслу и переводу, как на TOPIK</span>
         </a>
     </div>
     @foreach (var group in topics.GroupBy(t => t.Stage))

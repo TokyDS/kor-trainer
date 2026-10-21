@@ -55,6 +55,9 @@ public static class ExerciseTypes
     public const string Purpose = "purpose";
     public const string BecauseGi = "because-gi";
     public const string Mixed = "mixed";
+
+    /// <summary>Grammar gaps in real sentences over every opened topic, the ending chosen by meaning.</summary>
+    public const string GrammarSentences = "sentences";
     public const string ListenMeaning = "listen-meaning";
     public const string ListenSpelling = "listen-spelling";
     public const string Dictation = "dictation";

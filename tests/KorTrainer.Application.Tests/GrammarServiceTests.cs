@@ -20,7 +20,22 @@ public sealed class GrammarServiceTests
 
         set.Module.Should().Be(StudyModule.Grammar);
         set.Items.Should().HaveCount(20).And.OnlyContain(i => i.Type == ExerciseTypes.PolitePresent);
-        set.Items.Should().OnlyContain(i => i.Prompt.EndsWith('다'));
+        set.Items.Should().OnlyContain(i => i.Prompt.EndsWith('다') || i.Prompt.Contains("___"));
+    }
+
+    [Fact]
+    public async Task GetExercises_InSentences_BlanksOpenedTopicsInShortSentences()
+    {
+        await using var t = await TestDatabase.CreateAsync();
+        await t.SetPlanStepAsync("level2-7");
+        var opened = (await t.Grammar.GetTopicsAsync(Ct)).Where(x => x.IsOpen).Select(x => x.Type).ToHashSet();
+
+        var set = await t.Grammar.GetExercisesAsync(ExerciseTypes.GrammarSentences, 30, Ct);
+
+        set.Title.Should().Be("Грамматика в предложениях");
+        set.Items.Should().HaveCount(30).And.OnlyContain(i => i.Prompt.Contains("___") && opened.Contains(i.Type));
+        set.Items.Should().OnlyContain(i => i.SpeakText != null && i.SpeakText.Length <= 40);
+        set.Items.Select(i => i.Type).Distinct().Should().HaveCountGreaterThan(3);
     }
 
     [Fact]
@@ -61,7 +76,7 @@ public sealed class GrammarServiceTests
         var topics = await t.Grammar.GetTopicsAsync(Ct);
 
         topics.Single(x => x.Type == ExerciseTypes.TopicParticle).IsOpen.Should().BeTrue();
-        topics.Single(x => x.Type == ExerciseTypes.PolitePresent).IsOpen.Should().BeTrue("block 3 introduces it");
+        topics.Single(x => x.Type == ExerciseTypes.PolitePresent).IsOpen.Should().BeTrue("block 2 introduces it");
         topics.Single(x => x.Type == ExerciseTypes.Past).IsOpen.Should().BeFalse();
         topics.Single(x => x.Type == ExerciseTypes.Can).IsOpen.Should().BeFalse();
     }

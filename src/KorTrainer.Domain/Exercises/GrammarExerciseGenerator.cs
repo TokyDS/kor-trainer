@@ -8,6 +8,11 @@ public sealed record GrammarNoun(string Korean, string Russian);
 
 public sealed record GrammarVerb(string Korean, string Russian, PartOfSpeech PartOfSpeech, Irregularity Irregularity);
 
+/// <summary>How many questions come as gaps in real sentences.</summary>
+/// <param name="Share">0–1; at 1 only topics with sentences are drilled.</param>
+/// <param name="RevealEnding">Name the ending; otherwise the learner picks it by meaning among other endings.</param>
+public sealed record ClozeSettings(IReadOnlyList<ClozeMatch> Matches, double Share, bool RevealEnding);
+
 /// <summary>
 /// Builds grammar questions from deck words: the answer comes from <see cref="Particles"/> or
 /// <see cref="Conjugator"/>, distractors from the typical mistakes, the explanation from the rule.
@@ -30,6 +35,12 @@ public sealed class GrammarExerciseGenerator(Random random)
     // "Cannot like", "go in order to know" sound odd.
     private static readonly HashSet<string> NoAbility = ["알다", "모르다", "좋아하다", "싫어하다"];
 
+    // Endings that join clauses; a gap mid-sentence is only confused with these.
+    private static readonly HashSet<Ending> Connectives =
+        [Ending.And, Ending.SoThat, Ending.Because, Ending.But, Ending.If, Ending.BecauseGi];
+
+    private const int MeaningDistractors = 2;
+
     private static readonly HashSet<Ending> ActionEndings =
     [
         Ending.Want, Ending.Can, Ending.Must, Ending.Cannot, Ending.Please, Ending.ForMe,
@@ -40,7 +51,8 @@ public sealed class GrammarExerciseGenerator(Random random)
         IReadOnlyList<GrammarTopic> topics,
         int count,
         IReadOnlyList<GrammarNoun> nouns,
-        IReadOnlyList<GrammarVerb> verbs)
+        IReadOnlyList<GrammarVerb> verbs,
+        ClozeSettings? cloze = null)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(count);
         if (topics.Count == 0)
@@ -51,26 +63,101 @@ public sealed class GrammarExerciseGenerator(Random random)
         var usableNouns = nouns.Where(n => n.Korean.All(Syllable.IsSyllable)).ToList();
         var usableVerbs = verbs.Where(v => v.Korean.Length >= 2 && v.Korean.All(Syllable.IsSyllable) && v.Korean[^1] == '다').ToList();
 
+        var sentences = (cloze?.Matches ?? [])
+            .GroupBy(m => m.Topic.Type)
+            .ToDictionary(g => g.Key, g => (IReadOnlyList<ClozeMatch>)g.ToList());
+        bool sentencesOnly = cloze is { Share: >= 1 };
+
         // Topics without words to practise on are skipped instead of failing the whole set.
-        topics = topics.Where(t => t.Particle is not null ? usableNouns.Count > 0 : VerbPool(t, usableVerbs).Count > 0).ToList();
+        var pool = topics;
+        topics = topics
+            .Where(t => sentencesOnly
+                ? sentences.ContainsKey(t.Type)
+                : t.Particle is not null ? usableNouns.Count > 0 : VerbPool(t, usableVerbs).Count > 0)
+            .ToList();
         if (topics.Count == 0)
         {
             throw new InvalidOperationException("The deck has no words for the requested grammar topics.");
         }
+
+        ChoiceExercise Next(GrammarTopic topic) =>
+            sentences.TryGetValue(topic.Type, out var matches) && random.NextDouble() < cloze!.Share
+                ? ClozeExercise(matches.Pick(random), cloze.RevealEnding, pool)
+                : WordExercise(topic, usableNouns, usableVerbs);
+
         var result = new List<ChoiceExercise>(count);
         var seen = new HashSet<string>();
         for (int i = 0; i < count; i++)
         {
-            var exercise = Next(topics.Pick(random), usableNouns, usableVerbs);
+            var exercise = Next(topics.Pick(random));
             for (int attempt = 0; attempt < MaxUniqueAttempts && !seen.Add(exercise.ItemKey); attempt++)
             {
-                exercise = Next(topics.Pick(random), usableNouns, usableVerbs);
+                exercise = Next(topics.Pick(random));
             }
 
             result.Add(exercise);
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// A gap in a real sentence. With the ending revealed it drills the form; otherwise the other options are
+    /// the same verb with other endings of the same kind, and the translation decides.
+    /// </summary>
+    public ChoiceExercise ClozeExercise(ClozeMatch match, bool revealEnding, IReadOnlyList<GrammarTopic> pool)
+    {
+        ArgumentNullException.ThrowIfNull(match);
+        var sentence = match.Sentence;
+        string before = sentence.Korean[..match.Start];
+        string after = sentence.Korean[(match.Start + match.Length)..];
+        string translation = $"«{sentence.Russian}»{(sentence.MachineTranslated ? " (машинный перевод)" : string.Empty)}";
+        string key = $"{match.Topic.Type}:s{sentence.Id}:{match.Start}";
+
+        if (match.Noun is { } noun)
+        {
+            var particle = Particles.Attach(noun.Korean, match.Topic.Particle!.Value);
+            var choices = new[] { new ChoiceOption(particle.Form), new ChoiceOption(particle.Wrong) }.Shuffled(random).ToList();
+            return new ChoiceExercise(
+                match.Topic.Type,
+                key,
+                $"{before}___{after}",
+                $"{translation} Выберите правильную форму.",
+                choices,
+                choices.FindIndex(o => o.Text == particle.Form),
+                particle.Explanation,
+                SpeakText: sentence.Korean);
+        }
+
+        var verb = match.Verb ?? throw new ArgumentException("A match carries a noun or a verb.", nameof(match));
+        var ending = match.Topic.Ending!.Value;
+        var conjugation = Conjugator.Conjugate(verb.Korean, ending, verb.Irregularity);
+        var mistakes = Conjugator.CommonMistakes(verb.Korean, ending, verb.Irregularity).Shuffled(random);
+        var distractors = revealEnding ? mistakes : OtherEndings(verb, ending, conjugation.Form, pool).Concat(mistakes);
+        var (options, correct) = ChoiceBuilder.Shuffle(new ChoiceOption(conjugation.Form), distractors.Select(m => new ChoiceOption(m)), OptionCount, random);
+        string label = Conjugator.EndingLabel(ending);
+
+        return new ChoiceExercise(
+            match.Topic.Type,
+            key,
+            $"{before}___ ({verb.Korean}){after}",
+            revealEnding ? $"{translation} → {label}" : translation,
+            options,
+            correct,
+            revealEnding ? conjugation.Explanation : $"По смыслу здесь {label}. {conjugation.Explanation}",
+            SpeakText: sentence.Korean);
+    }
+
+    private IEnumerable<string> OtherEndings(GrammarVerb verb, Ending ending, string correct, IReadOnlyList<GrammarTopic> pool)
+    {
+        bool connective = Connectives.Contains(ending);
+        return pool
+            .Where(t => t.Ending is { } other && other != ending && Connectives.Contains(other) == connective)
+            .Select(t => Conjugator.Conjugate(verb.Korean, t.Ending!.Value, verb.Irregularity).Form)
+            .Where(f => f != correct)
+            .Distinct()
+            .Shuffled(random)
+            .Take(MeaningDistractors);
     }
 
     public ChoiceExercise ParticleExercise(GrammarTopic topic, GrammarNoun noun)
@@ -134,7 +221,7 @@ public sealed class GrammarExerciseGenerator(Random random)
         return (cut > 0 ? russian[..cut] : russian).Trim();
     }
 
-    private ChoiceExercise Next(GrammarTopic topic, IReadOnlyList<GrammarNoun> nouns, IReadOnlyList<GrammarVerb> verbs)
+    private ChoiceExercise WordExercise(GrammarTopic topic, IReadOnlyList<GrammarNoun> nouns, IReadOnlyList<GrammarVerb> verbs)
     {
         if (topic.Particle is not null)
         {

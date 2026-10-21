@@ -47,7 +47,7 @@ public sealed class TestDatabase : IAsyncDisposable
         Today = new TodayService(db, Cursor, Evaluator, Vocabulary, Clock);
         Reminders = new ReminderService(Today, Settings);
         Hangul = new HangulService(db, Settings, Clock, new Random(42), Audio, Cursor);
-        Grammar = new GrammarService(db, Cursor, new Random(42));
+        Grammar = new GrammarService(db, Cursor, Sentences, new GrammarClozeCache(), new Random(42));
         Hanja = new HanjaService(db, Glossary, Cursor, new Random(42));
         WordDetails = new WordDetailsService(db, Glossary, Sentences, Clock, new Random(42));
         Topik = new TopikService(db, Settings, Clock);

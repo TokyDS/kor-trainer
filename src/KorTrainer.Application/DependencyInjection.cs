@@ -36,6 +36,7 @@ public static class DependencyInjection
         services.AddScoped<ActivityService>();
         services.AddScoped<HangulService>();
         services.AddScoped<GrammarService>();
+        services.AddSingleton<GrammarClozeCache>();
         services.AddScoped<NumbersService>();
         services.AddScoped<ListeningService>();
         services.AddScoped<TopikService>();
