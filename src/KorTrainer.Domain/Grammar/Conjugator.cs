@@ -82,6 +82,9 @@ public static class Conjugator
 {
     private const string BrightVowels = "ㅏㅑㅗ";
 
+    // Native one-syllable nouns + 하다 that still split: 일 안 해요, 말 안 해요.
+    private static readonly HashSet<string> SplitOneSyllableRoots = ["일", "말", "밥", "욕", "짐"];
+
     // Vowels whose merge with 아/어 is optional in standard spelling (바꾸어요 = 바꿔요).
     private const string OptionalContraction = "ㅗㅜㅣㅚㅐㅔ";
 
@@ -90,7 +93,6 @@ public static class Conjugator
     {
         ["먹"] = "드",
         ["자"] = "주무",
-        ["있"] = "계",
     };
 
     public static string Stem(string dictionaryForm)
@@ -456,7 +458,10 @@ public static class Conjugator
         return new(result, $"{adverb} {meaning} ставится перед глаголом в форме -아/어요: {rule} → {result}.");
     }
 
-    // 공부하다, 운동하다 split; 좋아하다, 싫어하다 (built from -아/어하다) and 하다 itself do not.
+    /// <summary>
+    /// 공부하다, 운동하다, 일하다 split around 안/못; 하다 itself, one-syllable Sino roots (원하다, 피하다),
+    /// -아/어하다 feelings (좋아하다, 미워하다, 기뻐하다) and -이하다 (같이하다, 맞이하다) do not.
+    /// </summary>
     private static bool IsNounHada(string stem)
     {
         if (stem.Length < 2 || stem[^1] != '하')
@@ -464,8 +469,16 @@ public static class Conjugator
             return false;
         }
 
-        var before = Syllable.Decompose(stem[^2]);
-        return !(before.Initial == 'ㅇ' && !before.HasFinal && before.Medial is 'ㅏ' or 'ㅓ' or 'ㅕ');
+        string root = stem[..^1];
+        if (root.Length == 1)
+        {
+            return SplitOneSyllableRoots.Contains(root);
+        }
+
+        var before = Syllable.Decompose(root[^1]);
+        bool aeoForm = !before.HasFinal && before.Medial is 'ㅏ' or 'ㅓ' or 'ㅝ';
+        bool iForm = !before.HasFinal && before.Initial == 'ㅇ' && before.Medial == 'ㅣ';
+        return !aeoForm && !iForm;
     }
 
     /// <summary>The -아/어 form (가, 먹어, 해, 마셔 …) — the base of -아요, -아서, -았어요 and -아야.</summary>

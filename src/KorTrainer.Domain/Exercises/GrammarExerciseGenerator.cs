@@ -27,6 +27,9 @@ public sealed class GrammarExerciseGenerator(Random random)
     // Their negation is a different word: 있다 ↔ 없다, 알다 ↔ 모르다.
     private static readonly HashSet<string> NoNegation = ["있다", "없다", "알다", "모르다"];
 
+    // "Cannot like", "go in order to know" sound odd.
+    private static readonly HashSet<string> NoAbility = ["알다", "모르다", "좋아하다", "싫어하다"];
+
     private static readonly HashSet<Ending> ActionEndings =
     [
         Ending.Want, Ending.Can, Ending.Must, Ending.Cannot, Ending.Please, Ending.ForMe,
@@ -149,6 +152,7 @@ public sealed class GrammarExerciseGenerator(Random random)
             .Where(v => !actionOnly || (v.PartOfSpeech == PartOfSpeech.Verb && !StateVerbs.Contains(v.Korean)))
             .Where(v => topic.Ending != Ending.Purpose || !MotionVerbs.Contains(v.Korean))
             .Where(v => !negation || !NoNegation.Contains(v.Korean))
+            .Where(v => topic.Ending is not (Ending.Cannot or Ending.Purpose) || !NoAbility.Contains(v.Korean))
 
             // 피곤하다 is negated as 안 피곤해요, unlike the verb 공부 안 해요; keep the drill unambiguous.
             .Where(v => topic.Ending != Ending.Not || !IsHadaAdjective(v))

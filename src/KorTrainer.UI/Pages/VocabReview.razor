@@ -30,7 +30,7 @@ else
     </header>
 }
 
-<StatusViews IsLoading="_loading" Error="@_error" OnRetry="LoadAsync" />
+<StatusViews IsLoading="_loading" Error="@_error" OnRetry="RetryAsync" />
 
 @if (!_loading && _error is null)
 {
@@ -355,6 +355,12 @@ else
         }
 
         _sessionStartUtc = DateTime.UtcNow;
+    }
+
+    private async Task RetryAsync()
+    {
+        await LoadAsync();
+        await FinishIfDoneAsync();
     }
 
     private async Task FinishIfDoneAsync()

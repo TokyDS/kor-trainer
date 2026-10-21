@@ -107,6 +107,17 @@ public sealed class GrammarExerciseGeneratorTests
     }
 
     [Fact]
+    public void Cannot_SkipsVerbsWithoutAnAbilityReading()
+    {
+        var generator = new GrammarExerciseGenerator(new Random(3));
+        GrammarVerb[] verbs = [.. Verbs, new("모르다", "не знать", PartOfSpeech.Verb, Irregularity.Reu)];
+
+        var prompts = generator.Generate([GrammarCatalog.Find(ExerciseTypes.Cannot)!], SampleSize, Nouns, verbs).Select(e => e.Prompt);
+
+        prompts.Should().NotContain("모르다");
+    }
+
+    [Fact]
     public void Purpose_SkipsVerbsOfMotion()
     {
         var generator = new GrammarExerciseGenerator(new Random(3));
