@@ -92,5 +92,10 @@ back end in-process. Never reference EF or ASP.NET from Domain.
    (`/listening/dictation|shadowing`, `ISpeechInput`), 두벌식 keyboard trainer (`/typing`), hard words with notes
    (`/vocab/hard`), graded reading with tap lookup (`/read`), TOPIK I reading items (`/topik/reading/{format}`).
 
+7. ✅ Next version: TOPIK I grammar (29 topics, `Conjugator` endings Future…BecauseGi, particles 와/과 and (으)로;
+   level blocks introduce 1–2 topics with task keys `grammar`, `grammar-2`) and the «10 минут» session
+   (`Domain/Plan/QuickSession` picks drills from the step's task routes; `/quick` embeds `VocabReview` and
+   `ChoiceDrill` through their `OnFinished` callbacks).
+
 The deck has ~5,900 words (curated + NIKL A/B/C). Next ideas: offline answer queue, phone↔laptop sync, review of
 machine translations.
