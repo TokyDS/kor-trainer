@@ -206,6 +206,13 @@ public sealed class ConjugatorTests
         Conjugator.EndingLabel(ending).Should().NotBe(ending.ToString());
     }
 
+    [Theory]
+    [InlineData("바꾸다", "바꾸어요")]
+    [InlineData("되다", "되어요")]
+    [InlineData("보내다", "보내어요")]
+    public void CommonMistakes_DoNotIncludeCorrectUncontractedSpellings(string verb, string uncontracted) =>
+        Conjugator.CommonMistakes(verb, Ending.PolitePresent).Should().NotContain(uncontracted);
+
     [Fact]
     public void Please_DoesNotOfferTheLessPoliteRegularFormAsAMistake()
     {

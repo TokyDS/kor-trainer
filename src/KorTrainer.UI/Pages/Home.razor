@@ -52,6 +52,17 @@
         </div>
     </header>
 
+    @if (today.IsCurrent)
+    {
+        <a class="quick-start" href="/quick">
+            <span class="quick-glyph" aria-hidden="true">10′</span>
+            <span class="quick-text">
+                <strong>10 минут</strong>
+                <span>Повторить слова и сделать упражнения шага — одной кнопкой</span>
+            </span>
+        </a>
+    }
+
     @if (today.ReadyForNext)
     {
         <div class="notice success step-done" role="status">

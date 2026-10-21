@@ -82,6 +82,9 @@ public static class Conjugator
 {
     private const string BrightVowels = "ㅏㅑㅗ";
 
+    // Vowels whose merge with 아/어 is optional in standard spelling (바꾸어요 = 바꿔요).
+    private const string OptionalContraction = "ㅗㅜㅣㅚㅐㅔ";
+
     // Verbs whose honorific is a different word: 먹다 → 드시다, 자다 → 주무시다, 있다 → 계시다.
     private static readonly Dictionary<string, string> HonorificStems = new()
     {
@@ -195,7 +198,14 @@ public static class Conjugator
     private static IEnumerable<string> AeoMistakes(string stem, Irregularity irregularity, Irregularity swappedIrregularity)
     {
         yield return RawAeo(stem, bright: !IsBright(stem));
-        yield return RawAeo(stem, IsBright(stem));
+
+        // 바꾸어요, 되어요, 보내어요 are correct uncontracted spellings, so they are no mistake.
+        var last = Syllable.Decompose(stem[^1]);
+        if (last.HasFinal || !OptionalContraction.Contains(last.Medial) || irregularity != Irregularity.None)
+        {
+            yield return RawAeo(stem, IsBright(stem));
+        }
+
         yield return SafeAeo(stem, swappedIrregularity);
 
         // ㅐ/ㅔ sound the same, so 해 is often written 헤; other stems get a stray 으 or 여 (먹으요, 가여요).

@@ -4,14 +4,21 @@
 @inject AppState State
 
 <section class="drill">
-    <header class="page-header">
-        <a class="back" href="@BackHref">← Назад</a>
-        <h1>@(_set?.Title ?? Heading)</h1>
-        @if (Subtitle is not null)
-        {
-            <p class="muted">@Subtitle</p>
-        }
-    </header>
+    @if (OnFinished.HasDelegate)
+    {
+        <h2 class="drill-title">@(_set?.Title ?? Heading)</h2>
+    }
+    else
+    {
+        <header class="page-header">
+            <a class="back" href="@BackHref">← Назад</a>
+            <h1>@(_set?.Title ?? Heading)</h1>
+            @if (Subtitle is not null)
+            {
+                <p class="muted">@Subtitle</p>
+            }
+        </header>
+    }
 
     <VoiceNotice Compact="true" />
     <StatusViews IsLoading="_loading" Error="@_error" OnRetry="LoadAsync" />
@@ -25,8 +32,16 @@
                 <p class="big-number">@_firstTryCorrect / @_uniqueCount</p>
                 <p class="muted">правильно с первого раза · @AccuracyText</p>
                 <div class="actions">
-                    <button type="button" class="btn primary" @onclick="LoadAsync">Ещё подход <kbd>Enter</kbd></button>
-                    <a class="btn" href="/">К задачам дня</a>
+                    @if (OnFinished.HasDelegate)
+                    {
+                        <button type="button" class="btn primary" @onclick="FinishAsync">@FinishLabel <kbd>Enter</kbd></button>
+                        <button type="button" class="btn" @onclick="LoadAsync">Ещё подход</button>
+                    }
+                    else
+                    {
+                        <button type="button" class="btn primary" @onclick="LoadAsync">Ещё подход <kbd>Enter</kbd></button>
+                        <a class="btn" href="/">К задачам дня</a>
+                    }
                 </div>
             </div>
         }
@@ -138,6 +153,13 @@
     [Parameter]
     public string BackHref { get; set; } = "/";
 
+    /// <summary>Set when the drill is one part of a longer session: the summary then offers to move on.</summary>
+    [Parameter]
+    public EventCallback OnFinished { get; set; }
+
+    [Parameter]
+    public string FinishLabel { get; set; } = "Дальше";
+
     private ChoiceExerciseDto? Current => _position < _items.Count ? _items[_position] : null;
 
     private int ProgressPercent => _items.Count == 0 ? 0 : _position * 100 / _items.Count;
@@ -162,7 +184,7 @@
         {
             if (key == "Enter")
             {
-                await LoadAsync();
+                await (OnFinished.HasDelegate ? FinishAsync() : LoadAsync());
             }
 
             return;
@@ -310,6 +332,12 @@
     {
         _itemTimer.Restart();
         _speakPending = true;
+    }
+
+    private async Task FinishAsync()
+    {
+        await SaveSessionAsync();
+        await OnFinished.InvokeAsync();
     }
 
     private async Task SaveSessionAsync()

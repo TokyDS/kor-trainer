@@ -1,0 +1,122 @@
+@page "/quick"
+@inject IKorTrainerApi Api
+
+<PageTitle>10 минут — KorTrainer</PageTitle>
+
+<header class="page-header">
+    <a class="back" href="/">← К шагу</a>
+    <h1>10 минут</h1>
+    @if (_parts is { } parts)
+    {
+        <ol class="quick-parts" aria-label="Части занятия">
+            @for (int i = 0; i < parts.Count; i++)
+            {
+                <li class="@(i < _index ? "done" : i == _index ? "active" : string.Empty)" aria-current="@(i == _index ? "step" : null)">
+                    @PartTitle(parts[i])
+                </li>
+            }
+        </ol>
+    }
+</header>
+
+<StatusViews IsLoading="_parts is null && _error is null" Error="@_error" OnRetry="LoadAsync" />
+
+@if (_parts is { } list)
+{
+    @if (_index < list.Count)
+    {
+        var part = list[_index];
+        @if (part is null)
+        {
+            <VocabReview Limit="QuickSession.WordCards" OnFinished="WordsDoneAsync" />
+        }
+        else
+        {
+            <ChoiceDrill @key="_index" Load="() => LoadDrillAsync(part)" OnFinished="NextAsync"
+                         FinishLabel="@(_index + 1 < list.Count ? $"Дальше: {PartTitle(list[_index + 1])}" : "Завершить")" />
+        }
+    }
+    else
+    {
+        <div class="card summary">
+            <h2>Готово!</h2>
+            <p class="big-number">@Minutes <small>мин</small></p>
+            <p class="muted">@SummaryText Всё это уже засчитано в задачи шага.</p>
+            <div class="actions">
+                <a class="btn primary" href="/">К задачам шага</a>
+                <button type="button" class="btn" @onclick="LoadAsync">Ещё 10 минут</button>
+            </div>
+        </div>
+    }
+}
+
+@code {
+    // A null part is the word review; the rest are multiple-choice drills.
+    private List<QuickDrill?>? _parts;
+    private int _index;
+    private int _cardsReviewed;
+    private DateTime _startedUtc;
+    private string? _error;
+
+    private int Minutes => Math.Max(1, (int)Math.Round((DateTime.UtcNow - _startedUtc).TotalMinutes));
+
+    private string SummaryText => _cardsReviewed > 0
+        ? $"Повторено карточек: {_cardsReviewed}. Наборов упражнений: {_parts!.Count(p => p is not null)}."
+        : $"Карточек к повторению не было. Наборов упражнений: {_parts!.Count(p => p is not null)}.";
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _error = null;
+        _parts = null;
+        try
+        {
+            var today = await Api.GetTodayAsync();
+            var tasks = today.Step.Tasks.Select(t => new QuickTask(t.Route, t.IsDone));
+            _parts = [null, .. QuickSession.Drills(today.Step.Stage, tasks)];
+            _index = 0;
+            _cardsReviewed = 0;
+            _startedUtc = DateTime.UtcNow;
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    private Task<ExerciseSetDto> LoadDrillAsync(QuickDrill drill)
+    {
+        int count = _index == 1 ? QuickSession.DrillSize : QuickSession.SecondDrillSize;
+        return drill.Module switch
+        {
+            StudyModule.Hangul => Api.GetHangulExercisesAsync(drill.Type, drill.Level, count),
+            StudyModule.Listening => Api.GetListeningExercisesAsync(drill.Type, count),
+            StudyModule.Numbers => Api.GetNumberExercisesAsync(drill.Type, count),
+            _ => Api.GetGrammarExercisesAsync(drill.Type, count),
+        };
+    }
+
+    private Task WordsDoneAsync(int reviewed)
+    {
+        _cardsReviewed = reviewed;
+        return NextAsync();
+    }
+
+    private Task NextAsync()
+    {
+        _index++;
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    private static string PartTitle(QuickDrill? part) => part?.Module switch
+    {
+        null => "Слова",
+        StudyModule.Hangul when part.Type == ExerciseTypes.SoundToLetter => "Буквы на слух",
+        StudyModule.Hangul => "Хангыль",
+        StudyModule.Listening => "На слух",
+        StudyModule.Numbers => "Числа",
+        _ => "Грамматика",
+    };
+}
