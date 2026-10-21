@@ -13,8 +13,8 @@
 
     <ApplicationTitle>KorTrainer</ApplicationTitle>
     <ApplicationId>com.tokyds.kortrainer</ApplicationId>
-    <ApplicationDisplayVersion>1.4</ApplicationDisplayVersion>
-    <ApplicationVersion>5</ApplicationVersion>
+    <ApplicationDisplayVersion>1.5</ApplicationDisplayVersion>
+    <ApplicationVersion>6</ApplicationVersion>
     <SupportedOSPlatformVersion>26.0</SupportedOSPlatformVersion>
 
     <!-- A plain APK to install directly (Google Play would want an .aab). -->
