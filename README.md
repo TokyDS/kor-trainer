@@ -19,8 +19,11 @@ Romanization is **off by default** — the point is to learn to read Hangul with
   for as long as the step is open, manual ticks and quick links. When the tasks are done the app offers
   the next step; "Перейти дальше" is always available. Nothing moves forward just because days pass.
   Instead of a streak it shows how many of the last 7 days had study.
-- **«10 минут»** — one tap starts a short session: up to 15 due word cards, a drill from the step's
-  first unfinished task, then a short listening (or letter) drill; everything counts towards the step.
+- **«10 минут»** — one tap starts a short session: up to 15 due word cards, five due mistakes, a drill
+  from the step's first unfinished task, then a short listening (or letter) drill; everything counts
+  towards the step.
+- **Работа над ошибками** — a wrong first answer in any multiple-choice drill is kept and comes back
+  after 1, 3 and 7 days (a small Leitner schedule); three correct reviews close it, a slip starts over.
 - **Hangul**
   - letter → sound and sound → letter, with Russian sound approximations;
   - syllable composition and decomposition computed from Unicode arithmetic (no syllable tables);
@@ -47,6 +50,10 @@ Romanization is **off by default** — the point is to learn to read Hangul with
 - Distractors are the typical learner mistakes (먹아요, 듣어요, 이워요, 먹읍니다, spelling by ear 머거요,
   거에요, 갈께요), never a correct variant such as 바꾸어요; every answer explains the rule that decided it;
   the "mixed" drill only uses topics the plan has opened.
+- Grammar in real sentences: deck verbs and nouns are found in their topic's form inside Tatoeba
+  sentences made only of words the learner already has, and blanked out (어제 영화를 ___ (보다).). Topic
+  drills ask about half their questions this way; «В предложениях» asks only gaps and hides the ending,
+  so the form is chosen by meaning among other endings of the same verb, as on TOPIK.
 
 **Iteration 3 — numbers**
 

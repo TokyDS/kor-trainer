@@ -96,6 +96,11 @@ back end in-process. Never reference EF or ASP.NET from Domain.
    level blocks introduce 1–2 topics with task keys `grammar`, `grammar-2`) and the «10 минут» session
    (`Domain/Plan/QuickSession` picks drills from the step's task routes; `/quick` embeds `VocabReview` and
    `ChoiceDrill` through their `OnFinished` callbacks).
+8. ✅ Grammar gaps in Tatoeba sentences (`Exercises/GrammarClozeFinder`, cached per word scope in
+   `GrammarClozeCache`; `/grammar/sentences`) and the mistakes queue (`Mistake` entity, `Srs/MistakeSchedule`
+   1/3/7 days; `ChoiceDrill` sends the exercise with a first wrong answer in `AttemptDto.Exercise`,
+   `ActivityService` tracks it, `MistakeService` replays it at `/mistakes`; part of the backup).
+   Verb forms are voiced from `tools/tts/ExportGrammarTexts.cs` (`generate_melo.py --only grammar`).
 
 The deck has ~5,900 words (curated + NIKL A/B/C). Next ideas: offline answer queue, phone↔laptop sync, review of
 machine translations.
