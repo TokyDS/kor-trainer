@@ -32,18 +32,18 @@ public sealed class BrowserInterop(IJSRuntime js) : IAsyncDisposable
     }
 
     /// <summary>Plays a recording; false if it could not start (offline, missing file).</summary>
-    public async ValueTask<bool> PlayRecordingAsync(string url)
+    public async ValueTask<bool> PlayRecordingAsync(string url, double rate = 1)
     {
         var module = await GetModuleAsync();
-        return await module.InvokeAsync<bool>("playRecording", url);
+        return await module.InvokeAsync<bool>("playRecording", url, rate);
     }
 
     /// <summary>Plays audio bytes held by .NET (the app has no HTTP server to give a URL).</summary>
-    public async ValueTask<bool> PlayRecordingDataAsync(Stream content, string contentType)
+    public async ValueTask<bool> PlayRecordingDataAsync(Stream content, string contentType, double rate = 1)
     {
         var module = await GetModuleAsync();
         using var reference = new DotNetStreamReference(content, leaveOpen: true);
-        return await module.InvokeAsync<bool>("playRecordingData", reference, contentType);
+        return await module.InvokeAsync<bool>("playRecordingData", reference, contentType, rate);
     }
 
     /// <summary>Stops a recording that is still playing (before the app speaks through another channel).</summary>

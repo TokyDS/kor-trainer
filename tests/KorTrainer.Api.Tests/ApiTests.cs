@@ -39,6 +39,20 @@ public sealed class ApiTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task SynthesizedSpeech_IsServedForKnownTextsOnly()
+    {
+        var known = await _client.GetAsync($"/api/audio/tts?text={Uri.EscapeDataString(" 학교 ")}", Ct);
+        var unknown = await _client.GetAsync($"/api/audio/tts?text={Uri.EscapeDataString("없는말")}", Ct);
+        var empty = await _client.GetAsync("/api/audio/tts", Ct);
+
+        known.StatusCode.Should().Be(HttpStatusCode.OK);
+        known.Content.Headers.ContentType!.MediaType.Should().Be("audio/ogg");
+        (await known.Content.ReadAsByteArrayAsync(Ct)).Should().Equal(0x4F, 0x67, 0x67, 0x53);
+        unknown.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        empty.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
     public async Task Today_ReturnsTheFirstStepWithEnumsAsStrings()
     {
         var raw = await _client.GetStringAsync("/api/today", Ct);

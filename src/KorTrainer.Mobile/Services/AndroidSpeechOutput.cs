@@ -11,7 +11,7 @@ namespace KorTrainer.Mobile.Services;
 /// Korean speech through Android's text-to-speech engine (WebView has no Web Speech API) and recordings
 /// from the local audio library, played by the page's audio element.
 /// </summary>
-public sealed class AndroidSpeechOutput(BrowserInterop browser, IAudioLibrary audio) : ISpeechOutput, IDisposable
+public sealed class AndroidSpeechOutput(BrowserInterop browser, IAudioLibrary audio, ISynthesizedSpeech synthesized) : ISpeechOutput, IDisposable
 {
     private const string VoicePreferenceKey = "korean-voice";
     private static readonly TimeSpan EngineStartTimeout = TimeSpan.FromSeconds(5);
@@ -56,6 +56,21 @@ public sealed class AndroidSpeechOutput(BrowserInterop browser, IAudioLibrary au
         {
             _engine?.Stop();
             return await browser.PlayRecordingDataAsync(file.Content, file.ContentType);
+        }
+    }
+
+    public async ValueTask<bool> PlaySynthesizedAsync(string text, double rate)
+    {
+        var file = await synthesized.OpenAsync(text, CancellationToken.None);
+        if (file is null)
+        {
+            return false;
+        }
+
+        await using (file.Content)
+        {
+            _engine?.Stop();
+            return await browser.PlayRecordingDataAsync(file.Content, file.ContentType, rate);
         }
     }
 

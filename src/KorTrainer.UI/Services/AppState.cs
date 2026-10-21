@@ -72,31 +72,42 @@ public sealed class AppState(IKorTrainerApi api, BrowserInterop browser, ISpeech
     /// <summary>Speech rate for listening drills: slower speech keeps consonant contrasts audible.</summary>
     public const double ListeningRate = 0.75;
 
+    /// <summary>The speed the bundled neural speech was generated at (tools/tts/generate_melo.py).</summary>
+    private const double SynthesizedSpeed = 0.9;
+
     /// <summary>
-    /// Voices Korean text: a native-speaker recording when one exists (Lingua Libre), otherwise speech
-    /// synthesis — also when the recording cannot be played right now.
+    /// Voices Korean text: a native-speaker recording when one exists (Lingua Libre), otherwise the bundled
+    /// neural voice (MeloTTS), otherwise the device's speech synthesis — each step also when the previous
+    /// one cannot play right now.
     /// </summary>
-    /// <param name="slow">Listening drill: cap the synthesis rate at <see cref="ListeningRate"/>.</param>
+    /// <param name="slow">Listening drill: cap the speech rate at <see cref="ListeningRate"/>.</param>
     public async ValueTask SpeakAsync(string? text, bool slow = false)
     {
-        if (text is not null && HasRecording(text) && await TryPlayRecordingAsync(text.Trim()))
-        {
-            return;
-        }
-
         if (string.IsNullOrWhiteSpace(text))
         {
             return;
         }
 
-        await speech.SpeakAsync(text, slow ? Math.Min(Settings.SpeechRate, ListeningRate) : Settings.SpeechRate);
+        string trimmed = text.Trim();
+        double rate = slow ? Math.Min(Settings.SpeechRate, ListeningRate) : Settings.SpeechRate;
+        if (HasRecording(trimmed) && await TryPlayAsync(() => speech.PlayRecordingAsync(trimmed)))
+        {
+            return;
+        }
+
+        if (await TryPlayAsync(() => speech.PlaySynthesizedAsync(trimmed, Math.Clamp(rate / SynthesizedSpeed, 0.5, 1.5))))
+        {
+            return;
+        }
+
+        await speech.SpeakAsync(trimmed, rate);
     }
 
-    private async ValueTask<bool> TryPlayRecordingAsync(string word)
+    private static async ValueTask<bool> TryPlayAsync(Func<ValueTask<bool>> play)
     {
         try
         {
-            return await speech.PlayRecordingAsync(word);
+            return await play();
         }
         catch (Microsoft.JSInterop.JSException)
         {

@@ -19,6 +19,12 @@ public interface ISpeechOutput
     /// <summary>Plays the recording of a word; false if it cannot start (offline, missing file).</summary>
     ValueTask<bool> PlayRecordingAsync(string word);
 
+    /// <summary>
+    /// Plays pre-generated neural speech of the text at <paramref name="rate"/> times its generated speed;
+    /// false when there is none for this text.
+    /// </summary>
+    ValueTask<bool> PlaySynthesizedAsync(string text, double rate);
+
     ValueTask<IReadOnlyList<VoiceInfo>> GetKoreanVoicesAsync();
 
     /// <summary>Remembers the preferred voice; returns the voice now in use.</summary>

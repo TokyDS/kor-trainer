@@ -43,6 +43,7 @@ public static class DependencyInjection
         services.AddSingleton<LinguaLibreAudioLibrary>();
         services.AddSingleton<IAudioLibrary>(sp => sp.GetRequiredService<LinguaLibreAudioLibrary>());
         services.AddHostedService<AudioPrefetchService>();
+        services.AddSingleton<ISynthesizedSpeech, SynthesizedSpeechDirectory>();
     }
 
     private static void EnsureDataDirectory(string connectionString)

@@ -26,6 +26,8 @@ public static class ApiEndpoints
 {
     public const string RateLimitPolicy = "api";
 
+    private const int MaxSpokenText = 300;
+
     public static IEndpointRouteBuilder MapKorTrainerApi(this IEndpointRouteBuilder app)
     {
         var api = app.MapGroup("/api").RequireRateLimiting(RateLimitPolicy);
@@ -131,6 +133,22 @@ public static class ApiEndpoints
     {
         group.MapGet("/words", (IAudioLibrary audio) => audio.Words.Order(StringComparer.Ordinal));
         group.MapGet("/credits", (IAudioLibrary audio) => audio.Credits);
+        group.MapGet("/tts", async (string? text, ISynthesizedSpeech speech, HttpContext http, CancellationToken ct) =>
+        {
+            if (string.IsNullOrWhiteSpace(text) || text.Length > MaxSpokenText)
+            {
+                return Results.Problem(statusCode: StatusCodes.Status400BadRequest, title: "Нужен текст до 300 знаков.");
+            }
+
+            var file = await speech.OpenAsync(text, ct);
+            if (file is null)
+            {
+                return Results.Problem(statusCode: StatusCodes.Status404NotFound, title: "Для этого текста нет озвучки.");
+            }
+
+            http.Response.Headers.CacheControl = "public, max-age=2592000";
+            return Results.Stream(file.Content, file.ContentType, enableRangeProcessing: true);
+        });
         group.MapGet("/{word}", async (string word, IAudioLibrary audio, HttpContext http, CancellationToken ct) =>
         {
             if (!audio.Words.Contains(word))

@@ -13,6 +13,9 @@ public sealed class KorTrainerApiFactory : WebApplicationFactory<Program>
     private readonly string _databasePath = Path.Combine(Path.GetTempPath(), $"kortrainer-test-{Guid.NewGuid():N}.db");
     private readonly string _audioDirectory = Path.Combine(Path.GetTempPath(), $"kortrainer-test-audio-{Guid.NewGuid():N}");
 
+    /// <summary>Holds one generated file: 학교 → "abc123.opus".</summary>
+    public string SynthesizedDirectory { get; } = CreateSynthesizedSpeech();
+
     public FakeTimeProvider Time { get; } = new(new DateTimeOffset(2026, 10, 13, 6, 0, 0, TimeSpan.Zero));
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -21,6 +24,7 @@ public sealed class KorTrainerApiFactory : WebApplicationFactory<Program>
         builder.UseSetting("ConnectionStrings:KorTrainer", $"Data Source={_databasePath};Pooling=False");
         builder.UseSetting("Audio:CacheDirectory", _audioDirectory);
         builder.UseSetting("Audio:Prefetch", "false");
+        builder.UseSetting("Audio:SynthesizedDirectory", SynthesizedDirectory);
         builder.ConfigureTestServices(services =>
         {
             services.AddSingleton<TimeProvider>(Time);
@@ -37,6 +41,8 @@ public sealed class KorTrainerApiFactory : WebApplicationFactory<Program>
         {
             Directory.Delete(_audioDirectory, recursive: true);
         }
+
+        Directory.Delete(SynthesizedDirectory, recursive: true);
     }
 
     private sealed class FakeAudioHandler : HttpMessageHandler
@@ -47,5 +53,14 @@ public sealed class KorTrainerApiFactory : WebApplicationFactory<Program>
             content.Headers.ContentType = new("audio/mpeg");
             return Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK) { Content = content });
         }
+    }
+
+    private static string CreateSynthesizedSpeech()
+    {
+        string directory = Path.Combine(Path.GetTempPath(), $"kortrainer-test-tts-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(directory);
+        File.WriteAllText(Path.Combine(directory, "manifest.json"), """{"speed": 0.9, "items": {"학교": "abc123"}}""");
+        File.WriteAllBytes(Path.Combine(directory, "abc123.opus"), [0x4F, 0x67, 0x67, 0x53]);
+        return directory;
     }
 }
