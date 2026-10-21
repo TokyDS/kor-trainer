@@ -1,0 +1,67 @@
+@page "/mistakes"
+@inject IKorTrainerApi Api
+
+<PageTitle>Работа над ошибками — KorTrainer</PageTitle>
+
+@if (_summary is { Due: > 0 })
+{
+    <ChoiceDrill Load="() => Api.GetMistakesAsync(SetSize)" BackHref="/more" Subtitle="@Rule" />
+}
+else
+{
+    <header class="page-header">
+        <a class="back" href="/more">← Ещё</a>
+        <h1>Работа над ошибками</h1>
+        <p class="muted">@Rule</p>
+    </header>
+
+    <StatusViews IsLoading="_summary is null && _error is null" Error="@_error" OnRetry="LoadAsync" />
+
+    @if (_summary is { } summary)
+    {
+        <div class="card summary">
+            <h2>На сегодня ошибок нет</h2>
+            <p class="muted">
+                @if (summary.Open > 0)
+                {
+                    <span>Ждут своего дня: @summary.Open. </span>
+                }
+                @if (summary.Resolved > 0)
+                {
+                    <span>Уже исправлено: @summary.Resolved.</span>
+                }
+                @if (summary.Open == 0 && summary.Resolved == 0)
+                {
+                    <span>Неверные ответы в упражнениях появятся здесь на следующий день.</span>
+                }
+            </p>
+            <div class="actions">
+                <a class="btn primary" href="/">К задачам шага</a>
+            </div>
+        </div>
+    }
+}
+
+@code {
+    private const int SetSize = 20;
+
+    private const string Rule = "Ошибка возвращается через 1, 3 и 7 дней; после трёх верных ответов она закрыта.";
+
+    private MistakeSummaryDto? _summary;
+    private string? _error;
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _error = null;
+        try
+        {
+            _summary = await Api.GetMistakeSummaryAsync();
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException)
+        {
+            _error = ex.Message;
+        }
+    }
+}

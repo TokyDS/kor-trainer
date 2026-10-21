@@ -1,3 +1,4 @@
+using KorTrainer.Application.Mistakes;
 using KorTrainer.Application.Activity;
 using KorTrainer.Application.Common;
 using KorTrainer.Application.Grammar;
@@ -53,6 +54,7 @@ public sealed class TestDatabase : IAsyncDisposable
         Topik = new TopikService(db, Settings, Clock);
         Stats = new StatsService(db, Settings, Vocabulary, Clock);
         Progress = new ProgressTransferService(db, Settings, Clock);
+        Mistakes = new MistakeService(db, Settings, Clock, new Random(42));
     }
 
     /// <summary>Recorded words used by the listening drill; replace before calling Hangul to test recordings.</summary>
@@ -96,6 +98,8 @@ public sealed class TestDatabase : IAsyncDisposable
     public StatsService Stats { get; }
 
     public ProgressTransferService Progress { get; }
+
+    public MistakeService Mistakes { get; }
 
     public static async Task<TestDatabase> CreateAsync(DateTimeOffset? now = null)
     {

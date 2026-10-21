@@ -61,6 +61,13 @@
                 <span>Повторить слова и сделать упражнения шага — одной кнопкой</span>
             </span>
         </a>
+        @if (_mistakes is { Due: > 0 } mistakes)
+        {
+            <a class="mistakes-link" href="/mistakes">
+                <span>Работа над ошибками</span>
+                <span class="badge">@mistakes.Due</span>
+            </a>
+        }
     }
 
     @if (today.ReadyForNext)
@@ -170,6 +177,7 @@
 
     private TodayDto? _today;
     private ReminderDto? _reminder;
+    private MistakeSummaryDto? _mistakes;
     private string? _error;
     private string? _saveError;
     private bool _saving;
@@ -192,6 +200,7 @@
             _today = await Api.GetTodayAsync(StepParameter);
             // Evening nudge, mirroring the desktop and phone reminders.
             _reminder = _today.IsCurrent && DateTime.Now.Hour >= ReminderHour ? await Api.GetReminderAsync() : null;
+            _mistakes = _today.IsCurrent ? await Api.GetMistakeSummaryAsync() : null;
         }
         catch (Exception ex) when (ex is ApiException or HttpRequestException)
         {

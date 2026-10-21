@@ -18,6 +18,7 @@ public static class QuickSession
     public const int WordCards = 15;
     public const int DrillSize = 12;
     public const int SecondDrillSize = 8;
+    public const int MistakeCount = 5;
 
     private const int MaxHangulLevel = 3;
 

@@ -1007,3 +1007,20 @@ del.diff-extra { color: var(--ink-faint); }
 .quick-parts li.done { background: var(--celadon-soft); border-color: var(--celadon-soft); color: var(--celadon); }
 .quick-parts li.done::before { content: "✓ "; }
 .drill-title { margin: 0 0 var(--space-3); font-size: 1.2rem; }
+
+.mistakes-link {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    margin: calc(-1 * var(--space-3)) 0 var(--space-5);
+    padding: var(--space-3) var(--space-4);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--rule);
+    background: var(--paper-raised);
+    color: var(--ink);
+    text-decoration: none;
+}
+
+.mistakes-link:hover { border-color: var(--accent); }
+.mistakes-link .badge { background: var(--accent-soft); color: var(--accent); font-weight: 700; }

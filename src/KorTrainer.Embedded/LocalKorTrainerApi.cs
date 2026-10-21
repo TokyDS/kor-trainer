@@ -1,3 +1,4 @@
+using KorTrainer.Application.Mistakes;
 using KorTrainer.Application.Reading;
 using KorTrainer.Application.Typing;
 using KorTrainer.Application.Sentences;
@@ -138,6 +139,10 @@ public sealed class LocalKorTrainerApi(IServiceScopeFactory scopes, ILogger<Loca
 
     public Task<ExerciseSetDto> GetTopikReadingAsync(string format, int count) =>
         Run<TopikReadingService, ExerciseSetDto>((s, ct) => s.GetExercisesAsync(format, count, ct));
+
+    public Task<MistakeSummaryDto> GetMistakeSummaryAsync() => Run<MistakeService, MistakeSummaryDto>((s, ct) => s.GetSummaryAsync(ct));
+
+    public Task<ExerciseSetDto> GetMistakesAsync(int count) => Run<MistakeService, ExerciseSetDto>((s, ct) => s.GetDueAsync(count, ct));
 
     public async Task<ImportResultDto> ImportProgressAsync(Stream json, CancellationToken cancellationToken)
     {

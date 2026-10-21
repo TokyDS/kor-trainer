@@ -12,7 +12,7 @@
             @for (int i = 0; i < parts.Count; i++)
             {
                 <li class="@(i < _index ? "done" : i == _index ? "active" : string.Empty)" aria-current="@(i == _index ? "step" : null)">
-                    @PartTitle(parts[i])
+                    @parts[i].Title
                 </li>
             }
         </ol>
@@ -26,14 +26,14 @@
     @if (_index < list.Count)
     {
         var part = list[_index];
-        @if (part is null)
+        @if (part.Kind == PartKind.Words)
         {
             <VocabReview Limit="QuickSession.WordCards" OnFinished="WordsDoneAsync" />
         }
         else
         {
-            <ChoiceDrill @key="_index" Load="() => LoadDrillAsync(part)" OnFinished="NextAsync"
-                         FinishLabel="@(_index + 1 < list.Count ? $"Дальше: {PartTitle(list[_index + 1])}" : "Завершить")" />
+            <ChoiceDrill @key="_index" Load="() => LoadPartAsync(part)" OnFinished="NextAsync"
+                         FinishLabel="@(_index + 1 < list.Count ? $"Дальше: {list[_index + 1].Title}" : "Завершить")" />
         }
     }
     else
@@ -51,8 +51,11 @@
 }
 
 @code {
-    // A null part is the word review; the rest are multiple-choice drills.
-    private List<QuickDrill?>? _parts;
+    private enum PartKind { Words, Mistakes, Drill }
+
+    private sealed record Part(PartKind Kind, string Title, int Size, QuickDrill? Drill = null);
+
+    private List<Part>? _parts;
     private int _index;
     private int _cardsReviewed;
     private DateTime _startedUtc;
@@ -60,9 +63,16 @@
 
     private int Minutes => Math.Max(1, (int)Math.Round((DateTime.UtcNow - _startedUtc).TotalMinutes));
 
-    private string SummaryText => _cardsReviewed > 0
-        ? $"Повторено карточек: {_cardsReviewed}. Наборов упражнений: {_parts!.Count(p => p is not null)}."
-        : $"Карточек к повторению не было. Наборов упражнений: {_parts!.Count(p => p is not null)}.";
+    private string SummaryText
+    {
+        get
+        {
+            int sets = _parts!.Count(p => p.Kind != PartKind.Words);
+            return _cardsReviewed > 0
+                ? $"Повторено карточек: {_cardsReviewed}. Наборов упражнений: {sets}."
+                : $"Карточек к повторению не было. Наборов упражнений: {sets}.";
+        }
+    }
 
     protected override Task OnInitializedAsync() => LoadAsync();
 
@@ -73,8 +83,19 @@
         try
         {
             var today = await Api.GetTodayAsync();
+            var mistakes = await Api.GetMistakeSummaryAsync();
             var tasks = today.Step.Tasks.Select(t => new QuickTask(t.Route, t.IsDone));
-            _parts = [null, .. QuickSession.Drills(today.Step.Stage, tasks)];
+            var drills = QuickSession.Drills(today.Step.Stage, tasks);
+
+            var parts = new List<Part> { new(PartKind.Words, "Слова", QuickSession.WordCards) };
+            if (mistakes.Due > 0)
+            {
+                parts.Add(new Part(PartKind.Mistakes, "Ошибки", QuickSession.MistakeCount));
+            }
+
+            parts.Add(new Part(PartKind.Drill, DrillTitle(drills[0]), QuickSession.DrillSize, drills[0]));
+            parts.AddRange(drills.Skip(1).Select(d => new Part(PartKind.Drill, DrillTitle(d), QuickSession.SecondDrillSize, d)));
+            _parts = parts;
             _index = 0;
             _cardsReviewed = 0;
             _startedUtc = DateTime.UtcNow;
@@ -85,15 +106,19 @@
         }
     }
 
-    private Task<ExerciseSetDto> LoadDrillAsync(QuickDrill drill)
+    private Task<ExerciseSetDto> LoadPartAsync(Part part)
     {
-        int count = _index == 1 ? QuickSession.DrillSize : QuickSession.SecondDrillSize;
+        if (part.Drill is not { } drill)
+        {
+            return Api.GetMistakesAsync(part.Size);
+        }
+
         return drill.Module switch
         {
-            StudyModule.Hangul => Api.GetHangulExercisesAsync(drill.Type, drill.Level, count),
-            StudyModule.Listening => Api.GetListeningExercisesAsync(drill.Type, count),
-            StudyModule.Numbers => Api.GetNumberExercisesAsync(drill.Type, count),
-            _ => Api.GetGrammarExercisesAsync(drill.Type, count),
+            StudyModule.Hangul => Api.GetHangulExercisesAsync(drill.Type, drill.Level, part.Size),
+            StudyModule.Listening => Api.GetListeningExercisesAsync(drill.Type, part.Size),
+            StudyModule.Numbers => Api.GetNumberExercisesAsync(drill.Type, part.Size),
+            _ => Api.GetGrammarExercisesAsync(drill.Type, part.Size),
         };
     }
 
@@ -110,10 +135,9 @@
         return Task.CompletedTask;
     }
 
-    private static string PartTitle(QuickDrill? part) => part?.Module switch
+    private static string DrillTitle(QuickDrill drill) => drill.Module switch
     {
-        null => "Слова",
-        StudyModule.Hangul when part.Type == ExerciseTypes.SoundToLetter => "Буквы на слух",
+        StudyModule.Hangul when drill.Type == ExerciseTypes.SoundToLetter => "Буквы на слух",
         StudyModule.Hangul => "Хангыль",
         StudyModule.Listening => "На слух",
         StudyModule.Numbers => "Числа",

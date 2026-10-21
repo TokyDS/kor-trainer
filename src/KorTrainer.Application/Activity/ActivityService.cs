@@ -1,7 +1,10 @@
 using KorTrainer.Application.Common;
+using KorTrainer.Application.Mistakes;
 using KorTrainer.Application.Settings;
 using KorTrainer.Contracts;
 using KorTrainer.Domain.Entities;
+using KorTrainer.Domain.Srs;
+using Microsoft.EntityFrameworkCore;
 
 namespace KorTrainer.Application.Activity;
 
@@ -31,7 +34,8 @@ public sealed class ActivityService(IAppDbContext db, SettingsService settingsSe
                 .Require(Enum.IsDefined(a.Module), $"attempts[{i}].module", "Неизвестный модуль.")
                 .Require(IsKey(a.ExerciseType), $"attempts[{i}].exerciseType", "Некорректный тип упражнения.")
                 .Require(IsKey(a.ItemKey), $"attempts[{i}].itemKey", "Некорректный ключ задания.")
-                .Require(a.ResponseMs >= 0, $"attempts[{i}].responseMs", "Время ответа не может быть отрицательным.");
+                .Require(a.ResponseMs >= 0, $"attempts[{i}].responseMs", "Время ответа не может быть отрицательным.")
+                .Require(a.Exercise is null || MistakeService.Serialize(a.Exercise).Length <= MistakeLimits.MaxPayloadLength, $"attempts[{i}].exercise", "Слишком большое упражнение.");
         }
 
         validator.ThrowIfInvalid();
@@ -49,8 +53,54 @@ public sealed class ActivityService(IAppDbContext db, SettingsService settingsSe
             AnsweredUtc = now,
             LocalDate = today,
         }));
+        await TrackMistakesAsync(attempts, today, cancellationToken);
         await db.SaveChangesAsync(cancellationToken);
         return attempts.Count;
+    }
+
+    /// <summary>A wrong answer opens (or reopens) a mistake; any later answer to the same item moves it on its schedule.</summary>
+    private async Task TrackMistakesAsync(IReadOnlyList<AttemptDto> attempts, DateOnly today, CancellationToken cancellationToken)
+    {
+        var keys = attempts.Select(a => a.ItemKey).Distinct().ToList();
+        var known = await db.Mistakes.Where(m => keys.Contains(m.ItemKey)).ToListAsync(cancellationToken);
+        foreach (var attempt in attempts)
+        {
+            var mistake = known.FirstOrDefault(m => m.Module == attempt.Module && m.ItemKey == attempt.ItemKey);
+            if (mistake is null)
+            {
+                if (attempt.IsCorrect || attempt.Exercise is null)
+                {
+                    continue;
+                }
+
+                var state = MistakeSchedule.Missed(today);
+                mistake = new Mistake
+                {
+                    Module = attempt.Module,
+                    ExerciseType = attempt.ExerciseType,
+                    ItemKey = attempt.ItemKey,
+                    Payload = MistakeService.Serialize(attempt.Exercise),
+                    CreatedDate = today,
+                    DueDate = state.Due,
+                    Lapses = 1,
+                };
+                db.Mistakes.Add(mistake);
+                known.Add(mistake);
+                continue;
+            }
+
+            var next = MistakeSchedule.Answered(new MistakeState(mistake.Box, mistake.DueDate, mistake.ResolvedDate), attempt.IsCorrect, today);
+            if (!attempt.IsCorrect)
+            {
+                mistake.Lapses++;
+                if (attempt.Exercise is not null)
+                {
+                    mistake.Payload = MistakeService.Serialize(attempt.Exercise);
+                }
+            }
+
+            (mistake.Box, mistake.DueDate, mistake.ResolvedDate) = (next.Box, next.Due, next.Resolved);
+        }
     }
 
     public async Task RecordSessionAsync(SessionDto session, CancellationToken cancellationToken)

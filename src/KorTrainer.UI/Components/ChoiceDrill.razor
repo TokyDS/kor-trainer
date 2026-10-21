@@ -284,7 +284,9 @@
 
         try
         {
-            await Api.RecordAttemptsAsync([new AttemptDto(_set!.Module, item.Type, item.ItemKey, correct, elapsed)]);
+            // A first slip carries the exercise along, so it can come back in «Работа над ошибками».
+            var exercise = firstTry && !correct ? item : null;
+            await Api.RecordAttemptsAsync([new AttemptDto(item.Module ?? _set!.Module, item.Type, item.ItemKey, correct, elapsed, exercise)]);
             _syncError = null;
         }
         catch (Exception ex) when (ex is ApiException or HttpRequestException)

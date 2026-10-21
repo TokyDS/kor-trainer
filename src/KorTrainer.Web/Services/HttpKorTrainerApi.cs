@@ -138,6 +138,10 @@ public sealed class HttpKorTrainerApi(HttpClient http) : IKorTrainerApi
     public Task<ExerciseSetDto> GetTopikReadingAsync(string format, int count) =>
         GetAsync<ExerciseSetDto>($"api/topik/reading/{Uri.EscapeDataString(format)}?count={count}");
 
+    public Task<MistakeSummaryDto> GetMistakeSummaryAsync() => GetAsync<MistakeSummaryDto>("api/mistakes/summary");
+
+    public Task<ExerciseSetDto> GetMistakesAsync(int count) => GetAsync<ExerciseSetDto>($"api/mistakes?count={count}");
+
     public async Task<ImportResultDto> ImportProgressAsync(Stream json, CancellationToken cancellationToken)
     {
         using var content = new StreamContent(json);

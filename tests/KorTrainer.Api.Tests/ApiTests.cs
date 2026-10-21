@@ -96,6 +96,21 @@ public sealed class ApiTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task WrongAnswerWithItsExercise_OpensAMistake()
+    {
+        var before = await _client.GetFromJsonAsync<MistakeSummaryDto>("/api/mistakes/summary", Json, Ct);
+        var set = await _client.GetFromJsonAsync<ExerciseSetDto>("/api/grammar/exercises/polite?count=1", Json, Ct);
+        var item = set!.Items[0];
+        var attempt = new AttemptDto(StudyModule.Grammar, item.Type, item.ItemKey, false, 800, item);
+
+        var post = await _client.PostAsJsonAsync("/api/attempts", new[] { attempt }, Json, Ct);
+        var after = await _client.GetFromJsonAsync<MistakeSummaryDto>("/api/mistakes/summary", Json, Ct);
+
+        post.StatusCode.Should().Be(HttpStatusCode.OK);
+        after!.Open.Should().Be(before!.Open + 1);
+    }
+
+    [Fact]
     public async Task HangulExercises_ReturnRequestedSet()
     {
         var set = await _client.GetFromJsonAsync<ExerciseSetDto>("/api/hangul/exercises/decompose?level=3&count=7", Json, Ct);

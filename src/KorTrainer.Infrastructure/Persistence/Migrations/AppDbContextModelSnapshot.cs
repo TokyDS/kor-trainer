@@ -55,6 +55,55 @@ namespace KorTrainer.Infrastructure.Persistence.Migrations
                     b.ToTable("ExerciseAttempts");
                 });
 
+            modelBuilder.Entity("KorTrainer.Domain.Entities.Mistake", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Box")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateOnly>("CreatedDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateOnly>("DueDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ExerciseType")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ItemKey")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Lapses")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Module")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Payload")
+                        .IsRequired()
+                        .HasMaxLength(8000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateOnly?>("ResolvedDate")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Module", "ItemKey")
+                        .IsUnique();
+
+                    b.HasIndex("ResolvedDate", "DueDate");
+
+                    b.ToTable("Mistakes");
+                });
+
             modelBuilder.Entity("KorTrainer.Domain.Entities.PlanStepProgress", b =>
                 {
                     b.Property<string>("StepKey")

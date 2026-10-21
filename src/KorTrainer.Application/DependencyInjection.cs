@@ -1,3 +1,4 @@
+using KorTrainer.Application.Mistakes;
 using KorTrainer.Application.Reading;
 using KorTrainer.Application.Typing;
 using KorTrainer.Application.Sentences;
@@ -51,6 +52,7 @@ public static class DependencyInjection
         services.AddScoped<TypingService>();
         services.AddScoped<ReadingService>();
         services.AddScoped<TopikReadingService>();
+        services.AddScoped<MistakeService>();
         services.AddScoped<ProgressTransferService>();
         return services;
     }

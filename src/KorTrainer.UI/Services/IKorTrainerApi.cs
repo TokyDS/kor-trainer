@@ -108,5 +108,9 @@ public interface IKorTrainerApi
 
     Task<ExerciseSetDto> GetTopikReadingAsync(string format, int count);
 
+    Task<MistakeSummaryDto> GetMistakeSummaryAsync();
+
+    Task<ExerciseSetDto> GetMistakesAsync(int count);
+
     Task<ImportResultDto> ImportProgressAsync(Stream json, CancellationToken cancellationToken);
 }
