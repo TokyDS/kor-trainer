@@ -21,7 +21,8 @@ public sealed class HangulExerciseGenerator(Random random)
     private const int RealSyllableOutOf = 4;
 
     /// <summary>Classic examples used when the deck does not provide enough words with sound changes.</summary>
-    private static readonly string[] SoundChangeExamples =
+    /// <summary>Words that show the pronunciation rules (also voiced in advance by tools/tts).</summary>
+    public static readonly IReadOnlyList<string> SoundChangeExamples =
     [
         "한국어", "음악", "읽어요", "좋아요", "감사합니다", "학교", "꽃이", "옷을", "있어요", "없어요",
         "먹는", "같이", "신라", "국물", "축하해요", "입학", "많아요", "앉아요", "맛있어요", "닭",

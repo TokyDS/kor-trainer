@@ -39,6 +39,13 @@ def collect(only: str | None) -> list[str]:
     if only in (None, "sentences"):
         texts += [s["ko"].strip() for s in json.loads((SEED / "sentences-tatoeba.json").read_text(encoding="utf-8"))["sentences"]]
         texts += [s["ko"].strip() for t in json.loads((SEED / "texts.json").read_text(encoding="utf-8"))["texts"] for s in t["sentences"]]
+    if only in (None, "hangul"):
+        # Every syllable (the Hangul drills build random ones) plus the module's own words, exported by
+        # `dotnet run tools/tts/ExportHangulTexts.cs`.
+        texts += [chr(code) for code in range(0xAC00, 0xD7A4)]
+        extra = ROOT / "artifacts" / "tts" / "hangul-texts.txt"
+        if extra.exists():
+            texts += [line.strip() for line in extra.read_text(encoding="utf-8").splitlines()]
     seen: set[str] = set()
     return [t for t in texts if t and not (t in seen or seen.add(t))]
 
@@ -79,7 +86,7 @@ def _voice(text: str) -> tuple[str, bool]:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--only", choices=["words", "sentences"])
+    parser.add_argument("--only", choices=["words", "sentences", "hangul"])
     parser.add_argument("--limit", type=int)
     parser.add_argument("--workers", type=int, default=max(1, (os.cpu_count() or 4) // 4))
     parser.add_argument("--threads", type=int, default=4, help="torch threads per worker")
@@ -91,8 +98,9 @@ def main() -> None:
     print(f"{len(texts)} texts, {len(todo)} to voice with {args.workers}×{args.threads} threads", flush=True)
 
     started, done = time.time(), 0
-    with mp.Pool(args.workers, initializer=_init, initargs=(args.threads,)) as pool:
-        for _, ok in pool.imap_unordered(_voice, todo, chunksize=4):
+    # One text per task and recycled workers: a long run once stalled with a few chunks left.
+    with mp.Pool(args.workers, initializer=_init, initargs=(args.threads,), maxtasksperchild=500) as pool:
+        for _, ok in pool.imap_unordered(_voice, todo, chunksize=1):
             done += 1
             if done % 100 == 0 or done == len(todo):
                 rate = done / (time.time() - started)
