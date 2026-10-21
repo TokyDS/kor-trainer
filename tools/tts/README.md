@@ -1,6 +1,7 @@
 # Neural speech (MeloTTS)
 
-Deck words, Tatoeba example sentences and reading texts are voiced once with
+Deck words, Tatoeba example sentences, reading texts, every Hangul syllable and the verb forms of the
+grammar drills are voiced once with
 [MeloTTS](https://github.com/myshell-ai/MeloTTS) (Korean, MIT licence) and played back instead of the
 device's speech synthesis. Native-speaker recordings (Lingua Libre) still come first; the device's voice
 is only used for text that was not generated.
@@ -18,7 +19,15 @@ VIRTUAL_ENV=.venv-tts uv pip install "melotts @ https://github.com/myshell-ai/Me
 
 .venv-tts/bin/python tools/tts/generate_melo.py --only words       # ~5,900 words, about an hour on 16 cores
 .venv-tts/bin/python tools/tts/generate_melo.py --only sentences   # ~5,000 sentences, a few hours
+
+dotnet run tools/tts/ExportHangulTexts.cs                          # letter samples, minimal pairs
+.venv-tts/bin/python tools/tts/generate_melo.py --only hangul      # + all 11,172 syllables
+
+dotnet run tools/tts/ExportGrammarTexts.cs                         # ~4,000 verb forms of the first stages
+.venv-tts/bin/python tools/tts/generate_melo.py --only grammar
 ```
+
+Run one generation at a time: each run merges its texts into `manifest.json` when it finishes.
 
 Run from a directory without your own `coverage.py`/`*.py` that shadow library modules. The script is
 resumable: it skips files that exist and rewrites `manifest.json` at the end.

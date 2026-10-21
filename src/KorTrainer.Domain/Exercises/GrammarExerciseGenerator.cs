@@ -231,18 +231,27 @@ public sealed class GrammarExerciseGenerator(Random random)
         return VerbExercise(topic, VerbPool(topic, verbs).Pick(random));
     }
 
-    private static List<GrammarVerb> VerbPool(GrammarTopic topic, IReadOnlyList<GrammarVerb> verbs)
+    private static List<GrammarVerb> VerbPool(GrammarTopic topic, IReadOnlyList<GrammarVerb> verbs) =>
+        verbs.Where(v => Suits(topic, v)).ToList();
+
+    /// <summary>Whether the drill asks for this verb in this topic's ending (some pairs sound odd or are ambiguous).</summary>
+    public static bool Suits(GrammarTopic topic, GrammarVerb verb)
     {
-        bool actionOnly = topic.Ending is { } ending && ActionEndings.Contains(ending);
-        bool negation = topic.Ending is Ending.Not or Ending.NotJi;
-        return verbs
-            .Where(v => !actionOnly || (v.PartOfSpeech == PartOfSpeech.Verb && !StateVerbs.Contains(v.Korean)))
-            .Where(v => topic.Ending != Ending.Purpose || !MotionVerbs.Contains(v.Korean))
-            .Where(v => !negation || !NoNegation.Contains(v.Korean))
-            .Where(v => topic.Ending is not (Ending.Cannot or Ending.Purpose) || !NoAbility.Contains(v.Korean))
+        ArgumentNullException.ThrowIfNull(topic);
+        ArgumentNullException.ThrowIfNull(verb);
+        if (topic.Ending is not { } ending)
+        {
+            return false;
+        }
+
+        bool actionOnly = ActionEndings.Contains(ending);
+        bool negation = ending is Ending.Not or Ending.NotJi;
+        return (!actionOnly || (verb.PartOfSpeech == PartOfSpeech.Verb && !StateVerbs.Contains(verb.Korean)))
+            && (ending != Ending.Purpose || !MotionVerbs.Contains(verb.Korean))
+            && (!negation || !NoNegation.Contains(verb.Korean))
+            && (ending is not (Ending.Cannot or Ending.Purpose) || !NoAbility.Contains(verb.Korean))
 
             // 피곤하다 is negated as 안 피곤해요, unlike the verb 공부 안 해요; keep the drill unambiguous.
-            .Where(v => topic.Ending != Ending.Not || !IsHadaAdjective(v))
-            .ToList();
+            && (ending != Ending.Not || !IsHadaAdjective(verb));
     }
 }

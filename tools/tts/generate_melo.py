@@ -46,6 +46,11 @@ def collect(only: str | None) -> list[str]:
         extra = ROOT / "artifacts" / "tts" / "hangul-texts.txt"
         if extra.exists():
             texts += [line.strip() for line in extra.read_text(encoding="utf-8").splitlines()]
+    if only in (None, "grammar"):
+        # Verb forms the grammar drills speak, exported by `dotnet run tools/tts/ExportGrammarTexts.cs`.
+        extra = ROOT / "artifacts" / "tts" / "grammar-texts.txt"
+        if extra.exists():
+            texts += [line.strip() for line in extra.read_text(encoding="utf-8").splitlines()]
     seen: set[str] = set()
     return [t for t in texts if t and not (t in seen or seen.add(t))]
 
@@ -86,7 +91,7 @@ def _voice(text: str) -> tuple[str, bool]:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--only", choices=["words", "sentences", "hangul"])
+    parser.add_argument("--only", choices=["words", "sentences", "hangul", "grammar"])
     parser.add_argument("--limit", type=int)
     parser.add_argument("--workers", type=int, default=max(1, (os.cpu_count() or 4) // 4))
     parser.add_argument("--threads", type=int, default=4, help="torch threads per worker")
