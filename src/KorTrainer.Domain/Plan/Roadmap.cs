@@ -145,17 +145,17 @@ public sealed class Roadmap
     private static PlanStep LevelBlock(
         int index, PlanStage stage, string prefix, int block, int blocks, int words, IReadOnlyList<GrammarTopic> topics, PlanTask numbers)
     {
-        var grammar = block <= topics.Count
-            ? new PlanTask("grammar", $"Грамматика: {topics[block - 1].Title} — 20 упражнений",
-                TaskTarget.Answers(StudyModule.Grammar, 20, topics[block - 1].Type), $"/grammar/{topics[block - 1].Type}")
-            : new PlanTask("grammar", "Грамматика вперемешку: 30 упражнений", TaskTarget.Answers(StudyModule.Grammar, 30), "/grammar/mixed");
+        var introduced = TopicsOfBlock(topics, block, blocks);
+        List<PlanTask> grammar = introduced.Count == 0
+            ? [new PlanTask("grammar", "Грамматика вперемешку: 30 упражнений", TaskTarget.Answers(StudyModule.Grammar, 30), "/grammar/mixed")]
+            : introduced.Select((t, i) => GrammarTask(i == 0 ? "grammar" : $"grammar-{i + 1}", t, introduced.Count == 1 ? 20 : 15)).ToList();
 
         // Reading and listening take turns so a block stays short.
         var practice = block % 2 == 1
             ? CommonTasks.Reading(10)
             : new PlanTask("listening", "Аудирование: 20 упражнений", TaskTarget.Answers(StudyModule.Listening, 20), "/listening");
 
-        string topic = block <= topics.Count ? $" · грамматика: {topics[block - 1].Title}" : " · повторение грамматики";
+        string topic = introduced.Count > 0 ? $" · грамматика: {string.Join(", ", introduced.Select(t => t.Title))}" : " · повторение грамматики";
         return new PlanStep(
             index,
             $"{prefix}-{block}",
@@ -164,7 +164,7 @@ public sealed class Roadmap
             $"Блок {block} из {blocks}",
             $"До {words} слов в колоде{topic}.",
             null,
-            [WordsTask(words), CommonTasks.ReviewDue, grammar, numbers, practice],
+            [WordsTask(words), CommonTasks.ReviewDue, .. grammar, numbers, practice],
             PlanContent.QuickLinks(stage, 0),
             new WordUnlock(stage, int.MaxValue),
             words);
@@ -234,6 +234,20 @@ public sealed class Roadmap
 
     private static PlanTask WordsTask(int words) =>
         new("words", $"Слова: довести колоду до {words}", new TaskTarget(TaskMetric.WordsStudied, words), "/vocab/review");
+
+    /// <summary>Spreads a stage's topics evenly over its blocks, in catalog order.</summary>
+    private static List<GrammarTopic> TopicsOfBlock(IReadOnlyList<GrammarTopic> topics, int block, int blocks)
+    {
+        int from = (block - 1) * topics.Count / blocks;
+        int to = block * topics.Count / blocks;
+        return topics.Skip(from).Take(to - from).ToList();
+    }
+
+    private static PlanTask GrammarTask(string key, GrammarTopic topic, int answers) => new(
+        key,
+        $"Грамматика: {topic.Title} — {answers} упражнений",
+        TaskTarget.Answers(StudyModule.Grammar, answers, topic.Type),
+        $"/grammar/{topic.Type}");
 
     private static IReadOnlyList<GrammarTopic> TopicsOf(PlanStage stage) =>
         GrammarCatalog.Topics.Where(t => t.Stage == stage).ToList();

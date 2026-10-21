@@ -21,6 +21,18 @@ public sealed class GrammarExerciseGenerator(Random random)
     // Verbs for which "want/can/must" sound odd.
     private static readonly HashSet<string> StateVerbs = ["있다", "없다", "되다"];
 
+    // "Go in order to go" sounds odd.
+    private static readonly HashSet<string> MotionVerbs = ["가다", "오다", "다니다", "나가다", "나오다", "들어가다", "들어오다", "돌아가다", "돌아오다"];
+
+    // Their negation is a different word: 있다 ↔ 없다, 알다 ↔ 모르다.
+    private static readonly HashSet<string> NoNegation = ["있다", "없다", "알다", "모르다"];
+
+    private static readonly HashSet<Ending> ActionEndings =
+    [
+        Ending.Want, Ending.Can, Ending.Must, Ending.Cannot, Ending.Please, Ending.ForMe,
+        Ending.Progressive, Ending.Purpose, Ending.Intention, Ending.LetUs,
+    ];
+
     public IReadOnlyList<ChoiceExercise> Generate(
         IReadOnlyList<GrammarTopic> topics,
         int count,
@@ -69,6 +81,8 @@ public sealed class GrammarExerciseGenerator(Random random)
             ParticleKind.NegativeCopula => (".", $"«Это не {meaning}.»"),
             ParticleKind.Topic => (" 어디에 있어요?", $"«Где {meaning}?» (тема)"),
             ParticleKind.Subject => (" 있어요.", $"«Есть {meaning}.»"),
+            ParticleKind.With => (" 빵을 샀어요.", $"«Купил(а): {meaning} и хлеб.»"),
+            ParticleKind.Means => (" 만들어요.", $"«Делаю из этого: {meaning}.»"),
             _ => (" 좋아해요.", $"«Люблю: {meaning}.»"),
         };
 
@@ -107,6 +121,9 @@ public sealed class GrammarExerciseGenerator(Random random)
             SpeakText: conjugation.Form);
     }
 
+    private static bool IsHadaAdjective(GrammarVerb verb) =>
+        verb.PartOfSpeech == PartOfSpeech.Adjective && verb.Korean.Length > 2 && verb.Korean.EndsWith("하다", StringComparison.Ordinal);
+
     /// <summary>First meaning of a Russian gloss: "студент, ученик" → "студент".</summary>
     public static string FirstSense(string russian)
     {
@@ -126,9 +143,15 @@ public sealed class GrammarExerciseGenerator(Random random)
 
     private static List<GrammarVerb> VerbPool(GrammarTopic topic, IReadOnlyList<GrammarVerb> verbs)
     {
-        bool actionOnly = topic.Ending is Ending.Want or Ending.Can or Ending.Must;
+        bool actionOnly = topic.Ending is { } ending && ActionEndings.Contains(ending);
+        bool negation = topic.Ending is Ending.Not or Ending.NotJi;
         return verbs
             .Where(v => !actionOnly || (v.PartOfSpeech == PartOfSpeech.Verb && !StateVerbs.Contains(v.Korean)))
+            .Where(v => topic.Ending != Ending.Purpose || !MotionVerbs.Contains(v.Korean))
+            .Where(v => !negation || !NoNegation.Contains(v.Korean))
+
+            // 피곤하다 is negated as 안 피곤해요, unlike the verb 공부 안 해요; keep the drill unambiguous.
+            .Where(v => topic.Ending != Ending.Not || !IsHadaAdjective(v))
             .ToList();
     }
 }

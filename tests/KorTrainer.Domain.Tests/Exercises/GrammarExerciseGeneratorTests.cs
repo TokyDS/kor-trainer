@@ -90,6 +90,32 @@ public sealed class GrammarExerciseGeneratorTests
         prompts.Should().NotContain(["덥다", "바쁘다", "있다"]);
     }
 
+    [Theory]
+    [InlineData(ExerciseTypes.Progressive)]
+    [InlineData(ExerciseTypes.Please)]
+    [InlineData(ExerciseTypes.ForMe)]
+    [InlineData(ExerciseTypes.Cannot)]
+    [InlineData(ExerciseTypes.Intention)]
+    [InlineData(ExerciseTypes.LetUs)]
+    public void ActionEndings_UseOnlyActionVerbs(string type)
+    {
+        var generator = new GrammarExerciseGenerator(new Random(3));
+
+        var prompts = generator.Generate([GrammarCatalog.Find(type)!], SampleSize, Nouns, Verbs).Select(e => e.Prompt);
+
+        prompts.Should().NotContain(["덥다", "바쁘다", "있다"]);
+    }
+
+    [Fact]
+    public void Purpose_SkipsVerbsOfMotion()
+    {
+        var generator = new GrammarExerciseGenerator(new Random(3));
+
+        var prompts = generator.Generate([GrammarCatalog.Find(ExerciseTypes.Purpose)!], SampleSize, Nouns, Verbs).Select(e => e.Prompt).ToList();
+
+        prompts.Should().NotContain("가다").And.Contain("먹다");
+    }
+
     [Fact]
     public void Generate_SkipsMultiWordEntries()
     {

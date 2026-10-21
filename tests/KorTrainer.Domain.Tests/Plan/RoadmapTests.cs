@@ -56,17 +56,22 @@ public sealed class RoadmapTests
         block.Tasks.Should().Contain(t => t.Target.Metric == TaskMetric.WordsStudied && t.Target.Count == words);
     }
 
-    [Fact]
-    public void Level1Blocks_IntroduceOneGrammarTopicEach_ThenMix()
+    [Theory]
+    [InlineData(PlanStage.Level1, "level1", Roadmap.Level1Blocks)]
+    [InlineData(PlanStage.Level2, "level2", Roadmap.Level2Blocks)]
+    public void LevelBlocks_IntroduceEveryStageTopicInOrder_OneOrTwoPerBlock(PlanStage stage, string prefix, int blocks)
     {
-        var topics = GrammarCatalog.Topics.Where(t => t.Stage == PlanStage.Level1).Select(t => t.Type).ToList();
+        var topics = GrammarCatalog.Topics.Where(t => t.Stage == stage).Select(t => t.Type).ToList();
 
-        var perBlock = Enumerable.Range(1, Roadmap.Level1Blocks)
-            .Select(k => _roadmap.Find($"level1-{k}")!.Tasks.Single(t => t.Key == "grammar").Target.ExerciseType)
+        var perBlock = Enumerable.Range(1, blocks)
+            .Select(k => _roadmap.Find($"{prefix}-{k}")!.Tasks
+                .Where(t => t.Target.Module == StudyModule.Grammar)
+                .ToList())
             .ToList();
 
-        perBlock.Take(topics.Count).Should().Equal(topics);
-        perBlock.Skip(topics.Count).Should().AllSatisfy(type => type.Should().BeNull("later blocks mix all topics"));
+        perBlock.Should().AllSatisfy(tasks => tasks.Count.Should().BeInRange(1, 2));
+        perBlock.Should().AllSatisfy(tasks => tasks[0].Key.Should().Be("grammar"));
+        perBlock.SelectMany(tasks => tasks).Select(t => t.Target.ExerciseType).Should().Equal(topics);
     }
 
     [Fact]
@@ -75,9 +80,12 @@ public sealed class RoadmapTests
         _roadmap.GrammarUnlocked(_roadmap.Find("lesson-4")!).Should().BeEmpty();
         _roadmap.GrammarUnlocked(_roadmap.Find("lesson-6")!).Select(t => t.Type)
             .Should().Equal(ExerciseTypes.Copula, ExerciseTypes.NegativeCopula);
+        _roadmap.GrammarUnlocked(_roadmap.Find("level1-1")!).Select(t => t.Type)
+            .Should().Contain([ExerciseTypes.TopicParticle, ExerciseTypes.SubjectParticle])
+            .And.NotContain(ExerciseTypes.ObjectParticle);
         _roadmap.GrammarUnlocked(_roadmap.Find("level1-2")!).Select(t => t.Type)
-            .Should().Contain([ExerciseTypes.TopicParticle, ExerciseTypes.SubjectParticle, ExerciseTypes.ObjectParticle])
-            .And.NotContain(ExerciseTypes.PolitePresent);
+            .Should().Contain([ExerciseTypes.ObjectParticle, ExerciseTypes.PolitePresent])
+            .And.NotContain(ExerciseTypes.Past);
         _roadmap.GrammarUnlocked(_roadmap.Steps[^1]).Should().HaveCount(GrammarCatalog.Topics.Count);
     }
 
