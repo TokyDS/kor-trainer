@@ -19,17 +19,3 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-
----
-
-Third-party data bundled in src/KorTrainer.Infrastructure/Seed and tools/ is not
-covered by the MIT License above and keeps its own license:
-
-- Korean Learner's Vocabulary List (한국어 학습용 어휘 목록), National Institute of
-  Korean Language — KOGL Type 1 (attribution).
-- Tatoeba example sentences — CC BY 2.0 FR; sentence ids and authors are kept.
-- Unihan database — Unicode License v3, © Unicode, Inc.
-- Lingua Libre recordings are not bundled: the manifest lists each file's author
-  and license (CC0 or CC BY-SA 4.0), and recordings are downloaded on demand.
-
-See "Data sources" in README.md for details.
