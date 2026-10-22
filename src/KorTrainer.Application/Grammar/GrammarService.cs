@@ -12,7 +12,13 @@ using Microsoft.EntityFrameworkCore;
 
 namespace KorTrainer.Application.Grammar;
 
-public sealed class GrammarService(IAppDbContext db, PlanCursor cursor, ISentenceLibrary sentences, GrammarClozeCache clozeCache, Random random)
+public sealed class GrammarService(
+    IAppDbContext db,
+    PlanCursor cursor,
+    ISentenceLibrary sentences,
+    IGrammarSentenceLibrary authored,
+    GrammarClozeCache clozeCache,
+    Random random)
 {
     public const int MaxCount = 50;
 
@@ -59,7 +65,7 @@ public sealed class GrammarService(IAppDbContext db, PlanCursor cursor, ISentenc
 
         var known = (await db.Words.Where(w => w.Stage <= maxWordStage).Select(w => w.DeckKey).ToListAsync(cancellationToken))
             .ToHashSet(StringComparer.Ordinal);
-        var allGaps = clozeCache.GetOrBuild(maxWordStage, () => GrammarClozeFinder.Find(KnownSentences(known), GrammarCatalog.Topics, nouns, verbs));
+        var allGaps = clozeCache.GetOrBuild(maxWordStage, () => GrammarClozeFinder.Find(KnownSentences(known, maxWordStage), GrammarCatalog.Topics, nouns, verbs));
         var types = topics.Select(t => t.Type).ToHashSet(StringComparer.Ordinal);
         var cloze = new ClozeSettings(
             allGaps.Where(m => types.Contains(m.Topic.Type)).ToList(),
@@ -82,11 +88,17 @@ public sealed class GrammarService(IAppDbContext db, PlanCursor cursor, ISentenc
         return new ExerciseSetDto(StudyModule.Grammar, type, title, items);
     }
 
-    /// <summary>Short sentences made only of words the learner's stage has opened.</summary>
-    private IEnumerable<ClozeSentence> KnownSentences(HashSet<string> known) => sentences.Sentences
+    /// <summary>
+    /// Short Tatoeba sentences made only of words the learner's stage has opened, plus the authored ones
+    /// for that stage (negative ids keep their item keys apart from Tatoeba's).
+    /// </summary>
+    private IEnumerable<ClozeSentence> KnownSentences(HashSet<string> known, PlanStage wordScope) => sentences.Sentences
         .Where(s => s.Korean.Length <= MaxSentenceLength && s.WordKeys.All(known.Contains))
         .Where(s => !Misspellings.Any(m => s.Korean.Contains(m, StringComparison.Ordinal)))
-        .Select(s => new ClozeSentence(s.Id, s.Korean, s.Russian, s.MachineTranslated));
+        .Select(s => new ClozeSentence(s.Id, s.Korean, s.Russian, s.MachineTranslated))
+        .Concat(authored.Sentences
+            .Where(s => s.Stage <= wordScope)
+            .Select(s => new ClozeSentence(-s.Id, s.Korean, s.Russian, MachineTranslated: false)));
 
     /// <summary>Topics the plan has introduced so far — at least the first ones, so the mixed drill is never empty.</summary>
     private async Task<(PlanStage Stage, IReadOnlyList<GrammarTopic> Topics)> UnlockedTopicsAsync(CancellationToken cancellationToken)
