@@ -169,7 +169,8 @@ About 930 words — including the minimal pairs of the plain/aspirated/tense lis
 비/피, 덜다/털다/떨다 …) — are voiced by real native speakers from [Lingua Libre](https://lingualibre.org)
 (CC0 / CC BY-SA, credited on the `/credits` page). The server downloads each file from Wikimedia
 once, caches it in the data volume and prefetches the rest in the background; see
-[`tools/audio`](tools/audio/README.md). Everything else falls back to speech synthesis.
+[`tools/audio`](tools/audio/README.md). They are off by default (Settings → «Записи носителей»), so every
+word and sentence is spoken by the same MeloTTS voice; turned on, they replace it where they exist.
 
 ### Korean voice
 

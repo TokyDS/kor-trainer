@@ -57,6 +57,12 @@
         </div>
         <small class="muted">Темп под план: 10 слов в день дают ~800 слов к 31 декабря (этап 1); чтобы к 21 февраля выйти на 1500–2000 слов (этап 2), с января ставьте 15–20.</small>
 
+        <label class="toggle">
+            <input type="checkbox" @bind="m.NativeRecordings" />
+            <span>Записи носителей, где они есть</span>
+        </label>
+        <small class="muted">По умолчанию всё озвучивает один голос (MeloTTS). Включите, чтобы слова с живой записью Lingua Libre звучали голосом носителя — голоса тогда будут разными.</small>
+
         <label>
             <span>Скорость речи: @m.SpeechRate.ToString("0.0#")</span>
             <input type="range" min="0.5" max="1.5" step="0.05" @bind="m.SpeechRate" @bind:event="oninput" />
@@ -257,6 +263,8 @@
 
         public bool RemindersEnabled { get; set; }
 
+        public bool NativeRecordings { get; set; }
+
         public static SettingsModel From(SettingsDto s) => new()
         {
             StartDate = s.StartDate,
@@ -267,9 +275,10 @@
             MaxReviewsPerDay = s.MaxReviewsPerDay,
             SpeechRate = s.SpeechRate,
             RemindersEnabled = s.RemindersEnabled,
+            NativeRecordings = s.NativeRecordings,
         };
 
         public SettingsDto ToDto() =>
-            new(StartDate, TimeZoneId, ShowRomanization, Theme, NewWordsPerDay, MaxReviewsPerDay, SpeechRate, RemindersEnabled);
+            new(StartDate, TimeZoneId, ShowRomanization, Theme, NewWordsPerDay, MaxReviewsPerDay, SpeechRate, RemindersEnabled, NativeRecordings);
     }
 }

@@ -115,7 +115,8 @@ public sealed class AppState(IKorTrainerApi api, BrowserInterop browser, ISpeech
         }
     }
 
-    public bool HasRecording(string? text) => text is not null && _recordedWords.Contains(text.Trim());
+    /// <summary>Whether a native-speaker recording will be played — only when the learner turned them on.</summary>
+    public bool HasRecording(string? text) => Settings.NativeRecordings && text is not null && _recordedWords.Contains(text.Trim());
 
     public ValueTask<IReadOnlyList<VoiceInfo>> GetKoreanVoicesAsync() => speech.GetKoreanVoicesAsync();
 

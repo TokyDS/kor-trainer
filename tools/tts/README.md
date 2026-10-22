@@ -3,8 +3,8 @@
 Deck words, Tatoeba example sentences, reading texts, every Hangul syllable and the verb forms of the
 grammar drills are voiced once with
 [MeloTTS](https://github.com/myshell-ai/MeloTTS) (Korean, MIT licence) and played back instead of the
-device's speech synthesis. Native-speaker recordings (Lingua Libre) still come first; the device's voice
-is only used for text that was not generated.
+device's speech synthesis. Native-speaker recordings (Lingua Libre) are only played when the learner
+turns them on in the settings; the device's voice is only used for text that was not generated.
 
 ## Generate
 

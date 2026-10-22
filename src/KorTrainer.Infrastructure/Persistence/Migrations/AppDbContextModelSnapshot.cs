@@ -244,6 +244,9 @@ namespace KorTrainer.Infrastructure.Persistence.Migrations
                     b.Property<int>("MaxReviewsPerDay")
                         .HasColumnType("INTEGER");
 
+                    b.Property<bool>("NativeRecordings")
+                        .HasColumnType("INTEGER");
+
                     b.Property<int>("NewWordsPerDay")
                         .HasColumnType("INTEGER");
 
