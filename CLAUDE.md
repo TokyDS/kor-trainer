@@ -102,7 +102,10 @@ back end in-process. Never reference EF or ASP.NET from Domain.
    `GrammarClozeCache`; `/grammar/sentences`) and the mistakes queue (`Mistake` entity, `Srs/MistakeSchedule`
    1/3/7 days; `ChoiceDrill` sends the exercise with a first wrong answer in `AttemptDto.Exercise`,
    `ActivityService` tracks it, `MistakeService` replays it at `/mistakes`; part of the backup).
-   Verb forms are voiced from `tools/tts/ExportGrammarTexts.cs` (`generate_melo.py --only grammar`).
+   Verb forms and particle phrases are voiced from `tools/tts/ExportGrammarTexts.cs` (`generate_melo.py --only grammar`).
+9. ✅ `Seed/grammar-sentences.json` (130 authored gap sentences for thin topics, `IGrammarSentenceLibrary`; ids are
+   stable, a test checks each yields its topic), weak topics (`Common/WeakTopics`, `/api/stats/weak`, second drill
+   of `/quick`) and the `NativeRecordings` setting.
 
 The deck has ~5,900 words (curated + NIKL A/B/C). Next ideas: offline answer queue, phone↔laptop sync, review of
 machine translations.

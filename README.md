@@ -22,6 +22,8 @@ Romanization is **off by default** — the point is to learn to read Hangul with
 - **«10 минут»** — one tap starts a short session: up to 15 due word cards, five due mistakes, a drill
   from the step's first unfinished task, then a short listening (or letter) drill; everything counts
   towards the step.
+- **Трудные темы** — statistics list the Hangul, grammar and number topics with under 85% right in the
+  last 30 days; the 10-minute session drills the weakest one.
 - **Работа над ошибками** — a wrong first answer in any multiple-choice drill is kept and comes back
   after 1, 3 and 7 days (a small Leitner schedule); three correct reviews close it, a slip starts over.
 - **Hangul**
@@ -53,7 +55,8 @@ Romanization is **off by default** — the point is to learn to read Hangul with
 - Grammar in real sentences: deck verbs and nouns are found in their topic's form inside Tatoeba
   sentences made only of words the learner already has, and blanked out (어제 영화를 ___ (보다).). Topic
   drills ask about half their questions this way; «В предложениях» asks only gaps and hides the ending,
-  so the form is chosen by meaning among other endings of the same verb, as on TOPIK.
+  so the form is chosen by meaning among other endings of the same verb, as on TOPIK. Topics Tatoeba barely
+  covers (future, 안/못, -(으)러 가다, -기 때문에 …) get 130 original sentences written for them.
 
 **Iteration 3 — numbers**
 
