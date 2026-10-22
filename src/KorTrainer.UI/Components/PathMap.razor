@@ -1,0 +1,125 @@
+@* The plan as a winding path: one section per stage, steps as nodes, the walked part drawn solid. *@
+@inject BrowserInterop Browser
+@using System.Globalization
+
+@foreach (var stage in Plan.Stages)
+{
+    var steps = Plan.Steps.Where(s => s.Stage == stage.Stage).ToList();
+    if (steps.Count == 0)
+    {
+        continue;
+    }
+
+    int first = Plan.Steps.ToList().IndexOf(steps[0]);
+    bool isCurrent = steps.Any(s => s.State == StepState.Current);
+    <section class="path-stage @(isCurrent ? "current" : string.Empty)" aria-labelledby="stage-@stage.Stage">
+        <header class="path-stage-head">
+            <span class="path-badge @(stage.DoneCount == stage.StepCount ? "done" : string.Empty)" lang="ko" aria-hidden="true">@Badge(stage.Stage)</span>
+            <div>
+                <h2 id="stage-@stage.Stage">@stage.Title</h2>
+                <p class="muted small">@stage.Goal · @Progress(stage)</p>
+            </div>
+        </header>
+        <div class="path-map" style="height: @(steps.Count * RowHeight)px">
+            <svg class="path-line" viewBox="0 0 @Width @(steps.Count * RowHeight)" width="@Width" height="@(steps.Count * RowHeight)" aria-hidden="true">
+                <path class="path-track" d="@Curve(first, steps.Count)" />
+                @if (Walked(steps) is > 1 and var walked)
+                {
+                    <path class="path-walked" d="@Curve(first, walked)" />
+                }
+            </svg>
+            <ol class="path-steps">
+                @for (int i = 0; i < steps.Count; i++)
+                {
+                    var step = steps[i];
+                    var (x, y) = Point(first + i, i);
+                    string state = step.State.ToString().ToLowerInvariant();
+                    <li style="left: @Px(x); top: @Px(y)">
+                        @if (step.State == StepState.Current)
+                        {
+                            <a @ref="_current" class="path-node current" href="/" aria-label="@step.Title — текущий шаг">@step.Number</a>
+                            <span class="path-here @(x < Width / 2.0 ? "right" : "left")">Вы здесь</span>
+                        }
+                        else
+                        {
+                            <a class="path-node @state" href="/?step=@Uri.EscapeDataString(step.Key)" aria-label="@step.Title — @StateText(step.State)">
+                                @(step.State == StepState.Done ? "✓" : step.Number.ToString(CultureInfo.InvariantCulture))
+                            </a>
+                        }
+                        <span class="path-caption">@Caption(step.Title)</span>
+                    </li>
+                }
+            </ol>
+        </div>
+    </section>
+}
+
+@code {
+    // Geometry in CSS pixels: the map is a fixed-width column that fits a phone.
+    private const int Width = 320;
+    private const int RowHeight = 88;
+    private const double Swing = 92;
+    private const double WaveStep = 0.75;
+
+    private ElementReference _current;
+    private bool _scrolled;
+
+    [Parameter, EditorRequired]
+    public PlanDto Plan { get; set; } = default!;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_scrolled && _current.Context is not null)
+        {
+            _scrolled = true;
+            await Browser.InvokeVoidAsync("scrollToElement", _current);
+        }
+    }
+
+    /// <summary>Node centre: the wave follows the step's place in the whole plan, so stages continue each other.</summary>
+    private static (double X, double Y) Point(int planIndex, int row) =>
+        (Width / 2.0 + Math.Sin(planIndex * WaveStep) * Swing, row * RowHeight + RowHeight / 2.0);
+
+    /// <summary>A smooth curve through the first <paramref name="count"/> nodes of a stage.</summary>
+    private static string Curve(int first, int count)
+    {
+        var points = Enumerable.Range(0, count).Select(i => Point(first + i, i)).ToList();
+        var d = new System.Text.StringBuilder($"M {Num(points[0].X)} {Num(points[0].Y)}");
+        for (int i = 1; i < points.Count; i++)
+        {
+            var (x0, y0) = points[i - 1];
+            var (x1, y1) = points[i];
+            double bend = (y1 - y0) / 2;
+            d.Append($" C {Num(x0)} {Num(y0 + bend)} {Num(x1)} {Num(y1 - bend)} {Num(x1)} {Num(y1)}");
+        }
+
+        return d.ToString();
+    }
+
+    /// <summary>How many nodes of the stage the walked line reaches: every done step and the current one.</summary>
+    private static int Walked(IReadOnlyList<PlanStepSummaryDto> steps) =>
+        steps.Count(s => s.State is StepState.Done or StepState.Current);
+
+    private static string Num(double value) => value.ToString("0.#", CultureInfo.InvariantCulture);
+
+    private static string Px(double value) => $"{Num(value)}px";
+
+    // "Урок 3: Хангыль: патчим…" → "Урок 3"; "Блок 2 из 8" stays.
+    private static string Caption(string title) => title.Split(':')[0];
+
+    private static string Progress(StageDto stage) =>
+        stage.DoneCount == stage.StepCount ? "пройдено" : $"{stage.DoneCount} из {stage.StepCount}";
+
+    private static string StateText(StepState state) => state == StepState.Done ? "пройден" : "впереди";
+
+    private static string Badge(PlanStage stage) => stage switch
+    {
+        PlanStage.Hangul => "한",
+        PlanStage.FirstPhrases => "안녕",
+        PlanStage.Level1 => "1급",
+        PlanStage.Level2 => "2급",
+        PlanStage.MockExam => "모의",
+        PlanStage.TopikPrep => "토픽",
+        _ => "복습",
+    };
+}

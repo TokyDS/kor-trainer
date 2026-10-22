@@ -317,6 +317,12 @@ export function applyTheme(theme) {
     }
 }
 
+/** Brings an element into view, centred; instantly when the learner prefers reduced motion. */
+export function scrollToElement(element) {
+    const smooth = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    element?.scrollIntoView({ block: 'center', behavior: smooth ? 'smooth' : 'auto' });
+}
+
 export function blurActive() {
     if (document.activeElement instanceof HTMLElement) {
         document.activeElement.blur();
