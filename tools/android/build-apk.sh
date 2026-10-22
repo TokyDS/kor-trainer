@@ -24,6 +24,9 @@ if [[ -z "${JAVA_HOME:-}" && -d "$HOME/.local/share/jdk-21" ]]; then
     export JAVA_HOME="$HOME/.local/share/jdk-21"
 fi
 
+# Bundled speech: words and syllables as generated, phrases re-encoded smaller (see the script).
+python3 "$repo_root/tools/android/pack_speech.py"
+
 dotnet publish "$repo_root/src/KorTrainer.Mobile/KorTrainer.Mobile.csproj" \
     -f net10.0-android -c Release \
     -p:KorTrainerKeystore="$keystore" \
