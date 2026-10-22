@@ -106,9 +106,6 @@ back end in-process. Never reference EF or ASP.NET from Domain.
 9. ✅ `Seed/grammar-sentences.json` (130 authored gap sentences for thin topics, `IGrammarSentenceLibrary`; ids are
    stable, a test checks each yields its topic), weak topics (`Common/WeakTopics`, `/api/stats/weak`, second drill
    of `/quick`) and the `NativeRecordings` setting.
-10. ✅ Look: `/hangul/series` trainer, plan as a path (`Components/PathMap`), companions (`Components/Mascot`, poses in
-   `UI/wwwroot/img/mascot`, `MascotPose`; home line from `Domain/Plan/Greetings`; `ShowCompanions` setting) and the
-   Android widget (`TodayWidget`). Generated art is split with care: keep each pose's gradients (ids are scoped).
 
 The deck has ~5,900 words (curated + NIKL A/B/C). Next ideas: offline answer queue, phone↔laptop sync, review of
 machine translations.

@@ -43,7 +43,4 @@ public sealed class UserSettings
     /// the same synthesized voice.
     /// </summary>
     public bool NativeRecordings { get; set; }
-
-    /// <summary>The tiger and the magpie on the home page, the path and the summaries; quiet, but they can go.</summary>
-    public bool ShowCompanions { get; set; } = true;
 }

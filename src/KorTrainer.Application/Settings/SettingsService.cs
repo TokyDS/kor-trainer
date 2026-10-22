@@ -67,9 +67,8 @@ public sealed class SettingsService(IAppDbContext db)
         settings.SpeechRate = source.SpeechRate;
         settings.RemindersEnabled = source.RemindersEnabled;
         settings.NativeRecordings = source.NativeRecordings;
-        settings.ShowCompanions = source.ShowCompanions;
     }
 
     public static SettingsDto ToDto(UserSettings s) =>
-        new(s.StartDate, s.TimeZoneId, s.ShowRomanization, s.Theme, s.NewWordsPerDay, s.MaxReviewsPerDay, s.SpeechRate, s.RemindersEnabled, s.NativeRecordings, s.ShowCompanions);
+        new(s.StartDate, s.TimeZoneId, s.ShowRomanization, s.Theme, s.NewWordsPerDay, s.MaxReviewsPerDay, s.SpeechRate, s.RemindersEnabled, s.NativeRecordings);
 }

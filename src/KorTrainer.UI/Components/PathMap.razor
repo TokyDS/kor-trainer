@@ -38,10 +38,7 @@
                         @if (step.State == StepState.Current)
                         {
                             <a @ref="_current" class="path-node current" href="/" aria-label="@step.Title — текущий шаг">@step.Number</a>
-                            <span class="path-here @(x < Width / 2.0 ? "right" : "left")">
-                                <Mascot Pose="@MascotPose.TigerHello" Size="52" />
-                                <span class="path-here-label">Вы здесь</span>
-                            </span>
+                            <span class="path-here @(x < Width / 2.0 ? "right" : "left")">Вы здесь</span>
                         }
                         else
                         {

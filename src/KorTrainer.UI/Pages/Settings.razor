@@ -31,12 +31,6 @@
         <small class="muted">Вечером, если сегодня ещё не занимались: баннер здесь, уведомление на телефоне и на компьютере.</small>
 
         <label class="toggle">
-            <input type="checkbox" @bind="m.ShowCompanions" />
-            <span>Показывать тигра и сороку</span>
-        </label>
-        <small class="muted">Тихие спутники: приветствие на главной, «Вы здесь» на карте пути, итоги занятий.</small>
-
-        <label class="toggle">
             <input type="checkbox" @bind="m.ShowRomanization" />
             <span>Показывать латиницу (романизацию)</span>
         </label>
@@ -271,8 +265,6 @@
 
         public bool NativeRecordings { get; set; }
 
-        public bool ShowCompanions { get; set; }
-
         public static SettingsModel From(SettingsDto s) => new()
         {
             StartDate = s.StartDate,
@@ -284,10 +276,9 @@
             SpeechRate = s.SpeechRate,
             RemindersEnabled = s.RemindersEnabled,
             NativeRecordings = s.NativeRecordings,
-            ShowCompanions = s.ShowCompanions,
         };
 
         public SettingsDto ToDto() =>
-            new(StartDate, TimeZoneId, ShowRomanization, Theme, NewWordsPerDay, MaxReviewsPerDay, SpeechRate, RemindersEnabled, NativeRecordings, ShowCompanions);
+            new(StartDate, TimeZoneId, ShowRomanization, Theme, NewWordsPerDay, MaxReviewsPerDay, SpeechRate, RemindersEnabled, NativeRecordings);
     }
 }

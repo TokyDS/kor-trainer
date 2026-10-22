@@ -22,10 +22,6 @@ Romanization is **off by default** — the point is to learn to read Hangul with
 - **«10 минут»** — one tap starts a short session: up to 15 due word cards, five due mistakes, a drill
   from the step's first unfinished task, then a short listening (or letter) drill; everything counts
   towards the step.
-- **Companions** — a goofy minhwa tiger and a magpie (the author's Recraft sheets, split into SVG poses)
-  stay quiet: one gentle line on the home page (`Greetings`: what is due, never streaks), «Вы здесь» on the
-  plan path, finished sessions, empty screens, load errors, the evening reminder and the Android widget.
-  They can be turned off in the settings. The plan itself is a winding path of the 42 steps.
 - **Трудные темы** — statistics list the Hangul, grammar and number topics with under 85% right in the
   last 30 days; the 10-minute session drills the weakest one.
 - **Работа над ошибками** — a wrong first answer in any multiple-choice drill is kept and comes back

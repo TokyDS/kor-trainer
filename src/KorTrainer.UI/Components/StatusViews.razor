@@ -1,16 +1,13 @@
 @* Loading spinner or error message with a retry button. *@
 @if (Error is not null)
 {
-    <div class="notice error with-mascot" role="alert">
-        <Mascot Pose="@MascotPose.TigerOops" Size="56" />
-        <div>
-            <strong>Не получилось загрузить данные.</strong>
-            <p>@Error</p>
-            @if (OnRetry.HasDelegate)
-            {
-                <button type="button" class="btn" @onclick="OnRetry">Повторить</button>
-            }
-        </div>
+    <div class="notice error" role="alert">
+        <strong>Не получилось загрузить данные.</strong>
+        <p>@Error</p>
+        @if (OnRetry.HasDelegate)
+        {
+            <button type="button" class="btn" @onclick="OnRetry">Повторить</button>
+        }
     </div>
 }
 else if (IsLoading)

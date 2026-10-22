@@ -253,9 +253,6 @@ namespace KorTrainer.Infrastructure.Persistence.Migrations
                     b.Property<bool>("RemindersEnabled")
                         .HasColumnType("INTEGER");
 
-                    b.Property<bool>("ShowCompanions")
-                        .HasColumnType("INTEGER");
-
                     b.Property<bool>("ShowRomanization")
                         .HasColumnType("INTEGER");
 
