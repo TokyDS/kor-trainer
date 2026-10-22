@@ -47,7 +47,6 @@
         --rule: #2e3237;
         --grid: rgba(232, 112, 100, 0.08);
         --accent: #e8705f;
-    --mascot-halo: rgba(236, 230, 218, 0.9);
         --accent-ink: #1a0f0d;
         --accent-soft: #3a2420;
         --celadon: #6cc2b0;
@@ -72,7 +71,6 @@
     --rule: #2e3237;
     --grid: rgba(232, 112, 100, 0.08);
     --accent: #e8705f;
-    --mascot-halo: rgba(236, 230, 218, 0.9);
     --accent-ink: #1a0f0d;
     --accent-soft: #3a2420;
     --celadon: #6cc2b0;
@@ -1147,25 +1145,4 @@ del.diff-extra { color: var(--ink-faint); }
 @keyframes path-ring {
     0% { transform: scale(0.85); opacity: 0.6; }
     100% { transform: scale(1.35); opacity: 0; }
-}
-
-/* Companions: drawn in ink outlines, so the dark theme gives them a thin light halo. */
-.mascot { display: block; height: auto; max-width: 100%; margin-inline: auto; filter: drop-shadow(0 0 1px var(--mascot-halo, transparent)); }
-.summary .mascot { margin-bottom: var(--space-2); }
-.reminder.with-mascot { display: flex; align-items: center; gap: var(--space-3); }
-.reminder.with-mascot .mascot { flex: none; margin: 0; }
-@media (prefers-reduced-motion: no-preference) {
-    .mascot.hop { animation: mascot-hop 0.9s ease-out 1 both; }
-    .mascot.sway { transform-origin: 50% 100%; animation: mascot-sway 5s ease-in-out infinite; }
-}
-@keyframes mascot-hop {
-    0% { transform: translateY(12px) scale(0.96); opacity: 0; }
-    45% { transform: translateY(-10px); opacity: 1; }
-    70% { transform: translateY(0); }
-    85% { transform: translateY(-4px); }
-    100% { transform: translateY(0); }
-}
-@keyframes mascot-sway {
-    0%, 100% { transform: rotate(0deg); }
-    50% { transform: rotate(-2.5deg); }
 }

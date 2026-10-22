@@ -34,12 +34,9 @@
 
     @if (today.IsCurrent && _reminder is { ShouldRemind: true } reminder)
     {
-        <div class="notice warning reminder with-mascot" role="status">
-            <Mascot Pose="@MascotPose.MagpieLetter" Size="64" />
-            <div>
-                <strong>@reminder.Title</strong>
-                <p>@reminder.Message</p>
-            </div>
+        <div class="notice warning reminder" role="status">
+            <strong>@reminder.Title</strong>
+            <p>@reminder.Message</p>
         </div>
     }
 
