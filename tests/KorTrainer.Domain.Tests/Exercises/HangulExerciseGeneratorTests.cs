@@ -133,9 +133,47 @@ public sealed class HangulExerciseGeneratorTests
             var order = new[] { "обычная", "с придыханием", "напряжённая" };
             exercise.Options.Select(o => Array.FindIndex(order, s => o.Hint!.StartsWith(s, StringComparison.Ordinal)))
                 .Should().BeInAscendingOrder().And.NotContain(-1);
-            exercise.Options.Should().OnlyContain(o => MinimalPairs.Sets.SelectMany(s => s).Any(w => w.Korean == o.Text));
+            exercise.Options.Should().OnlyContain(o => o.Text.Length == 1 || MinimalPairs.Sets.SelectMany(s => s).Any(w => w.Korean == o.Text));
         }
     }
+
+    [Fact]
+    public void ConsonantSeries_AlsoAsksSingleSyllablesOfOneRow()
+    {
+        var generator = new HangulExerciseGenerator(new Random(17));
+
+        var syllables = generator.Generate(ExerciseTypes.ConsonantSeries, HangulLevel.Full, SampleSize)
+            .Where(e => e.Prompt == "Какой слог прозвучал?")
+            .ToList();
+
+        syllables.Should().NotBeEmpty();
+        foreach (var exercise in syllables)
+        {
+            exercise.Prompt.Should().Be("Какой слог прозвучал?");
+            exercise.ItemKey.Should().Be($"series:{exercise.Correct.Text}");
+            var initials = exercise.Options.Select(o => Syllable.Decompose(o.Text[0]).Initial).ToList();
+            JamoCatalog.ConsonantSeries.Should().Contain(row => row.SequenceEqual(initials));
+            exercise.Options.Select(o => Syllable.Decompose(o.Text[0]).Medial).Distinct().Should().ContainSingle();
+        }
+    }
+
+    [Theory]
+    [InlineData('ㄷ')]
+    [InlineData('ㅅ')]
+    public void ConsonantSeries_WithAFocus_StaysInThatRow(char focus)
+    {
+        var generator = new HangulExerciseGenerator(new Random(23));
+        var row = JamoCatalog.SeriesRow(focus);
+
+        var exercises = generator.Generate(ExerciseTypes.ConsonantSeries, HangulLevel.Full, SampleSize, seriesFocus: focus);
+
+        exercises.Should().OnlyContain(e => e.Options.All(o => row.Contains(Syllable.Decompose(o.Text[0]).Initial)));
+        exercises.Should().Contain(e => e.Correct.Text.Length > 1, "words of the row are asked too");
+    }
+
+    [Fact]
+    public void SeriesRow_RejectsConsonantsOutsideTheSeries() =>
+        FluentActions.Invoking(() => JamoCatalog.SeriesRow('ㄴ')).Should().Throw<ArgumentException>();
 
     [Fact]
     public void ConsonantSeries_WithRecordings_NeverMixesRecordedAndSynthesizedWords()
@@ -145,7 +183,10 @@ public sealed class HangulExerciseGeneratorTests
 
         var exercises = generator.Generate(ExerciseTypes.ConsonantSeries, HangulLevel.Full, SampleSize, recordedWords: recorded);
 
-        exercises.SelectMany(e => e.Options).Should().OnlyContain(o => recorded.Contains(o.Text));
+        // Word questions use recorded words only; syllable questions are synthesized throughout.
+        var words = exercises.Where(e => e.Prompt != "Какой слог прозвучал?").ToList();
+        words.Should().NotBeEmpty();
+        words.SelectMany(e => e.Options).Should().OnlyContain(o => recorded.Contains(o.Text));
         exercises.Should().OnlyContain(e => e.Options.Count >= 2);
     }
 

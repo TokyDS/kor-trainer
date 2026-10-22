@@ -182,7 +182,7 @@ internal static class PlanContent
             new("Буква → звук", $"/hangul/{LetterToSound}?level={day}"),
             new("Звук → буква", $"/hangul/{SoundToLetter}?level={day}"),
             new("Сборка слога", $"/hangul/{Compose}?level={day}"),
-            new("Три ряда согласных", $"/hangul/{ConsonantSeries}?level=2"),
+            new("Три ряда согласных", "/hangul/series"),
             new("Чтение на время", $"/hangul/reading?level={day}"),
             new("Раскладка клавиатуры", "/typing/1"),
         ],

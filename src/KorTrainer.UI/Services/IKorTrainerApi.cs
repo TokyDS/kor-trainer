@@ -32,7 +32,8 @@ public interface IKorTrainerApi
 
     Task SetTaskDoneAsync(string taskKey, string step, bool done);
 
-    Task<ExerciseSetDto> GetHangulExercisesAsync(string type, int level, int count);
+    /// <param name="focus">For the consonant series: one consonant of the row to drill (ㄷ).</param>
+    Task<ExerciseSetDto> GetHangulExercisesAsync(string type, int level, int count, string? focus = null);
 
     Task<IReadOnlyList<ReadingItemDto>> GetReadingAsync(int level, int count);
 

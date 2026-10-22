@@ -103,8 +103,8 @@ public static class ApiEndpoints
 
     private static void MapHangul(RouteGroupBuilder group)
     {
-        group.MapGet("/exercises/{type}", (string type, int? level, int? count, HangulService service, CancellationToken ct) =>
-            service.GetExercisesAsync(type, level ?? 1, count ?? 20, ct));
+        group.MapGet("/exercises/{type}", (string type, int? level, int? count, string? focus, HangulService service, CancellationToken ct) =>
+            service.GetExercisesAsync(type, level ?? 1, count ?? 20, ct, focus));
         group.MapGet("/reading", (int? level, int? count, HangulService service, CancellationToken ct) =>
             service.GetReadingAsync(level ?? 3, count ?? 10, ct));
         group.MapPost("/reading-trials", async (ReadingTrialDto trial, ActivityService service, CancellationToken ct) =>
