@@ -1,9 +1,10 @@
 #:property PublishAot=false
 #:project ../../src/KorTrainer.Domain/KorTrainer.Domain.csproj
 
-// Lists the verb forms the grammar drills speak, for tools/tts/generate_melo.py --only grammar: every verb
-// and adjective of the first stages (about the first 800 words) in every ending the drills ask it in.
-// Wrong options are not voiced on purpose. Run from the repository root:
+// Lists what the grammar drills speak, for tools/tts/generate_melo.py --only grammar: every verb and
+// adjective of the first stages (about the first 800 words) in every ending the drills ask it in, and every
+// noun of those stages in each particle question's phrase (책을 좋아해요). Wrong options are not voiced on
+// purpose. Run from the repository root:
 //
 //   dotnet run tools/tts/ExportGrammarTexts.cs
 
@@ -16,6 +17,7 @@ string[] stages = ["FirstPhrases", "Level1"];
 string seed = Path.Combine(Directory.GetCurrentDirectory(), "src", "KorTrainer.Infrastructure", "Seed");
 
 var verbs = new List<GrammarVerb>();
+var nouns = new List<string>();
 foreach (string file in new[] { "words.json", "words-nikl.json" })
 {
     using var deck = JsonDocument.Parse(File.ReadAllText(Path.Combine(seed, file)));
@@ -29,6 +31,11 @@ foreach (string file in new[] { "words.json", "words-nikl.json" })
         foreach (var word in section.GetProperty("words").EnumerateArray())
         {
             string pos = word[2].GetString()!;
+            if (pos == "noun")
+            {
+                nouns.Add(word[0].GetString()!.Trim());
+            }
+
             if (pos is not ("verb" or "adjective"))
             {
                 continue;
@@ -56,10 +63,14 @@ var usable = verbs.Where(v => v.Korean.Length >= 2 && v.Korean[^1] == '다' && !
 var texts = GrammarCatalog.Topics
     .Where(t => t.Ending is not null)
     .SelectMany(t => usable.Where(v => GrammarExerciseGenerator.Suits(t, v)).Select(v => Conjugator.Conjugate(v.Korean, t.Ending!.Value, v.Irregularity).Form))
+    .Concat(GrammarCatalog.Topics
+        .Where(t => t.Particle is not null)
+        .SelectMany(t => nouns.Where(n => n.Length > 0 && n.All(KorTrainer.Domain.Hangul.Syllable.IsSyllable))
+            .Select(n => GrammarExerciseGenerator.ParticleSpeakText(n, t.Particle!.Value))))
     .Distinct()
     .ToList();
 
 string output = Path.Combine(Directory.GetCurrentDirectory(), "artifacts", "tts", "grammar-texts.txt");
 Directory.CreateDirectory(Path.GetDirectoryName(output)!);
 File.WriteAllLines(output, texts);
-Console.WriteLine($"{usable.Count} verbs → {texts.Count} forms → {output}");
+Console.WriteLine($"{usable.Count} verbs, {nouns.Distinct().Count()} nouns → {texts.Count} texts → {output}");

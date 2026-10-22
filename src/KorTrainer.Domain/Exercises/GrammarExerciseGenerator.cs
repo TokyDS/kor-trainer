@@ -164,17 +164,7 @@ public sealed class GrammarExerciseGenerator(Random random)
     {
         var kind = topic.Particle ?? throw new ArgumentException("Topic is not a particle topic.", nameof(topic));
         var particle = Particles.Attach(noun.Korean, kind);
-        string meaning = FirstSense(noun.Russian);
-        var (rest, translation) = kind switch
-        {
-            ParticleKind.Copula => (".", $"«Это {meaning}.»"),
-            ParticleKind.NegativeCopula => (".", $"«Это не {meaning}.»"),
-            ParticleKind.Topic => (" 어디에 있어요?", $"«Где {meaning}?» (тема)"),
-            ParticleKind.Subject => (" 있어요.", $"«Есть {meaning}.»"),
-            ParticleKind.With => (" 빵을 샀어요.", $"«Купил(а): {meaning} и хлеб.»"),
-            ParticleKind.Means => (" 만들어요.", $"«Делаю из этого: {meaning}.»"),
-            _ => (" 좋아해요.", $"«Люблю: {meaning}.»"),
-        };
+        var (rest, translation) = ParticleFrame(kind, FirstSense(noun.Russian));
 
         var options = new[] { new ChoiceOption(particle.Form), new ChoiceOption(particle.Wrong) }
             .Shuffled(random)
@@ -188,8 +178,24 @@ public sealed class GrammarExerciseGenerator(Random random)
             options,
             options.FindIndex(o => o.Text == particle.Form),
             particle.Explanation,
-            SpeakText: particle.Form + rest.TrimEnd('.', '?'));
+            SpeakText: ParticleSpeakText(noun.Korean, kind));
     }
+
+    /// <summary>What a particle question says aloud after the answer: 책을 좋아해요, 학생이에요.</summary>
+    public static string ParticleSpeakText(string noun, ParticleKind kind) =>
+        Particles.Attach(noun, kind).Form + ParticleFrame(kind, string.Empty).Tail.TrimEnd('.', '?');
+
+    /// <summary>The rest of the phrase around a noun with a particle, and its Russian gloss.</summary>
+    private static (string Tail, string Translation) ParticleFrame(ParticleKind kind, string meaning) => kind switch
+    {
+        ParticleKind.Copula => (".", $"«Это {meaning}.»"),
+        ParticleKind.NegativeCopula => (".", $"«Это не {meaning}.»"),
+        ParticleKind.Topic => (" 어디에 있어요?", $"«Где {meaning}?» (тема)"),
+        ParticleKind.Subject => (" 있어요.", $"«Есть {meaning}.»"),
+        ParticleKind.With => (" 빵을 샀어요.", $"«Купил(а): {meaning} и хлеб.»"),
+        ParticleKind.Means => (" 만들어요.", $"«Делаю из этого: {meaning}.»"),
+        _ => (" 좋아해요.", $"«Люблю: {meaning}.»"),
+    };
 
     public ChoiceExercise VerbExercise(GrammarTopic topic, GrammarVerb verb)
     {

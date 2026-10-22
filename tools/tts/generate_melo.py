@@ -39,6 +39,7 @@ def collect(only: str | None) -> list[str]:
     if only in (None, "sentences"):
         texts += [s["ko"].strip() for s in json.loads((SEED / "sentences-tatoeba.json").read_text(encoding="utf-8"))["sentences"]]
         texts += [s["ko"].strip() for t in json.loads((SEED / "texts.json").read_text(encoding="utf-8"))["texts"] for s in t["sentences"]]
+        texts += [s["ko"].strip() for s in json.loads((SEED / "grammar-sentences.json").read_text(encoding="utf-8"))["sentences"]]
     if only in (None, "hangul"):
         # Every syllable (the Hangul drills build random ones) plus the module's own words, exported by
         # `dotnet run tools/tts/ExportHangulTexts.cs`.
