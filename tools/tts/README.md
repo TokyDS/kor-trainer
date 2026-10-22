@@ -31,7 +31,12 @@ Run one generation at a time: each run merges its texts into `manifest.json` whe
 
 After a run that adds syllables, `python3 tools/tts/sharpen_stops.py` gives every lone syllable that ends in a
 stop ([ㄱ], [ㄷ], [ㅂ]: 각, 꽃, 밥, 닭 …) an abrupt end. MeloTTS lets such a vowel fade, so 뻑 sounded like 뻐;
-the final of an unreleased stop is heard only as the vowel stopping short. Originals stay in
+the final of an unreleased stop is heard only as the vowel stopping short.
+
+Then `python3 tools/tts/alias_syllables.py`: a lone syllable that is pronounced as another one (뽆 [뽄], 꽃
+[꼳], 앉 [안], 밟 [밥]) plays that syllable's recording. MeloTTS garbles many rare spellings (a phoneme
+recognizer heard 뽆 as "b ɛ l k ə") but voices the plain ones well. generate_melo.py rewrites these entries,
+so run both steps again after every generation. Originals stay in
 `artifacts/tts/ko-melo-original/`, processed keys in `sharpened.json`, and a second run only takes new files.
 
 Run from a directory without your own `coverage.py`/`*.py` that shadow library modules. The script is
