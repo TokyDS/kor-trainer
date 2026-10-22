@@ -12,16 +12,14 @@
     android:paddingTop="10dp"
     android:paddingBottom="10dp">
 
-    <TextView
+    <!-- The magpie brings the news (the app's companions, from the author's Recraft sheet). -->
+    <ImageView
         android:id="@+id/widget_glyph"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:minWidth="52dp"
-        android:gravity="center"
-        android:text="10′"
-        android:textColor="#FFFAF3"
-        android:textSize="28sp"
-        android:textStyle="bold" />
+        android:layout_width="44dp"
+        android:layout_height="54dp"
+        android:contentDescription="@null"
+        android:scaleType="fitCenter"
+        android:src="@drawable/widget_magpie" />
 
     <LinearLayout
         android:layout_width="0dp"

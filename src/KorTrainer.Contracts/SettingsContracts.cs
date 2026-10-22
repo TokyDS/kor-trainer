@@ -11,4 +11,5 @@ public sealed record SettingsDto(
     int MaxReviewsPerDay,
     double SpeechRate,
     bool RemindersEnabled = true,
-    bool NativeRecordings = false);
+    bool NativeRecordings = false,
+    bool ShowCompanions = true);

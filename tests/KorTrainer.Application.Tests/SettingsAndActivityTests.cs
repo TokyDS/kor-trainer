@@ -21,6 +21,7 @@ public sealed class SettingsAndActivityTests
         settings.StartDate.Should().Be(new DateOnly(2026, 10, 13));
         settings.ShowRomanization.Should().BeFalse();
         settings.NativeRecordings.Should().BeFalse("one synthesized voice for everything unless the learner asks");
+        settings.ShowCompanions.Should().BeTrue();
         settings.TimeZoneId.Should().Be("Europe/Moscow");
     }
 
@@ -30,11 +31,12 @@ public sealed class SettingsAndActivityTests
         await using var t = await TestDatabase.CreateAsync();
         var current = await t.Settings.GetAsync(Ct);
 
-        await t.Settings.UpdateAsync(current with { ShowRomanization = true, Theme = ThemePreference.Dark, NewWordsPerDay = 15, NativeRecordings = true }, Ct);
+        await t.Settings.UpdateAsync(current with { ShowRomanization = true, Theme = ThemePreference.Dark, NewWordsPerDay = 15, NativeRecordings = true, ShowCompanions = false }, Ct);
         var reloaded = await t.Settings.GetAsync(Ct);
 
         reloaded.ShowRomanization.Should().BeTrue();
         reloaded.NativeRecordings.Should().BeTrue();
+        reloaded.ShowCompanions.Should().BeFalse();
         reloaded.Theme.Should().Be(ThemePreference.Dark);
         reloaded.NewWordsPerDay.Should().Be(15);
     }

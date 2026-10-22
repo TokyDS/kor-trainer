@@ -1,6 +1,7 @@
 @page "/"
 @inject IKorTrainerApi Api
 @inject NavigationManager Navigation
+@inject AppState State
 
 <PageTitle>KorTrainer</PageTitle>
 
@@ -55,6 +56,16 @@
         </div>
     </header>
 
+    @if (today.IsCurrent && !today.ReadyForNext && _reminder is not { ShouldRemind: true } && State.Settings.ShowCompanions)
+    {
+        // The evening reminder and «Шаг пройден!» carry their own companion; otherwise the tiger says one line.
+        var greeting = Greetings.For(DateTime.Now.Hour, today.Vocabulary.DueNow, _mistakes?.Due ?? 0, today.StudiedToday);
+        <section class="greeting" aria-label="Приветствие">
+            <Mascot Pose="@MascotPose.ForMood(greeting.Mood)" Size="84" />
+            <p class="greeting-bubble">@greeting.Text</p>
+        </section>
+    }
+
     @if (today.IsCurrent)
     {
         <a class="quick-start" href="/quick">
@@ -75,10 +86,13 @@
 
     @if (today.ReadyForNext)
     {
-        <div class="notice success step-done" role="status">
-            <strong>Шаг пройден!</strong>
-            <p>Дальше: @step.NextTitle. Можно перейти сейчас или ещё позаниматься здесь — как удобно.</p>
-            <button type="button" class="btn primary" disabled="@_saving" @onclick="AdvanceAsync">Перейти дальше</button>
+        <div class="notice success step-done with-mascot" role="status">
+            <Mascot Pose="@MascotPose.TigerCelebrate" Size="72" Motion="hop" />
+            <div>
+                <strong>Шаг пройден!</strong>
+                <p>Дальше: @step.NextTitle. Можно перейти сейчас или ещё позаниматься здесь — как удобно.</p>
+                <button type="button" class="btn primary" disabled="@_saving" @onclick="AdvanceAsync">Перейти дальше</button>
+            </div>
         </div>
     }
 

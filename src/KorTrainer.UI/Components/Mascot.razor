@@ -1,5 +1,10 @@
 @* One pose of the trainer's companions, drawn as a bundled SVG. Decorative unless Alt is given. *@
-<img class="mascot @Motion" src="_content/KorTrainer.UI/img/mascot/@(Pose).svg" width="@Size" alt="@Alt" decoding="async" />
+@inject AppState State
+
+@if (State.Settings.ShowCompanions)
+{
+    <img class="mascot @Motion" src="_content/KorTrainer.UI/img/mascot/@(Pose).svg" width="@Size" alt="@Alt" decoding="async" />
+}
 
 @code {
     /// <summary>One of <see cref="MascotPose"/>.</summary>
