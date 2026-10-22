@@ -84,8 +84,9 @@
         {
             var today = await Api.GetTodayAsync();
             var mistakes = await Api.GetMistakeSummaryAsync();
+            var weakest = (await Api.GetWeakTopicsAsync()).Select(w => QuickSession.FromRoute(w.Route)).FirstOrDefault(d => d is not null);
             var tasks = today.Step.Tasks.Select(t => new QuickTask(t.Route, t.IsDone));
-            var drills = QuickSession.Drills(today.Step.Stage, tasks);
+            var drills = QuickSession.Drills(today.Step.Stage, tasks, weakest);
 
             var parts = new List<Part> { new(PartKind.Words, "Слова", QuickSession.WordCards) };
             if (mistakes.Due > 0)
@@ -94,7 +95,7 @@
             }
 
             parts.Add(new Part(PartKind.Drill, DrillTitle(drills[0]), QuickSession.DrillSize, drills[0]));
-            parts.AddRange(drills.Skip(1).Select(d => new Part(PartKind.Drill, DrillTitle(d), QuickSession.SecondDrillSize, d)));
+            parts.AddRange(drills.Skip(1).Select(d => new Part(PartKind.Drill, d == weakest ? "Трудная тема" : DrillTitle(d), QuickSession.SecondDrillSize, d)));
             _parts = parts;
             _index = 0;
             _cardsReviewed = 0;

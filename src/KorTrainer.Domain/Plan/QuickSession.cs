@@ -22,7 +22,8 @@ public static class QuickSession
 
     private const int MaxHangulLevel = 3;
 
-    public static IReadOnlyList<QuickDrill> Drills(PlanStage stage, IEnumerable<QuickTask> tasks)
+    /// <param name="weakest">The topic answered worst lately; when given it takes the second drill's place.</param>
+    public static IReadOnlyList<QuickDrill> Drills(PlanStage stage, IEnumerable<QuickTask> tasks, QuickDrill? weakest = null)
     {
         ArgumentNullException.ThrowIfNull(tasks);
         var drills = tasks.Select(t => (Drill: FromRoute(t.Route), t.IsDone)).Where(t => t.Drill is not null).ToList();
@@ -37,7 +38,7 @@ public static class QuickSession
                 ? new QuickDrill(StudyModule.Grammar, ExerciseTypes.Mixed)
                 : new QuickDrill(StudyModule.Listening, ExerciseTypes.ListenMeaning);
 
-        return [first, second];
+        return weakest is not null && weakest != first ? [first, weakest] : [first, second];
     }
 
     /// <summary>The drill behind a task link such as <c>/grammar/past</c> or <c>/hangul/compose?level=2</c>.</summary>

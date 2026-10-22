@@ -1024,3 +1024,18 @@ del.diff-extra { color: var(--ink-faint); }
 
 .mistakes-link:hover { border-color: var(--accent); }
 .mistakes-link .badge { background: var(--accent-soft); color: var(--accent); font-weight: 700; }
+
+.weak-list { list-style: none; padding: 0; margin: 0; display: grid; gap: var(--space-2); }
+.weak-list li {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-areas: "title action" "detail action";
+    align-items: center;
+    column-gap: var(--space-3);
+    padding: var(--space-2) 0;
+    border-bottom: 1px dashed var(--rule);
+}
+.weak-list li:last-child { border-bottom: 0; }
+.weak-title { grid-area: title; font-weight: 600; }
+.weak-list .muted { grid-area: detail; }
+.weak-list .btn { grid-area: action; }

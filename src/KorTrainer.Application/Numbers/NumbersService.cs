@@ -20,6 +20,8 @@ public sealed class NumbersService(Random random)
         [ExerciseTypes.Mixed] = "Числа вперемешку",
     };
 
+    public static string TitleOf(string type) => Titles.GetValueOrDefault(type, type);
+
     /// <param name="type">One of <see cref="NumberExerciseGenerator.Types"/> or <see cref="ExerciseTypes.Mixed"/>.</param>
     public ExerciseSetDto GetExercises(string type, int count)
     {

@@ -142,6 +142,8 @@ public sealed class HttpKorTrainerApi(HttpClient http) : IKorTrainerApi
 
     public Task<ExerciseSetDto> GetMistakesAsync(int count) => GetAsync<ExerciseSetDto>($"api/mistakes?count={count}");
 
+    public Task<IReadOnlyList<WeakTopicDto>> GetWeakTopicsAsync() => GetAsync<IReadOnlyList<WeakTopicDto>>("api/stats/weak");
+
     public async Task<ImportResultDto> ImportProgressAsync(Stream json, CancellationToken cancellationToken)
     {
         using var content = new StreamContent(json);

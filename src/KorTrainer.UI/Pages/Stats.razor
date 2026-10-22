@@ -104,6 +104,24 @@
         <p class="muted small">Для словаря верным считается любой ответ, кроме «Снова».</p>
     </section>
 
+    @if (_weak is { Count: > 0 } weak)
+    {
+        <section class="card" aria-labelledby="weak-heading">
+            <h2 id="weak-heading">Трудные темы</h2>
+            <p class="muted small">Меньше 85% верных ответов за последние 30 дней. «10 минут» берёт самую трудную из них вторым набором.</p>
+            <ul class="weak-list">
+                @foreach (var topic in weak)
+                {
+                    <li>
+                        <span class="weak-title">@topic.Title</span>
+                        <span class="muted small">@topic.AccuracyPercent% верно из @topic.Attempts</span>
+                        <a class="btn small" href="@topic.Route">Потренировать</a>
+                    </li>
+                }
+            </ul>
+        </section>
+    }
+
     <details class="card">
         <summary>Таблица по дням</summary>
         <table class="words">
@@ -125,6 +143,7 @@
     private StatsOverviewDto? _overview;
     private IReadOnlyList<DailyStatDto>? _daily;
     private ForecastDto? _forecast;
+    private IReadOnlyList<WeakTopicDto>? _weak;
     private string? _error;
 
     private int MaxMinutes => Math.Max(10, _daily?.Max(d => d.StudyMinutes) ?? 0);
@@ -141,6 +160,7 @@
             _overview = await overview;
             _daily = await daily;
             _forecast = await Api.GetForecastAsync();
+            _weak = await Api.GetWeakTopicsAsync();
         }
         catch (Exception ex) when (ex is ApiException or HttpRequestException)
         {

@@ -112,5 +112,7 @@ public interface IKorTrainerApi
 
     Task<ExerciseSetDto> GetMistakesAsync(int count);
 
+    Task<IReadOnlyList<WeakTopicDto>> GetWeakTopicsAsync();
+
     Task<ImportResultDto> ImportProgressAsync(Stream json, CancellationToken cancellationToken);
 }

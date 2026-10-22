@@ -25,6 +25,9 @@ public sealed record ModuleAccuracyDto(StudyModule Module, int Answers, int Corr
 /// <param name="StudyMinutes">Minutes from exercise sessions and TOPIK writing.</param>
 public sealed record DailyStatDto(DateOnly Date, int StudyMinutes, int Answers, int Correct, int Reviews, int NewWords);
 
+/// <param name="Route">Where to drill the topic, e.g. <c>/grammar/past</c>.</param>
+public sealed record WeakTopicDto(StudyModule Module, string Type, string Title, int Attempts, int AccuracyPercent, string Route);
+
 public sealed record StatsOverviewDto(
     VocabularySummaryDto Vocabulary,
     IReadOnlyList<ModuleAccuracyDto> Accuracy,

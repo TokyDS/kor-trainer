@@ -89,6 +89,26 @@ public sealed class QuickSessionTests
     }
 
     [Fact]
+    public void Drills_PutTheWeakestTopicSecond()
+    {
+        var weakest = new QuickDrill(StudyModule.Grammar, ExerciseTypes.Future);
+
+        var drills = QuickSession.Drills(PlanStage.Level1, [new QuickTask("/grammar/past", false)], weakest);
+
+        drills.Should().Equal(new QuickDrill(StudyModule.Grammar, ExerciseTypes.Past), weakest);
+    }
+
+    [Fact]
+    public void Drills_KeepTheUsualSecondDrill_WhenTheWeakestIsTheStepTask()
+    {
+        var past = new QuickDrill(StudyModule.Grammar, ExerciseTypes.Past);
+
+        var drills = QuickSession.Drills(PlanStage.Level1, [new QuickTask("/grammar/past", false)], past);
+
+        drills[1].Module.Should().Be(StudyModule.Listening);
+    }
+
+    [Fact]
     public void Drills_DoNotRepeatListening_WhenTheStepTaskIsListening()
     {
         var drills = QuickSession.Drills(PlanStage.Level2, [new QuickTask("/listening", false)]);

@@ -70,6 +70,8 @@ public static class ApiEndpoints
         var mistakes = api.MapGroup("/mistakes").WithTags("Mistakes");
         mistakes.MapGet("/summary", (MistakeService service, CancellationToken ct) => service.GetSummaryAsync(ct));
         mistakes.MapGet("/", (int? count, MistakeService service, CancellationToken ct) => service.GetDueAsync(count ?? 20, ct));
+        api.MapGroup("/stats").WithTags("Statistics")
+            .MapGet("/weak", (StatsService service, CancellationToken ct) => service.GetWeakTopicsAsync(ct));
         MapTopik(api.MapGroup("/topik").WithTags("TOPIK"));
         MapStats(api.MapGroup("/stats").WithTags("Statistics"));
         MapActivity(api.MapGroup(string.Empty).WithTags("Activity"));

@@ -144,6 +144,8 @@ public sealed class LocalKorTrainerApi(IServiceScopeFactory scopes, ILogger<Loca
 
     public Task<ExerciseSetDto> GetMistakesAsync(int count) => Run<MistakeService, ExerciseSetDto>((s, ct) => s.GetDueAsync(count, ct));
 
+    public Task<IReadOnlyList<WeakTopicDto>> GetWeakTopicsAsync() => Run<StatsService, IReadOnlyList<WeakTopicDto>>((s, ct) => s.GetWeakTopicsAsync(ct));
+
     public async Task<ImportResultDto> ImportProgressAsync(Stream json, CancellationToken cancellationToken)
     {
         ProgressExport snapshot;
