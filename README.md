@@ -22,6 +22,8 @@ Romanization is **off by default** — the point is to learn to read Hangul with
 - **«10 минут»** — one tap starts a short session: up to 15 due word cards, five due mistakes, a drill
   from the step's first unfinished task, then a short listening (or letter) drill; everything counts
   towards the step.
+- **Plan as a path** — the 42 steps as a winding path with stage badges; the walked part is solid and the
+  page opens at the current step.
 - **Трудные темы** — statistics list the Hangul, grammar and number topics with under 85% right in the
   last 30 days; the 10-minute session drills the weakest one.
 - **Работа над ошибками** — a wrong first answer in any multiple-choice drill is kept and comes back

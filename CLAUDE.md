@@ -106,6 +106,8 @@ back end in-process. Never reference EF or ASP.NET from Domain.
 9. ✅ `Seed/grammar-sentences.json` (130 authored gap sentences for thin topics, `IGrammarSentenceLibrary`; ids are
    stable, a test checks each yields its topic), weak topics (`Common/WeakTopics`, `/api/stats/weak`, second drill
    of `/quick`) and the `NativeRecordings` setting.
+10. ✅ `/hangul/series` (three consonant series: listen, compare, drill one row via `?focus=`) and the plan as a winding
+   path (`Components/PathMap`). Companions (tiger, magpie) were tried and taken out for now (reverted in git).
 
 The deck has ~5,900 words (curated + NIKL A/B/C). Next ideas: offline answer queue, phone↔laptop sync, review of
 machine translations.
