@@ -1,4 +1,5 @@
 using Android.App;
+using Android.Content;
 using Android.Content.PM;
 using Android.OS;
 using AndroidX.Core.View;
@@ -16,6 +17,12 @@ public class MainActivity : MauiAppCompatActivity
 {
     protected override void OnCreate(Bundle? savedInstanceState)
     {
+        // A widget tap opens the short session; a restored activity keeps the page it was on.
+        if (savedInstanceState is null)
+        {
+            App.StartRoute = TodayWidget.RouteOf(Intent);
+        }
+
         base.OnCreate(savedInstanceState);
 
         // Android 15+ draws apps edge to edge: keep the page clear of the status bar, the navigation bar,
@@ -28,6 +35,22 @@ public class MainActivity : MauiAppCompatActivity
         StudyReminders.CreateChannel(this);
         StudyReminders.Schedule(this);
         _ = RequestNotificationPermissionAsync();
+    }
+
+    protected override void OnNewIntent(Intent? intent)
+    {
+        base.OnNewIntent(intent);
+        if (TodayWidget.RouteOf(intent) is { } route && Microsoft.Maui.Controls.Application.Current is App app)
+        {
+            _ = app.NavigateAsync(route);
+        }
+    }
+
+    // Leaving the app is when the counts on the widget change.
+    protected override void OnPause()
+    {
+        base.OnPause();
+        TodayWidget.RequestUpdate(this);
     }
 
     // Android 13+ asks the user once; without it reminders are simply not shown.
