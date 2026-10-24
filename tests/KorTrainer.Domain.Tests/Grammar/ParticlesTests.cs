@@ -26,6 +26,31 @@ public sealed class ParticlesTests
 
         result.Form.Should().Be(expected);
         result.Wrong.Should().Be(wrong);
+        result.WrongWhy.Should().NotBeNullOrWhiteSpace();
+    }
+
+    [Theory]
+    [InlineData("저", ParticleKind.Subject, "제가", "저가")]
+    [InlineData("나", ParticleKind.Subject, "내가", "나가")]
+    [InlineData("누구", ParticleKind.Subject, "누가", "누구가")]
+    [InlineData("저", ParticleKind.NegativeCopula, "제가 아니에요", "저가 아니에요")]
+    [InlineData("나", ParticleKind.NegativeCopula, "내가 아니에요", "나가 아니에요")]
+    public void Attach_ContractsPronounsBefore가(string noun, ParticleKind kind, string expected, string wrong)
+    {
+        var result = Particles.Attach(noun, kind);
+
+        result.Form.Should().Be(expected);
+        result.Wrong.Should().Be(wrong);
+        result.WrongWhy.Should().Contain(expected.Split(' ')[0]);
+        result.Explanation.Should().Contain(expected.Split(' ')[0]);
+    }
+
+    [Fact]
+    public void WrongWhy_NamesTheLastSyllable()
+    {
+        Particles.Attach("의자", ParticleKind.Copula).WrongWhy.Should().Contain("이에요").And.Contain("자").And.Contain("гласн");
+        Particles.Attach("책", ParticleKind.Copula).WrongWhy.Should().Contain("예요").And.Contain("ㄱ");
+        Particles.Attach("연필", ParticleKind.Means).WrongWhy.Should().Contain("ㄹ");
     }
 
     [Fact]

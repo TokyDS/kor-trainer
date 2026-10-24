@@ -117,7 +117,7 @@ public sealed class GrammarExerciseGenerator(Random random)
         if (match.Noun is { } noun)
         {
             var particle = Particles.Attach(noun.Korean, match.Topic.Particle!.Value);
-            var choices = new[] { new ChoiceOption(particle.Form), new ChoiceOption(particle.Wrong) }.Shuffled(random).ToList();
+            var choices = new[] { new ChoiceOption(particle.Form), new ChoiceOption(particle.Wrong, Why: particle.WrongWhy) }.Shuffled(random).ToList();
             return new ChoiceExercise(
                 match.Topic.Type,
                 key,
@@ -132,10 +132,12 @@ public sealed class GrammarExerciseGenerator(Random random)
         var verb = match.Verb ?? throw new ArgumentException("A match carries a noun or a verb.", nameof(match));
         var ending = match.Topic.Ending!.Value;
         var conjugation = Conjugator.Conjugate(verb.Korean, ending, verb.Irregularity);
-        var mistakes = Conjugator.CommonMistakes(verb.Korean, ending, verb.Irregularity).Shuffled(random);
-        var distractors = revealEnding ? mistakes : OtherEndings(verb, ending, conjugation.Form, pool).Concat(mistakes);
-        var (options, correct) = ChoiceBuilder.Shuffle(new ChoiceOption(conjugation.Form), distractors.Select(m => new ChoiceOption(m)), OptionCount, random);
         string label = Conjugator.EndingLabel(ending);
+        var mistakes = Conjugator.ExplainedMistakes(verb.Korean, ending, verb.Irregularity)
+            .Shuffled(random)
+            .Select(m => new ChoiceOption(m.Form, Why: m.Why));
+        var distractors = revealEnding ? mistakes : OtherEndings(verb, ending, conjugation.Form, pool).Concat(mistakes);
+        var (options, correct) = ChoiceBuilder.Shuffle(new ChoiceOption(conjugation.Form), distractors, OptionCount, random);
 
         return new ChoiceExercise(
             match.Topic.Type,
@@ -148,14 +150,18 @@ public sealed class GrammarExerciseGenerator(Random random)
             SpeakText: sentence.Korean);
     }
 
-    private IEnumerable<string> OtherEndings(GrammarVerb verb, Ending ending, string correct, IReadOnlyList<GrammarTopic> pool)
+    /// <summary>The same verb with other endings of the same kind: right forms, wrong meaning.</summary>
+    private IEnumerable<ChoiceOption> OtherEndings(GrammarVerb verb, Ending ending, string correct, IReadOnlyList<GrammarTopic> pool)
     {
         bool connective = Connectives.Contains(ending);
+        string wanted = Conjugator.EndingLabel(ending);
         return pool
             .Where(t => t.Ending is { } other && other != ending && Connectives.Contains(other) == connective)
-            .Select(t => Conjugator.Conjugate(verb.Korean, t.Ending!.Value, verb.Irregularity).Form)
-            .Where(f => f != correct)
-            .Distinct()
+            .Select(t => new ChoiceOption(
+                Conjugator.Conjugate(verb.Korean, t.Ending!.Value, verb.Irregularity).Form,
+                Why: $"Это {Conjugator.EndingLabel(t.Ending!.Value)}, а по смыслу здесь нужно {wanted}."))
+            .Where(o => o.Text != correct)
+            .DistinctBy(o => o.Text)
             .Shuffled(random)
             .Take(MeaningDistractors);
     }
@@ -166,7 +172,7 @@ public sealed class GrammarExerciseGenerator(Random random)
         var particle = Particles.Attach(noun.Korean, kind);
         var (rest, translation) = ParticleFrame(kind, FirstSense(noun.Russian));
 
-        var options = new[] { new ChoiceOption(particle.Form), new ChoiceOption(particle.Wrong) }
+        var options = new[] { new ChoiceOption(particle.Form), new ChoiceOption(particle.Wrong, Why: particle.WrongWhy) }
             .Shuffled(random)
             .ToList();
 
@@ -201,9 +207,9 @@ public sealed class GrammarExerciseGenerator(Random random)
     {
         var ending = topic.Ending ?? throw new ArgumentException("Topic is not a verb topic.", nameof(topic));
         var conjugation = Conjugator.Conjugate(verb.Korean, ending, verb.Irregularity);
-        var mistakes = Conjugator.CommonMistakes(verb.Korean, ending, verb.Irregularity)
+        var mistakes = Conjugator.ExplainedMistakes(verb.Korean, ending, verb.Irregularity)
             .Shuffled(random)
-            .Select(m => new ChoiceOption(m));
+            .Select(m => new ChoiceOption(m.Form, Why: m.Why));
         var (options, correct) = ChoiceBuilder.Shuffle(new ChoiceOption(conjugation.Form), mistakes, OptionCount, random);
 
         return new ChoiceExercise(

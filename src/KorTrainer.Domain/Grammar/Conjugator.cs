@@ -78,7 +78,7 @@ public sealed record Conjugation(string Form, string Explanation);
 /// Conjugates verbs and adjectives from their dictionary form (가다, 먹다, 듣다 …) by rule.
 /// Irregular classes cannot be detected from spelling and are passed in from the deck.
 /// </summary>
-public static class Conjugator
+public static partial class Conjugator
 {
     private const string BrightVowels = "ㅏㅑㅗ";
 
@@ -137,39 +137,6 @@ public static class Conjugator
         };
     }
 
-    /// <summary>
-    /// Plausible wrong forms a learner produces: wrong vowel harmony, no contraction,
-    /// ignoring (or wrongly applying) an irregular class, wrong 으 insertion.
-    /// </summary>
-    public static IReadOnlyList<string> CommonMistakes(string verb, Ending ending, Irregularity irregularity = Irregularity.None)
-    {
-        string stem = Stem(verb);
-        string correct = Conjugate(verb, ending, irregularity).Form;
-        var swappedIrregularity = irregularity == Irregularity.None ? GuessIrregularity(stem) : Irregularity.None;
-
-        var mistakes = ending switch
-        {
-            Ending.PolitePresent => AeoMistakes(stem, irregularity, swappedIrregularity).Select(m => m + "요"),
-            Ending.SoThat => AeoMistakes(stem, irregularity, swappedIrregularity).Select(m => m + "서"),
-            Ending.Must => AeoMistakes(stem, irregularity, swappedIrregularity).Select(m => m + "야 해요"),
-            Ending.ForMe => AeoMistakes(stem, irregularity, swappedIrregularity).Select(m => m + " 주세요"),
-            Ending.PolitePast => AeoMistakes(stem, irregularity, swappedIrregularity).Select(PastOf).Append(SafeAeo(stem, irregularity) + "요"),
-            Ending.FormalPresent =>
-            [
-                stem + "습니다",
-                stem + "읍니다",
-                WithFinal(stem, 'ㅂ') is { } b ? b + "니다" : stem + "ㅂ니다",
-                stem + "니다",
-            ],
-            Ending.Not or Ending.Cannot => NegationMistakes(stem, ending, irregularity, swappedIrregularity),
-            Ending.Because or Ending.Please or Ending.If or Ending.Purpose => EuMistakes(verb, stem, ending, irregularity, swappedIrregularity, correct),
-            Ending.Can or Ending.Future or Ending.Intention or Ending.LetUs => AttributiveMistakes(verb, stem, ending, irregularity, swappedIrregularity, correct),
-            _ => SuffixMistakes(stem, ending),
-        };
-
-        return mistakes.Where(m => m != correct).Distinct().ToList();
-    }
-
     public static string EndingLabel(Ending ending) => ending switch
     {
         Ending.PolitePresent => "вежливое настоящее -아/어요",
@@ -196,157 +163,6 @@ public static class Conjugator
         Ending.BecauseGi => "-기 때문에 «из-за того, что»",
         _ => ending.ToString(),
     };
-
-    private static IEnumerable<string> AeoMistakes(string stem, Irregularity irregularity, Irregularity swappedIrregularity)
-    {
-        yield return RawAeo(stem, bright: !IsBright(stem));
-
-        // 바꾸어요, 되어요, 보내어요 are correct uncontracted spellings, so they are no mistake.
-        var last = Syllable.Decompose(stem[^1]);
-        if (last.HasFinal || !OptionalContraction.Contains(last.Medial) || irregularity != Irregularity.None)
-        {
-            yield return RawAeo(stem, IsBright(stem));
-        }
-
-        yield return SafeAeo(stem, swappedIrregularity);
-
-        // ㅐ/ㅔ sound the same, so 해 is often written 헤; other stems get a stray 으 or 여 (먹으요, 가여요).
-        yield return stem[^1] == '하' ? stem[..^1] + "헤" : stem + (Syllable.Decompose(stem[^1]).HasFinal ? "으" : "여");
-
-        // Spelling by ear: 먹어요 is heard [머거요].
-        yield return Pronunciation.Pronounce(SafeAeo(stem, irregularity)).Text;
-    }
-
-    private static IEnumerable<string> NegationMistakes(
-        string stem, Ending ending, Irregularity irregularity, Irregularity swappedIrregularity)
-    {
-        string adverb = ending == Ending.Not ? "안" : "못";
-        string other = ending == Ending.Not ? "못" : "안";
-        if (IsNounHada(stem))
-        {
-            string head = stem[..^1];
-            return [$"{adverb} {head}해요", $"{head} {adverb} 하요", $"{head} {other} 해요"];
-        }
-
-        return AeoMistakes(stem, irregularity, swappedIrregularity)
-            .Select(m => $"{adverb} {m}요")
-            .Append($"{other} {SafeAeo(stem, irregularity)}요");
-    }
-
-    private static IEnumerable<string> EuMistakes(
-        string verb, string stem, Ending ending, Irregularity irregularity, Irregularity swappedIrregularity, string correct)
-    {
-        string suffix = ending switch
-        {
-            Ending.Because => "니까",
-            Ending.Please => "세요",
-            Ending.If => "면",
-            _ => "러 가요",
-        };
-
-        var mistakes = new List<string>
-        {
-            stem + "으" + suffix,
-            stem + suffix,
-            Conjugate(verb, ending, swappedIrregularity).Form,
-
-            // Over-using the -아/어 form, the present attributive -는 or the future -ㄹ.
-            SafeAeo(stem, irregularity) + (ending == Ending.Because ? "서니까" : suffix),
-            stem + "는" + suffix,
-            AttributiveOf(stem, irregularity).Form + suffix,
-        };
-
-        var last = Syllable.Decompose(stem[^1]);
-        if (last.Final == 'ㄹ' && !DropsRieul(suffix))
-        {
-            mistakes.Add(stem[..^1] + last.WithFinal(null) + suffix);
-        }
-
-        if (ending == Ending.Please)
-        {
-            mistakes.Add(correct.Replace("세요", "새요", StringComparison.Ordinal));
-
-            // 먹으세요 is only less respectful than 드세요, not wrong, so it is no distractor.
-            mistakes.Remove(EuForm(stem, irregularity, suffix, string.Empty).Form);
-        }
-
-        return mistakes;
-    }
-
-    private static IEnumerable<string> AttributiveMistakes(
-        string verb, string stem, Ending ending, Irregularity irregularity, Irregularity swappedIrregularity, string correct)
-    {
-        string tail = ending switch
-        {
-            Ending.Can => " 수 있어요",
-            Ending.Future => " 거예요",
-            Ending.Intention => "게요",
-            _ => "까요",
-        };
-
-        var mistakes = new List<string>
-        {
-            stem + "을" + tail,
-            (WithFinal(stem, 'ㄹ') ?? stem) + tail,
-            Conjugate(verb, ending, swappedIrregularity).Form,
-            SafeAeo(stem, irregularity) + tail,
-        };
-
-        // Spelling what is heard: 거예요 → *거에요, 갈게요 [갈께요] → *갈께요, 갈까요 → *갈가요.
-        mistakes.Add(ending switch
-        {
-            Ending.Future => correct.Replace("거예요", "거에요", StringComparison.Ordinal),
-            Ending.Intention => correct.Replace("게요", "께요", StringComparison.Ordinal),
-            Ending.LetUs => correct.Replace("까요", "가요", StringComparison.Ordinal),
-            _ => stem + "는" + tail,
-        });
-
-        if (ending is Ending.Intention or Ending.LetUs)
-        {
-            mistakes.Add(stem + "는" + tail);
-        }
-
-        return mistakes;
-    }
-
-    private static IEnumerable<string> SuffixMistakes(string stem, Ending ending)
-    {
-        string tail = ending switch
-        {
-            Ending.And => "고",
-            Ending.Want => "고 싶어요",
-            Ending.Progressive => "고 있어요",
-            Ending.But => "지만",
-            Ending.BecauseGi => "기 때문에",
-            Ending.NotJi => "지 않아요",
-            _ => throw new ArgumentOutOfRangeException(nameof(ending), ending, null),
-        };
-
-        yield return RawAeo(stem, IsBright(stem)) + tail;
-        yield return stem + "으" + tail;
-        switch (ending)
-        {
-            case Ending.And:
-                yield return stem + "구";
-                break;
-            case Ending.Want:
-                yield return stem + "고 싶다요";
-                break;
-            case Ending.Progressive:
-                yield return stem + "고 있아요";
-                break;
-            case Ending.But:
-                yield return stem + "는지만";
-                break;
-            case Ending.BecauseGi:
-                yield return stem + "는 때문에";
-                break;
-            default:
-                yield return stem + "지 안아요";
-                yield return stem + "지 않어요";
-                break;
-        }
-    }
 
     private static Conjugation Aeo(string stem, Irregularity irregularity, string suffix, string label)
     {

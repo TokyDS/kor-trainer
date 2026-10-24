@@ -2,7 +2,8 @@ using KorTrainer.Domain.Common;
 
 namespace KorTrainer.Contracts;
 
-public sealed record ChoiceOptionDto(string Text, string? Hint, string? Romanization);
+/// <param name="Why">For a wrong option: why it is wrong for this word, shown when the learner picks it.</param>
+public sealed record ChoiceOptionDto(string Text, string? Hint, string? Romanization, string? Why = null);
 
 public sealed record ChoiceExerciseDto(
     string Type,

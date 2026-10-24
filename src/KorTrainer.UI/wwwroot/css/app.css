@@ -609,6 +609,7 @@ input[type="text"], input[type="search"], input[type="number"], input[type="date
 .feedback.ok { background: var(--celadon-soft); border-left: 4px solid var(--celadon); }
 .feedback.bad { background: var(--danger-soft); border-left: 4px solid var(--danger); }
 .feedback p { margin: var(--space-2) 0 var(--space-3); }
+.feedback .feedback-why { margin-bottom: 0; font-weight: 600; }
 
 @keyframes rise { from { opacity: 0; transform: translateY(6px); } }
 

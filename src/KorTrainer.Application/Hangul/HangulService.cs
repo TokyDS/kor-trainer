@@ -148,7 +148,7 @@ internal static class ExerciseMapper
         e.Prompt,
         e.PromptNote,
         e.PromptRomanization,
-        e.Options.Select(o => new ChoiceOptionDto(o.Text, o.Hint, o.Romanization)).ToList(),
+        e.Options.Select(o => new ChoiceOptionDto(o.Text, o.Hint, o.Romanization, o.Why)).ToList(),
         e.CorrectIndex,
         e.Explanation,
         e.SpeakText,

@@ -90,7 +90,11 @@
                 bool correct = selected == item.CorrectIndex;
                 <div class="feedback @(correct ? "ok" : "bad")" role="status">
                     <strong>@(correct ? "Верно!" : "Неверно.")</strong>
-                    <p>@item.Explanation</p>
+                    @if (!correct && item.Options[selected].Why is { } why)
+                    {
+                        <p class="feedback-why">Вы выбрали <span lang="ko">@item.Options[selected].Text</span>: @why</p>
+                    }
+                    <p>@(correct ? item.Explanation : $"Как правильно: {item.Explanation}")</p>
                     <button type="button" class="btn primary" @onclick="NextAsync">Дальше <kbd>Enter</kbd></button>
                 </div>
             }
