@@ -1,6 +1,6 @@
 @* The rule's steps folded under a drill, for a quick look without leaving the exercises. *@
 
-<details class="card theory-recap">
+<details class="card theory-recap" open="@Open">
     <summary>Правило</summary>
     <ol>
         @foreach (var step in Steps)
@@ -17,4 +17,8 @@
 
     [Parameter, EditorRequired]
     public string Pitfall { get; set; } = string.Empty;
+
+    /// <summary>Unfolded at once, when the learner asked for the rule.</summary>
+    [Parameter]
+    public bool Open { get; set; }
 }

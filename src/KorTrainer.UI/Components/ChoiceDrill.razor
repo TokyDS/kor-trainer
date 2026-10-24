@@ -95,6 +95,17 @@
                         <p class="feedback-why">Вы выбрали <span lang="ko">@item.Options[selected].Text</span>: @why</p>
                     }
                     <p>@(correct ? item.Explanation : $"Как правильно: {item.Explanation}")</p>
+                    @if (RuleOf(item) is { } rule)
+                    {
+                        @if (_showRule)
+                        {
+                            <RuleRecap Steps="rule.Steps" Pitfall="@rule.Pitfall" Open="true" />
+                        }
+                        else
+                        {
+                            <button type="button" class="link-button rule-link" @onclick="() => _showRule = true">Правило: @rule.Title</button>
+                        }
+                    }
                     <button type="button" class="btn primary" @onclick="NextAsync">Дальше <kbd>Enter</kbd></button>
                 </div>
             }
@@ -133,6 +144,7 @@
     private ExerciseSetDto? _set;
     private int _position;
     private int? _selected;
+    private bool _showRule;
     private bool _loading = true;
     private bool _reloading;
     private bool _finished;
@@ -319,11 +331,21 @@
 
     private static bool IsKorean(string text) => text.Any(KorTrainer.Domain.Hangul.Syllable.IsSyllable);
 
+    /// <summary>The rule behind a grammar or number item, to look up from its feedback without leaving the set.</summary>
+    private (string Title, IReadOnlyList<string> Steps, string Pitfall)? RuleOf(ChoiceExerciseDto item) => (item.Module ?? _set?.Module) switch
+    {
+        StudyModule.Grammar when KorTrainer.Domain.Grammar.GrammarTheories.Find(item.Type) is { } g =>
+            (KorTrainer.Domain.Grammar.GrammarCatalog.Find(item.Type)?.Title ?? item.Type, g.Steps, g.Pitfall),
+        StudyModule.Numbers when KorTrainer.Domain.Numbers.NumberTheories.Find(item.Type) is { } n => (n.Title, n.Steps, n.Pitfall),
+        _ => null,
+    };
+
     private async Task NextAsync()
     {
         await Browser.BlurActiveAsync();
         _position++;
         _selected = null;
+        _showRule = false;
         if (_position >= _items.Count)
         {
             _finished = true;

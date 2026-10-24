@@ -131,6 +131,7 @@ internal static class PlanContent
             Notes(4),
             CommonTasks.NewWords(newWordsPerDay),
             CommonTasks.Reading(10),
+            Practice(4),
             CommonTasks.ReviewDue,
         ],
         5 =>
@@ -138,6 +139,7 @@ internal static class PlanContent
             CommonTasks.NewWords(newWordsPerDay),
             Rule(Copula, "이에요/예요"),
             Grammar(Copula, "이에요/예요", 20),
+            Practice(5),
             CommonTasks.ReviewDue,
         ],
         6 =>
@@ -145,6 +147,7 @@ internal static class PlanContent
             CommonTasks.NewWords(newWordsPerDay),
             Rule(NegativeCopula, "이/가 아니에요"),
             Grammar(NegativeCopula, "이/가 아니에요", 20),
+            Practice(6),
             CommonTasks.ReviewDue,
         ],
         7 =>
@@ -152,6 +155,7 @@ internal static class PlanContent
             NumberRule("rule", SinoNumbers, "сино-корейских чисел"),
             Numbers(SinoNumbers, "Сино-корейские числа", 20),
             CommonTasks.NewWords(newWordsPerDay),
+            Practice(7),
             CommonTasks.ReviewDue,
         ],
         8 =>
@@ -161,6 +165,7 @@ internal static class PlanContent
             NumberRule("rule-2", Counters, "счётных слов"),
             Numbers(Counters, "Счётные слова", 15),
             CommonTasks.NewWords(newWordsPerDay),
+            Practice(8),
             CommonTasks.ReviewDue,
         ],
         9 =>
@@ -168,6 +173,7 @@ internal static class PlanContent
             CommonTasks.NewWords(newWordsPerDay),
             Rule(TopicParticle, "은/는"),
             Grammar(TopicParticle, "은/는", 20),
+            Practice(9),
             CommonTasks.ReviewDue,
         ],
         10 =>
@@ -175,6 +181,7 @@ internal static class PlanContent
             new("grammar", "Грамматика вперемешку: 20 упражнений", TaskTarget.Answers(StudyModule.Grammar, 20), "/grammar/mixed"),
             new("numbers", "Числа вперемешку: 20 упражнений", TaskTarget.Answers(StudyModule.Numbers, 20), "/numbers/mixed"),
             CommonTasks.Reading(15),
+            Practice(10),
             CommonTasks.ReviewDue,
         ],
         _ => [],
@@ -244,6 +251,10 @@ internal static class PlanContent
 
     private static PlanTask Guide(int level) =>
         new("guide", "Прочитать памятку урока и прослушать буквы", TaskTarget.Read(StudyMaterials.HangulGuide(level)), $"/hangul/guide?level={level}");
+
+    /// <summary>The lesson's words and rules in a short scene, with optional speaking.</summary>
+    private static PlanTask Practice(int day) =>
+        new("practice", "Применить: диалог урока", TaskTarget.Read(StudyMaterials.Practice(day)), $"/lesson/{day}/practice");
 
     private static PlanTask Notes(int day) =>
         new("notes", "Прочитать конспект урока", TaskTarget.Read(StudyMaterials.Lesson(day)), $"/lesson/{day}");

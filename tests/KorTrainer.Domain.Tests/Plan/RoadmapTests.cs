@@ -99,6 +99,20 @@ public sealed class RoadmapTests
     }
 
     [Fact]
+    public void PhraseLessons_EndWithTheirSceneBeforeTheReview()
+    {
+        foreach (var lesson in _roadmap.Steps.Where(s => s.Lesson is { Day: > Roadmap.HangulLessons }))
+        {
+            var practice = lesson.Tasks[^2];
+
+            practice.Key.Should().Be("practice", lesson.Key);
+            practice.Target.Material.Should().Be(StudyMaterials.Practice(lesson.Lesson!.Day));
+            practice.Route.Should().Be($"/lesson/{lesson.Lesson.Day}/practice");
+            LessonPractices.Find(lesson.Lesson.Day).Should().NotBeNull(lesson.Key);
+        }
+    }
+
+    [Fact]
     public void GrammarRules_ToRead_HaveATheory()
     {
         var rules = _roadmap.Steps.SelectMany(s => s.Tasks)
