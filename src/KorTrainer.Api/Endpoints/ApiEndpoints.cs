@@ -94,9 +94,9 @@ public static class ApiEndpoints
         group.MapGet("/plan", (TodayService service, CancellationToken ct) => service.GetPlanAsync(ct));
         group.MapPost("/plan/advance", (AdvanceRequest request, TodayService service, CancellationToken ct) => service.AdvanceAsync(request, ct));
         group.MapGet("/reminder", (ReminderService service, CancellationToken ct) => service.GetAsync(ct));
-        group.MapPut("/today/tasks/{taskKey}", async (string taskKey, SetTaskDoneRequest request, TodayService service, CancellationToken ct) =>
+        group.MapPost("/today/read", async (MarkReadRequest request, TodayService service, CancellationToken ct) =>
         {
-            await service.SetTaskDoneAsync(taskKey, request, ct);
+            await service.MarkReadAsync(request, ct);
             return Results.NoContent();
         });
     }

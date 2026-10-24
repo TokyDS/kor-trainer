@@ -24,8 +24,7 @@ public sealed class HttpKorTrainerApi(HttpClient http) : IKorTrainerApi
 
     public Task<PlanDto> GetPlanAsync() => GetAsync<PlanDto>("api/plan");
 
-    public Task SetTaskDoneAsync(string taskKey, string step, bool done) =>
-        SendAsync(HttpMethod.Put, $"api/today/tasks/{Uri.EscapeDataString(taskKey)}", new SetTaskDoneRequest(step, done));
+    public Task MarkReadAsync(string material) => SendAsync(HttpMethod.Post, "api/today/read", new MarkReadRequest(material));
 
     public Task<ExerciseSetDto> GetHangulExercisesAsync(string type, int level, int count, string? focus = null) =>
         GetAsync<ExerciseSetDto>($"api/hangul/exercises/{Uri.EscapeDataString(type)}?level={level}&count={count}"

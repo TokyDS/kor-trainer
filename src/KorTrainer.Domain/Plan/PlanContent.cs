@@ -97,6 +97,8 @@ internal static class PlanContent
         ]),
     ];
 
+    /// <summary>A lesson's tasks in the order they open: what to read first, the drills, the review of due words last
+    /// (it reopens whenever new cards come due, so it must not hold the other tasks back).</summary>
     public static IReadOnlyList<PlanTask> LessonTasks(int day, int newWordsPerDay) => day switch
     {
         1 =>
@@ -126,49 +128,53 @@ internal static class PlanContent
         ],
         4 =>
         [
+            Notes(4),
             CommonTasks.NewWords(newWordsPerDay),
-            CommonTasks.ReviewDue,
-            new("say-aloud", "Произнести вслух все приветствия урока по 3 раза", TaskTarget.Manual()),
             CommonTasks.Reading(10),
+            CommonTasks.ReviewDue,
         ],
         5 =>
         [
             CommonTasks.NewWords(newWordsPerDay),
-            CommonTasks.ReviewDue,
+            Rule(Copula, "이에요/예요"),
             Grammar(Copula, "이에요/예요", 20),
+            CommonTasks.ReviewDue,
         ],
         6 =>
         [
             CommonTasks.NewWords(newWordsPerDay),
-            CommonTasks.ReviewDue,
+            Rule(NegativeCopula, "이/가 아니에요"),
             Grammar(NegativeCopula, "이/가 아니에요", 20),
+            CommonTasks.ReviewDue,
         ],
         7 =>
         [
+            Notes(7),
+            Numbers(SinoNumbers, "Сино-корейские числа", 20),
             CommonTasks.NewWords(newWordsPerDay),
             CommonTasks.ReviewDue,
-            Numbers(SinoNumbers, "Сино-корейские числа", 20),
         ],
         8 =>
         [
-            CommonTasks.NewWords(newWordsPerDay),
-            CommonTasks.ReviewDue,
+            Notes(8),
             Numbers(NativeNumbers, "Корейские числа", 20),
             Numbers(Counters, "Счётные слова", 15),
+            CommonTasks.NewWords(newWordsPerDay),
+            CommonTasks.ReviewDue,
         ],
         9 =>
         [
             CommonTasks.NewWords(newWordsPerDay),
-            CommonTasks.ReviewDue,
+            Rule(TopicParticle, "은/는"),
             Grammar(TopicParticle, "은/는", 20),
-            new("self-intro", "Написать 5 предложений о себе и прочитать их вслух", TaskTarget.Manual()),
+            CommonTasks.ReviewDue,
         ],
         10 =>
         [
-            CommonTasks.ReviewDue,
             new("grammar", "Грамматика вперемешку: 20 упражнений", TaskTarget.Answers(StudyModule.Grammar, 20), "/grammar/mixed"),
             new("numbers", "Числа вперемешку: 20 упражнений", TaskTarget.Answers(StudyModule.Numbers, 20), "/numbers/mixed"),
             CommonTasks.Reading(15),
+            CommonTasks.ReviewDue,
         ],
         _ => [],
     };
@@ -236,13 +242,21 @@ internal static class PlanContent
     };
 
     private static PlanTask Guide(int level) =>
-        new("guide", "Прочитать памятку урока и прослушать буквы", TaskTarget.Manual(), $"/hangul/guide?level={level}");
+        new("guide", "Прочитать памятку урока и прослушать буквы", TaskTarget.Read(StudyMaterials.HangulGuide(level)), $"/hangul/guide?level={level}");
+
+    private static PlanTask Notes(int day) =>
+        new("notes", "Прочитать конспект урока", TaskTarget.Read(StudyMaterials.Lesson(day)), $"/lesson/{day}");
+
+    /// <summary>The rule opens the drill page; reading it to the end starts the drill.</summary>
+    private static PlanTask Rule(string type, string title) =>
+        new("rule", $"Разобрать правило {title}", TaskTarget.Read(StudyMaterials.GrammarRule(type)), $"/grammar/{type}");
 
     private static PlanTask Hangul(string type, string title, int count, int level) =>
         new(type, $"{title}: {count}", TaskTarget.Answers(StudyModule.Hangul, count, type), $"/hangul/{type}?level={level}");
 
+    /// <summary>Straight to the exercises: the lesson reads the rule in the task before.</summary>
     private static PlanTask Grammar(string type, string title, int count) =>
-        new(type, $"Грамматика {title}: {count} упражнений", TaskTarget.Answers(StudyModule.Grammar, count, type), $"/grammar/{type}");
+        new(type, $"Грамматика {title}: {count} упражнений", TaskTarget.Answers(StudyModule.Grammar, count, type), $"/grammar/{type}?drill=true");
 
     private static PlanTask Numbers(string type, string title, int count) =>
         new(type, $"{title}: {count} упражнений", TaskTarget.Answers(StudyModule.Numbers, count, type), $"/numbers/{type}");

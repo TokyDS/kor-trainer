@@ -1,16 +1,100 @@
 @page "/grammar/{Type}"
+@using KorTrainer.Domain.Grammar
 @inject IKorTrainerApi Api
 
 <PageTitle>Грамматика — KorTrainer</PageTitle>
 
-@* The key forces a fresh drill when the topic in the URL changes. *@
-<ChoiceDrill @key="Type" Load="LoadAsync" BackHref="/grammar" />
+@if (_theory is not null && !_drilling)
+{
+    <GrammarTheoryView Theory="_theory" Title="@(GrammarCatalog.Find(Type)?.Title ?? Type)" OnStart="StartAsync" />
+}
+else
+{
+    @if (_readError is not null)
+    {
+        <p class="notice error small">Не удалось отметить правило прочитанным: @_readError</p>
+    }
+
+    @* The key forces a fresh drill when the topic in the URL changes. *@
+    <ChoiceDrill @key="Type" Load="LoadAsync" BackHref="/grammar" />
+
+    @if (_theory is not null)
+    {
+        <details class="card theory-recap">
+            <summary>Правило</summary>
+            <ol>
+                @foreach (var step in _theory.Steps)
+                {
+                    <li>@step</li>
+                }
+            </ol>
+            <p class="muted small">@_theory.Pitfall</p>
+        </details>
+    }
+}
 
 @code {
     private const int SetSize = 20;
 
+    private GrammarTheory? _theory;
+    private string? _shownType;
+    private bool _drilling;
+    private bool _readPending;
+    private string? _readError;
+
     [Parameter]
     public string Type { get; set; } = string.Empty;
 
-    private Task<ExerciseSetDto> LoadAsync() => Api.GetGrammarExercisesAsync(Type, SetSize);
+    /// <summary>Set by plan tasks whose rule was read in the task before: straight to the exercises.</summary>
+    [SupplyParameterFromQuery(Name = "drill")]
+    public bool Drill { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        if (_shownType == Type)
+        {
+            // Same topic, now with ?drill=true: go on to the exercises; never back to the rule mid-drill.
+            _drilling |= Drill;
+            return;
+        }
+
+        // Another topic: its rule comes first again.
+        _shownType = Type;
+        _theory = GrammarTheories.Find(Type);
+        _drilling = Drill;
+        _readPending = false;
+        _readError = null;
+    }
+
+    private async Task StartAsync()
+    {
+        _drilling = true;
+        _readPending = true;
+        await MarkReadAsync();
+    }
+
+    /// <summary>Marks the rule read; a failure is retried before every set, so the lesson task cannot get stuck.</summary>
+    private async Task MarkReadAsync()
+    {
+        try
+        {
+            await Api.MarkReadAsync(StudyMaterials.GrammarRule(Type));
+            _readPending = false;
+            _readError = null;
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException)
+        {
+            _readError = ex.Message;
+        }
+    }
+
+    private async Task<ExerciseSetDto> LoadAsync()
+    {
+        if (_readPending)
+        {
+            await MarkReadAsync();
+        }
+
+        return await Api.GetGrammarExercisesAsync(Type, SetSize);
+    }
 }

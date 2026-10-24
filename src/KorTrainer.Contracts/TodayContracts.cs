@@ -14,7 +14,8 @@ public enum StepState
     Upcoming,
 }
 
-/// <param name="IsManualOnly">The task has no measurable target and is completed only by a tick.</param>
+/// <param name="IsReading">The task is to read something in the app; it is done once read to the end.</param>
+/// <param name="IsLocked">A lesson task that opens once the tasks before it are done.</param>
 public sealed record PlanTaskDto(
     string Key,
     string Title,
@@ -22,7 +23,8 @@ public sealed record PlanTaskDto(
     int Progress,
     int Target,
     bool IsDone,
-    bool IsManualOnly);
+    bool IsReading,
+    bool IsLocked = false);
 
 /// <param name="Number">Position in the plan, from 1.</param>
 /// <param name="Title">Name within the stage: "Урок 3: …" or "Блок 2 из 8".</param>
@@ -72,7 +74,8 @@ public sealed record PlanDto(string CurrentKey, IReadOnlyList<StageDto> Stages, 
 /// <param name="From">The step the learner is leaving; guards against advancing twice from two tabs.</param>
 public sealed record AdvanceRequest(string From);
 
-public sealed record SetTaskDoneRequest(string Step, bool Done);
+/// <param name="Material">What was read to the end: an id from <see cref="StudyMaterials"/>.</param>
+public sealed record MarkReadRequest(string Material);
 
 /// <param name="ShouldRemind">A gentle nudge is due: no study yet today and reminders are on.</param>
 public sealed record ReminderDto(bool ShouldRemind, string Title, string Message, bool StudiedToday, int ActiveDaysThisWeek, int WordsDue);

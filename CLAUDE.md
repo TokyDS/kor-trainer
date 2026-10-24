@@ -109,5 +109,10 @@ back end in-process. Never reference EF or ASP.NET from Domain.
 10. ✅ `/hangul/series` (three consonant series: listen, compare, drill one row via `?focus=`) and the plan as a winding
    path (`Components/PathMap`). Companions (tiger, magpie) were tried and taken out for now (reverted in git).
 
+11. ✅ Rules before drills: `Grammar/GrammarTheory` (meaning, steps, examples checked against `Particles`/`Conjugator`,
+   pitfall) shown by `GrammarDrill` before the exercises (`?drill=true` skips it). No manual ticks: reading tasks use
+   `TaskMetric.Read` + `StudyMaterials` and are marked by the page (`MarkReadAsync`, `/lesson/{day}`, Hangul guide);
+   lesson tasks open in order (`TaskOrder`); every task is done in the app.
+
 The deck has ~5,900 words (curated + NIKL A/B/C). Next ideas: offline answer queue, phone↔laptop sync, review of
 machine translations.

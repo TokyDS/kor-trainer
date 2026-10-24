@@ -67,6 +67,8 @@ var texts = GrammarCatalog.Topics
         .Where(t => t.Particle is not null)
         .SelectMany(t => nouns.Where(n => n.Length > 0 && n.All(KorTrainer.Domain.Hangul.Syllable.IsSyllable))
             .Select(n => GrammarExerciseGenerator.ParticleSpeakText(n, t.Particle!.Value))))
+    // The example sentences of the rules, read before each drill.
+    .Concat(GrammarTheories.All.SelectMany(t => t.Examples).Select(e => e.Sentence))
     .Distinct()
     .ToList();
 

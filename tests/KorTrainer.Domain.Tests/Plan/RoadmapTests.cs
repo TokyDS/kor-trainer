@@ -42,6 +42,65 @@ public sealed class RoadmapTests
         _roadmap.Find("lesson-4")!.Stage.Should().Be(PlanStage.FirstPhrases);
     }
 
+    [Fact]
+    public void EveryTask_IsDoneInTheApp()
+    {
+        var tasks = _roadmap.Steps.SelectMany(s => s.Tasks).ToList();
+
+        tasks.Should().AllSatisfy(t => t.Route.Should().NotBeNullOrWhiteSpace(t.Key));
+        tasks.Where(t => t.Target.Metric == TaskMetric.Read)
+            .Should().AllSatisfy(t => t.Target.Material.Should().NotBeNullOrWhiteSpace(t.Key));
+    }
+
+    [Theory]
+    [InlineData("lesson-5", ExerciseTypes.Copula)]
+    [InlineData("lesson-6", ExerciseTypes.NegativeCopula)]
+    [InlineData("lesson-9", ExerciseTypes.TopicParticle)]
+    public void GrammarLessons_TeachTheRuleBeforeTheDrill(string key, string topic)
+    {
+        var tasks = _roadmap.Find(key)!.Tasks.ToList();
+
+        int rule = tasks.FindIndex(t => t.Target.Metric == TaskMetric.Read && t.Target.Material == topic);
+        int drill = tasks.FindIndex(t => t.Target.Metric == TaskMetric.Answers && t.Target.ExerciseType == topic);
+
+        rule.Should().BeGreaterThanOrEqualTo(0);
+        drill.Should().BeGreaterThan(rule);
+        tasks[rule].Route.Should().Be($"/grammar/{topic}");
+        // Blazor reads a bool query parameter as true/false only.
+        tasks[drill].Route.Should().Be($"/grammar/{topic}?drill=true");
+    }
+
+    [Fact]
+    public void GrammarRules_ToRead_HaveATheory()
+    {
+        var rules = _roadmap.Steps.SelectMany(s => s.Tasks)
+            .Where(t => t.Target.Metric == TaskMetric.Read && t.Route!.StartsWith("/grammar/", StringComparison.Ordinal))
+            .ToList();
+
+        rules.Should().NotBeEmpty();
+        rules.Should().AllSatisfy(t => GrammarTheories.Find(t.Target.Material!).Should().NotBeNull(t.Target.Material));
+    }
+
+    [Fact]
+    public void Lessons_OpenWithTheirMaterialAndEndWithTheReview()
+    {
+        foreach (var lesson in _roadmap.Steps.Where(s => s.Lesson is not null))
+        {
+            var reading = lesson.Tasks.Where(t => t.Target.Metric == TaskMetric.Read).ToList();
+            if (lesson.Lesson!.Day <= Roadmap.HangulLessons)
+            {
+                lesson.Tasks[0].Target.Metric.Should().Be(TaskMetric.Read, lesson.Key);
+            }
+
+            if (lesson.Tasks.Any(t => t.Key == "vocab-due"))
+            {
+                lesson.Tasks[^1].Key.Should().Be("vocab-due", lesson.Key);
+            }
+
+            reading.Should().HaveCountLessThanOrEqualTo(1, lesson.Key);
+        }
+    }
+
     [Theory]
     [InlineData("level1-1", 100)]
     [InlineData("level1-8", 800)]

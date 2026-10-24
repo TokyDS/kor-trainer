@@ -53,10 +53,7 @@ async def voice(text: str, gate: asyncio.Semaphore) -> bool:
                         raise RuntimeError("ffmpeg failed")
                     partial.rename(target)
                     return True
-                except edge_tts.exceptions.NoAudioReceived:
-                    print(f"no audio: {text!r}", flush=True)
-                    return False
-                except Exception as error:  # network hiccups and throttling: back off and retry
+                except Exception as error:  # network hiccups, throttling, an empty answer now and then: back off and retry
                     if attempt == ATTEMPTS - 1:
                         print(f"failed: {text!r}: {error}", flush=True)
                         return False

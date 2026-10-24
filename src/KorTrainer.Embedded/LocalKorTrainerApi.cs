@@ -46,8 +46,8 @@ public sealed class LocalKorTrainerApi(IServiceScopeFactory scopes, ILogger<Loca
 
     public Task<PlanDto> GetPlanAsync() => Run<TodayService, PlanDto>((s, ct) => s.GetPlanAsync(ct));
 
-    public Task SetTaskDoneAsync(string taskKey, string step, bool done) =>
-        Run<TodayService>((s, ct) => s.SetTaskDoneAsync(taskKey, new SetTaskDoneRequest(step, done), ct));
+    public Task MarkReadAsync(string material) =>
+        Run<TodayService>((s, ct) => s.MarkReadAsync(new MarkReadRequest(material), ct));
 
     public Task<ExerciseSetDto> GetHangulExercisesAsync(string type, int level, int count, string? focus = null) =>
         Run<HangulService, ExerciseSetDto>((s, ct) => s.GetExercisesAsync(type, level, count, ct, focus));

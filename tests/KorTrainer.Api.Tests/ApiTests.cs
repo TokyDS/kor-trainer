@@ -75,6 +75,18 @@ public sealed class ApiTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Read_CompletesTheGuideTask_AndRejectsAnEmptyMaterial()
+    {
+        var read = await _client.PostAsJsonAsync("/api/today/read", new MarkReadRequest("hangul-guide-1"), Json, Ct);
+        var empty = await _client.PostAsJsonAsync("/api/today/read", new MarkReadRequest(""), Json, Ct);
+        var today = await _client.GetFromJsonAsync<TodayDto>("/api/today", Json, Ct);
+
+        read.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        empty.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        today!.Step.Tasks.Single(t => t.Key == "guide").IsDone.Should().BeTrue();
+    }
+
+    [Fact]
     public async Task Today_UnknownStep_Is404()
     {
         var response = await _client.GetAsync("/api/today?step=day-3", Ct);

@@ -365,7 +365,7 @@ h1:focus { outline: none; }
 
 .section-head { display: flex; justify-content: space-between; align-items: baseline; }
 
-.task-list { list-style: none; margin: 0; padding: 0; }
+.task-list { list-style: none; margin: 0; padding: 0; counter-reset: task; }
 
 .task {
     display: grid;
@@ -374,6 +374,7 @@ h1:focus { outline: none; }
     align-items: center;
     padding: var(--space-3) 0;
     border-top: 1px dashed var(--rule);
+    counter-increment: task;
 }
 
 .task:first-child { border-top: 0; }
@@ -381,19 +382,53 @@ h1:focus { outline: none; }
 .task-body { display: grid; gap: var(--space-1); }
 .task-progress { display: flex; align-items: center; gap: var(--space-2); font-size: 0.8rem; }
 
+/* The task's state: its number in the order while open, a tick once done. Done is measured, never ticked by hand. */
 .check {
     width: 28px;
     height: 28px;
+    display: grid;
+    place-items: center;
     border-radius: 8px;
     border: 2px solid var(--rule);
     background: var(--paper);
     color: var(--accent-ink);
     font-weight: 800;
-    cursor: pointer;
     transition: background var(--duration), border-color var(--duration);
 }
 
+.task:not(.done) .check::before { content: counter(task); color: var(--ink-soft); font: 600 0.8rem var(--font-ui); }
 .task.done .check { background: var(--celadon); border-color: var(--celadon); color: #fff; }
+.task.locked .check { border-style: dashed; }
+.task.locked .task-title { color: var(--ink-faint); }
+.task-lock { white-space: nowrap; }
+
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+
+/* A rule or lesson notes read before the drill: numbered steps, examples with the form marked, the usual mistake. */
+.theory { display: grid; gap: var(--space-4); max-width: 720px; }
+.theory .page-header { margin-bottom: 0; }
+.theory-meaning { font-size: 1.05rem; line-height: 1.55; margin: var(--space-2) 0 0; max-width: 62ch; }
+.theory-steps h2, .theory-examples h2 { margin-top: 0; }
+.theory-steps ol, .theory-recap ol { margin: 0; padding-left: 1.4rem; display: grid; gap: var(--space-2); line-height: 1.5; }
+.theory-steps li::marker, .theory-recap li::marker { color: var(--accent); font-weight: 700; }
+.theory-examples ul { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-3); }
+.theory-examples li { display: grid; gap: 2px; padding-bottom: var(--space-3); border-bottom: 1px dashed var(--rule); }
+.theory-examples li:last-child { border-bottom: 0; padding-bottom: 0; }
+.theory-example-line { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+.theory-sentence { font-size: 1.25rem; min-width: 0; }
+.theory-sentence mark { background: var(--accent-soft); color: inherit; border-radius: 4px; padding: 0 3px; }
+.theory-derivation { font-size: 0.85rem; color: var(--ink-faint); }
+.theory-pitfall { margin-bottom: 0; }
+.theory-recap { margin-top: var(--space-4); }
+.theory-recap summary { cursor: pointer; font-weight: 600; }
+.theory-recap ol { margin-top: var(--space-3); }
 
 .lesson { background: var(--paper-raised); border-left: 4px solid var(--accent); }
 .lesson ul { margin: 0; padding-left: 1.1rem; display: grid; gap: var(--space-2); }

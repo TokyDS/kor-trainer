@@ -42,6 +42,9 @@ public sealed class Roadmap
     public const int TopikWords = Level2Words + TopikPrepBlocks * WordsPerBlock;
 
     private const int WritingRotationLength = 3;
+    private const int MockReadingItems = 40;
+    private const int MockListeningItems = 30;
+    private const int TextAnswers = 10;
 
     private readonly Dictionary<string, PlanStep> _byKey;
 
@@ -180,9 +183,9 @@ public sealed class Roadmap
         null,
         [
             CommonTasks.ReviewDue,
-            new("mock-topik1", "Пробный TOPIK I: прошлый вариант с topik.go.kr (чтение 60 мин, аудирование 40 мин)", TaskTarget.Manual(), "/topik"),
+            new("mock-topik1", "Пробное чтение TOPIK I: 40 заданий", TaskTarget.Answers(StudyModule.Topik, MockReadingItems), "/topik/reading/mixed"),
+            new("mock-listening", "Пробное аудирование: 30 упражнений на слух", TaskTarget.Answers(StudyModule.Listening, MockListeningItems), "/listening"),
             new("mock-writing", "Пробное письмо TOPIK II, задания 51–54 на таймере", new TaskTarget(TaskMetric.WritingMinutes, 50), "/topik/writing?task=54"),
-            new("decide", "Решение: сдаю TOPIK I или TOPIK II (сравни результаты пробников)", TaskTarget.Manual(), "/stats"),
         ],
         PlanContent.QuickLinks(PlanStage.MockExam, 0),
         new WordUnlock(PlanStage.Level2, int.MaxValue));
@@ -209,7 +212,7 @@ public sealed class Roadmap
                 WordsTask(words),
                 CommonTasks.ReviewDue,
                 writing,
-                new("reading", "Чтение: один блок заданий TOPIK II из прошлых вариантов", TaskTarget.Manual(), "/topik"),
+                new("reading", "Чтение: 10 ответов к текстам", TaskTarget.Answers(StudyModule.Reading, TextAnswers, TextReading), "/read"),
                 new("listening", "Аудирование: 20 упражнений на слух", TaskTarget.Answers(StudyModule.Listening, 20), "/listening"),
             ],
             PlanContent.QuickLinks(PlanStage.TopikPrep, 0),

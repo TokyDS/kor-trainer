@@ -30,7 +30,8 @@ public interface IKorTrainerApi
 
     Task<PlanDto> GetPlanAsync();
 
-    Task SetTaskDoneAsync(string taskKey, string step, bool done);
+    /// <summary>The learner read a rule, lesson notes or a guide to the end (an id from <see cref="StudyMaterials"/>).</summary>
+    Task MarkReadAsync(string material);
 
     /// <param name="focus">For the consonant series: one consonant of the row to drill (ㄷ).</param>
     Task<ExerciseSetDto> GetHangulExercisesAsync(string type, int level, int count, string? focus = null);
