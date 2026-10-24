@@ -116,8 +116,7 @@ back end in-process. Never reference EF or ASP.NET from Domain.
    (`Numbers/NumberTheory`, computed by `KoreanNumbers`/`Counters`; `RuleFirstPageBase` serves both pages). Every
    distractor says why it is wrong (`Conjugator.ExplainedMistakes`, `ParticleResult.WrongWhy`); particle gaps ask only
    for the particle (책___ 아니에요 → 이 / 가), except contracted pronouns (저 + 가 = 제가). Feedback can unfold the
-   item's rule (`RuleRecap`). Lessons 4–10 end with a scene (`Plan/LessonPractices`, `/lesson/{day}/practice`; a test
-   checks its particle forms) with translations on demand and optional speaking (`SpeakCheck`).
+   item's rule (`RuleRecap`). Lesson scenes with optional speaking were tried and taken out for now (git history).
 
 The deck has ~5,900 words (curated + NIKL A/B/C). Next ideas: offline answer queue, phone↔laptop sync, review of
 machine translations.
