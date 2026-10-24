@@ -1,0 +1,80 @@
+@* The rule of a number drill, read before it: when each system is used, how numbers are built, a table and examples. *@
+@using KorTrainer.Domain.Numbers
+
+<article class="theory">
+    <header class="page-header">
+        <a class="back" href="/numbers">← Назад</a>
+        <p class="eyebrow">Правило</p>
+        <h1>@Theory.Title</h1>
+        <p class="theory-meaning">@Theory.Meaning</p>
+    </header>
+
+    <section class="card theory-steps" aria-labelledby="steps-heading">
+        <h2 id="steps-heading">Как строить</h2>
+        <ol>
+            @foreach (var step in Theory.Steps)
+            {
+                <li>@step</li>
+            }
+        </ol>
+    </section>
+
+    <section class="card" aria-labelledby="table-heading">
+        <h2 id="table-heading">Таблица <span class="muted small">— нажмите, чтобы услышать</span></h2>
+        <ul class="number-table">
+            @foreach (var row in Theory.Table)
+            {
+                <li>
+                    <button type="button" class="number-cell" @onclick="async () => await State.SpeakAsync(row.Korean)">
+                        <span class="number-written">@row.Written</span>
+                        <span class="number-korean" lang="ko">@row.Korean</span>
+                        @if (row.Note is not null)
+                        {
+                            <span class="muted small">@row.Note</span>
+                        }
+                    </button>
+                </li>
+            }
+        </ul>
+    </section>
+
+    <section class="card theory-examples" aria-labelledby="examples-heading">
+        <h2 id="examples-heading">Примеры</h2>
+        <ul>
+            @foreach (var example in Theory.Examples)
+            {
+                <li>
+                    <div class="theory-example-line">
+                        <span class="theory-sentence" lang="ko">@example.Korean</span>
+                        <SpeakButton Text="@example.Korean" ShowKeyHint="false" />
+                    </div>
+                    <span class="muted">@example.Written</span>
+                    @if (example.Note is not null)
+                    {
+                        <span class="theory-derivation">@example.Note</span>
+                    }
+                </li>
+            }
+        </ul>
+    </section>
+
+    <div class="notice warning theory-pitfall">
+        <strong>Частая ошибка</strong>
+        <p>@Theory.Pitfall</p>
+    </div>
+
+    <div class="actions">
+        <button type="button" class="btn primary" @onclick="OnStart">Понятно — к упражнениям</button>
+    </div>
+</article>
+
+@code {
+    [Inject]
+    private AppState State { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public NumberTheory Theory { get; set; } = default!;
+
+    [Parameter]
+    public EventCallback OnStart { get; set; }
+}

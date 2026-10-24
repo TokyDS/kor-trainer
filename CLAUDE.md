@@ -112,7 +112,10 @@ back end in-process. Never reference EF or ASP.NET from Domain.
 11. ✅ Rules before drills: `Grammar/GrammarTheory` (meaning, steps, examples checked against `Particles`/`Conjugator`,
    pitfall) shown by `GrammarDrill` before the exercises (`?drill=true` skips it). No manual ticks: reading tasks use
    `TaskMetric.Read` + `StudyMaterials` and are marked by the page (`MarkReadAsync`, `/lesson/{day}`, Hangul guide);
-   lesson tasks open in order (`TaskOrder`); every task is done in the app.
+   lesson tasks open in order (`TaskOrder`); every task is done in the app. Number drills have rules too
+   (`Numbers/NumberTheory`, computed by `KoreanNumbers`/`Counters`; `RuleFirstPageBase` serves both pages). Every
+   distractor says why it is wrong (`Conjugator.ExplainedMistakes`, `ParticleResult.WrongWhy`); particle gaps ask only
+   for the particle (책___ 아니에요 → 이 / 가), except contracted pronouns (저 + 가 = 제가).
 
 The deck has ~5,900 words (curated + NIKL A/B/C). Next ideas: offline answer queue, phone↔laptop sync, review of
 machine translations.

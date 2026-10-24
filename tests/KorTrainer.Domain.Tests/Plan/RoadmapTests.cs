@@ -70,6 +70,34 @@ public sealed class RoadmapTests
         tasks[drill].Route.Should().Be($"/grammar/{topic}?drill=true");
     }
 
+    [Theory]
+    [InlineData("lesson-7", ExerciseTypes.SinoNumbers)]
+    [InlineData("lesson-8", ExerciseTypes.NativeNumbers)]
+    [InlineData("lesson-8", ExerciseTypes.Counters)]
+    public void NumberLessons_TeachTheRuleBeforeTheDrill(string key, string type)
+    {
+        var tasks = _roadmap.Find(key)!.Tasks.ToList();
+
+        int rule = tasks.FindIndex(t => t.Target.Material == StudyMaterials.NumberRule(type));
+        int drill = tasks.FindIndex(t => t.Target.Metric == TaskMetric.Answers && t.Target.ExerciseType == type);
+
+        rule.Should().BeGreaterThanOrEqualTo(0);
+        drill.Should().Be(rule + 1);
+        tasks[rule].Route.Should().Be($"/numbers/{type}");
+        tasks[drill].Route.Should().Be($"/numbers/{type}?drill=true");
+    }
+
+    [Fact]
+    public void NumberRules_ToRead_HaveATheory()
+    {
+        var rules = _roadmap.Steps.SelectMany(s => s.Tasks)
+            .Where(t => t.Target.Metric == TaskMetric.Read && t.Route!.StartsWith("/numbers/", StringComparison.Ordinal))
+            .ToList();
+
+        rules.Should().HaveCount(3);
+        rules.Should().AllSatisfy(t => KorTrainer.Domain.Numbers.NumberTheories.Find(t.Route!["/numbers/".Length..]).Should().NotBeNull());
+    }
+
     [Fact]
     public void GrammarRules_ToRead_HaveATheory()
     {
@@ -97,7 +125,7 @@ public sealed class RoadmapTests
                 lesson.Tasks[^1].Key.Should().Be("vocab-due", lesson.Key);
             }
 
-            reading.Should().HaveCountLessThanOrEqualTo(1, lesson.Key);
+            reading.Select(t => t.Key).Should().OnlyHaveUniqueItems(lesson.Key);
         }
     }
 

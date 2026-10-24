@@ -1,16 +1,45 @@
 @page "/numbers/{Type}"
-@inject IKorTrainerApi Api
+@using KorTrainer.Domain.Numbers
+@inherits RuleFirstPageBase
 
 <PageTitle>Числа — KorTrainer</PageTitle>
 
-@* The key forces a fresh drill when the type in the URL changes. *@
-<ChoiceDrill @key="Type" Load="LoadAsync" BackHref="/numbers" />
+@if (_theory is not null && !Drilling)
+{
+    <NumberTheoryView Theory="_theory" OnStart="StartAsync" />
+}
+else
+{
+    @if (ReadError is not null)
+    {
+        <p class="notice error small">Не удалось отметить правило прочитанным: @ReadError</p>
+    }
+
+    @* The key forces a fresh drill when the type in the URL changes. *@
+    <ChoiceDrill @key="Type" Load="LoadAsync" BackHref="/numbers" />
+
+    @if (_theory is not null)
+    {
+        <RuleRecap Steps="_theory.Steps" Pitfall="@_theory.Pitfall" />
+    }
+}
 
 @code {
     private const int SetSize = 20;
 
-    [Parameter]
-    public string Type { get; set; } = string.Empty;
+    private NumberTheory? _theory;
 
-    private Task<ExerciseSetDto> LoadAsync() => Api.GetNumberExercisesAsync(Type, SetSize);
+    protected override string Material => StudyMaterials.NumberRule(Type);
+
+    protected override bool LoadRule()
+    {
+        _theory = NumberTheories.Find(Type);
+        return _theory is not null;
+    }
+
+    private async Task<ExerciseSetDto> LoadAsync()
+    {
+        await RetryMarkReadAsync();
+        return await Api.GetNumberExercisesAsync(Type, SetSize);
+    }
 }

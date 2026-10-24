@@ -100,6 +100,20 @@ public sealed class GrammarClozeTests
     }
 
     [Fact]
+    public void ParticleGap_KeepsTheNounInTheSentence()
+    {
+        var generator = new GrammarExerciseGenerator(new Random(5));
+        var match = Find("저는 사과를 좋아해요.", ExerciseTypes.ObjectParticle).Single();
+
+        var exercise = generator.ClozeExercise(match, revealEnding: true, []);
+
+        exercise.Prompt.Should().Be("저는 사과___ 좋아해요.");
+        exercise.Options.Select(o => o.Text).Should().BeEquivalentTo(["를", "을"]);
+        exercise.Correct.Text.Should().Be("를");
+        exercise.SpeakText.Should().Be("저는 사과를 좋아해요.");
+    }
+
+    [Fact]
     public void Generate_MixesSentenceGapsIntoATopicDrill()
     {
         var generator = new GrammarExerciseGenerator(new Random(3));

@@ -69,6 +69,8 @@ var texts = GrammarCatalog.Topics
             .Select(n => GrammarExerciseGenerator.ParticleSpeakText(n, t.Particle!.Value))))
     // The example sentences of the rules, read before each drill.
     .Concat(GrammarTheories.All.SelectMany(t => t.Examples).Select(e => e.Sentence))
+    // The tables and examples of the number rules.
+    .Concat(KorTrainer.Domain.Numbers.NumberTheories.All.SelectMany(t => t.Table.Concat(t.Examples)).Select(s => s.Korean))
     .Distinct()
     .ToList();
 

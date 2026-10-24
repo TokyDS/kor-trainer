@@ -117,14 +117,15 @@ public sealed class GrammarExerciseGenerator(Random random)
         if (match.Noun is { } noun)
         {
             var particle = Particles.Attach(noun.Korean, match.Topic.Particle!.Value);
-            var choices = new[] { new ChoiceOption(particle.Form), new ChoiceOption(particle.Wrong, Why: particle.WrongWhy) }.Shuffled(random).ToList();
+            var gap = ParticleGap(noun.Korean, particle);
+            var choices = new[] { new ChoiceOption(gap.Right), new ChoiceOption(gap.Wrong, Why: particle.WrongWhy) }.Shuffled(random).ToList();
             return new ChoiceExercise(
                 match.Topic.Type,
                 key,
-                $"{before}___{after}",
-                $"{translation} Выберите правильную форму.",
+                $"{before}{gap.Lead}___{gap.Rest}{after}",
+                $"{translation}{WordNote(noun.Korean, gap)} Выберите правильную форму.",
                 choices,
-                choices.FindIndex(o => o.Text == particle.Form),
+                choices.FindIndex(o => o.Text == gap.Right),
                 particle.Explanation,
                 SpeakText: sentence.Korean);
         }
@@ -170,22 +171,43 @@ public sealed class GrammarExerciseGenerator(Random random)
     {
         var kind = topic.Particle ?? throw new ArgumentException("Topic is not a particle topic.", nameof(topic));
         var particle = Particles.Attach(noun.Korean, kind);
-        var (rest, translation) = ParticleFrame(kind, FirstSense(noun.Russian));
+        var (tail, translation) = ParticleFrame(kind, FirstSense(noun.Russian));
+        var gap = ParticleGap(noun.Korean, particle);
 
-        var options = new[] { new ChoiceOption(particle.Form), new ChoiceOption(particle.Wrong, Why: particle.WrongWhy) }
+        var options = new[] { new ChoiceOption(gap.Right), new ChoiceOption(gap.Wrong, Why: particle.WrongWhy) }
             .Shuffled(random)
             .ToList();
 
         return new ChoiceExercise(
             topic.Type,
             $"{topic.Type}:{noun.Korean}",
-            $"{noun.Korean}___{rest}",
-            $"{translation} Выберите правильную форму.",
+            $"{gap.Lead}___{gap.Rest}{tail}",
+            $"{translation}{WordNote(noun.Korean, gap)} Выберите правильную форму.",
             options,
-            options.FindIndex(o => o.Text == particle.Form),
+            options.FindIndex(o => o.Text == gap.Right),
             particle.Explanation,
             SpeakText: ParticleSpeakText(noun.Korean, kind));
     }
+
+    /// <summary>
+    /// What a particle gap asks for: only the particle after the noun, which stays in the prompt (책___ 아니에요 →
+    /// 이 / 가). When the noun itself changes (저 + 가 = 제가), the gap covers the whole word.
+    /// </summary>
+    private static ParticleGapParts ParticleGap(string noun, ParticleResult particle)
+    {
+        int space = particle.Form.IndexOf(' ', StringComparison.Ordinal);
+        string rest = space < 0 ? string.Empty : particle.Form[space..];
+        string right = particle.Form[..^rest.Length];
+        string wrong = particle.Wrong[..^rest.Length];
+        return right.StartsWith(noun, StringComparison.Ordinal) && wrong.StartsWith(noun, StringComparison.Ordinal)
+            ? new(noun, right[noun.Length..], wrong[noun.Length..], rest)
+            : new(string.Empty, right, wrong, rest);
+    }
+
+    /// <summary>Names the word when the gap hides it: «(저)».</summary>
+    private static string WordNote(string noun, ParticleGapParts gap) => gap.Lead.Length == 0 ? $" ({noun})" : string.Empty;
+
+    private sealed record ParticleGapParts(string Lead, string Right, string Wrong, string Rest);
 
     /// <summary>What a particle question says aloud after the answer: 책을 좋아해요, 학생이에요.</summary>
     public static string ParticleSpeakText(string noun, ParticleKind kind) =>

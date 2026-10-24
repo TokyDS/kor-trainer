@@ -149,15 +149,16 @@ internal static class PlanContent
         ],
         7 =>
         [
-            Notes(7),
+            NumberRule("rule", SinoNumbers, "сино-корейских чисел"),
             Numbers(SinoNumbers, "Сино-корейские числа", 20),
             CommonTasks.NewWords(newWordsPerDay),
             CommonTasks.ReviewDue,
         ],
         8 =>
         [
-            Notes(8),
+            NumberRule("rule", NativeNumbers, "корейских чисел"),
             Numbers(NativeNumbers, "Корейские числа", 20),
+            NumberRule("rule-2", Counters, "счётных слов"),
             Numbers(Counters, "Счётные слова", 15),
             CommonTasks.NewWords(newWordsPerDay),
             CommonTasks.ReviewDue,
@@ -258,6 +259,10 @@ internal static class PlanContent
     private static PlanTask Grammar(string type, string title, int count) =>
         new(type, $"Грамматика {title}: {count} упражнений", TaskTarget.Answers(StudyModule.Grammar, count, type), $"/grammar/{type}?drill=true");
 
+    /// <summary>The rule opens the number drill's page; reading it to the end starts the drill.</summary>
+    private static PlanTask NumberRule(string key, string type, string title) =>
+        new(key, $"Разобрать правило {title}", TaskTarget.Read(StudyMaterials.NumberRule(type)), $"/numbers/{type}");
+
     private static PlanTask Numbers(string type, string title, int count) =>
-        new(type, $"{title}: {count} упражнений", TaskTarget.Answers(StudyModule.Numbers, count, type), $"/numbers/{type}");
+        new(type, $"{title}: {count} упражнений", TaskTarget.Answers(StudyModule.Numbers, count, type), $"/numbers/{type}?drill=true");
 }

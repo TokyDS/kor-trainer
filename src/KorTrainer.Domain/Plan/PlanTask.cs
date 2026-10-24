@@ -49,6 +49,9 @@ public static class StudyMaterials
 
     /// <summary>The rule of a grammar topic, shown before its drill: the topic's exercise type itself.</summary>
     public static string GrammarRule(string topic) => topic;
+
+    /// <summary>The rule of a number drill (<c>/numbers/{type}</c>), shown before it.</summary>
+    public static string NumberRule(string type) => $"numbers-{type}";
 }
 
 /// <param name="Key">Stable key, unique within a step; used to store that a <see cref="TaskMetric.Read"/> task was read.</param>

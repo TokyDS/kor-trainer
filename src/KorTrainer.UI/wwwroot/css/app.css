@@ -427,6 +427,26 @@ h1:focus { outline: none; }
 .theory-derivation { font-size: 0.85rem; color: var(--ink-faint); }
 .theory-pitfall { margin-bottom: 0; }
 .theory-recap { margin-top: var(--space-4); }
+
+/* A number rule's table: each cell is the written number over its Korean reading, and plays it. */
+.number-table { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: var(--space-2); }
+.number-cell {
+    width: 100%;
+    display: grid;
+    gap: 2px;
+    justify-items: start;
+    text-align: left;
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--rule);
+    border-radius: var(--radius-sm);
+    background: var(--paper);
+    color: var(--ink);
+    font: inherit;
+    cursor: pointer;
+}
+.number-cell:hover { border-color: var(--accent); }
+.number-written { font: 600 0.8rem var(--font-ui); color: var(--ink-faint); font-variant-numeric: tabular-nums; }
+.number-korean { font-size: 1.15rem; }
 .theory-recap summary { cursor: pointer; font-weight: 600; }
 .theory-recap ol { margin-top: var(--space-3); }
 
