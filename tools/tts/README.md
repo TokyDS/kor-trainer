@@ -46,12 +46,27 @@ Output goes to `artifacts/tts/ko-melo/` (git-ignored): `<sha1-prefix>.opus` (mon
 generated at speed 0.9) and `manifest.json` mapping each text to its file. About 5 KB per word and
 12 KB per sentence.
 
+## Personal voice: Microsoft SunHi
+
+MeloTTS drops many word-final consonants (한국 sounds like 한고, 수업 like 수어). For personal use the same texts
+can be voiced with Microsoft's SunHi voice through Edge read-aloud:
+
+```bash
+python3 -m venv .venv-edge && .venv-edge/bin/pip install edge-tts
+.venv-edge/bin/python tools/tts/generate_edge.py            # ~21,000 requests, a few hours, resumable
+```
+
+The audio comes from an online service whose terms do not allow sharing it: keep `artifacts/tts/ko-sunhi/`
+private (it is git-ignored) and never publish a build or image that contains it. `pack_speech.py` bundles
+SunHi into the APK when it exists (`SPEECH_SOURCE=ko-melo` picks MeloTTS); point `Audio:SynthesizedDirectory`
+at the folder for the server.
+
 ## Use
 
 - **Web**: `Audio:SynthesizedDirectory` points at the folder (by default `../../artifacts/tts/ko-melo`
   relative to `src/KorTrainer.Api`); `GET /api/audio/tts?text=` serves a file. In Docker mount it and set
   `Audio__SynthesizedDirectory`.
-- **Android**: `tools/android/build-apk.sh` bundles the folder as app assets (`tts/…`) when it exists.
+- **Android**: `tools/android/build-apk.sh` bundles the voice (`artifacts/tts/apk-speech`) as app assets (`tts/…`).
 
 The page plays the audio at `rate / 0.9`, so the speech-rate setting and the slow listening mode apply
 to it as well.

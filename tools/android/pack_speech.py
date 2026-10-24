@@ -1,4 +1,7 @@
-"""Prepares the speech bundled in the APK from artifacts/tts/ko-melo into artifacts/tts/ko-melo-apk.
+"""Prepares the speech bundled in the APK from artifacts/tts/<voice> into artifacts/tts/apk-speech.
+
+The voice is ko-sunhi (generate_edge.py, personal use only) when it was generated, otherwise ko-melo
+(generate_melo.py); SPEECH_SOURCE=ko-melo picks one explicitly.
 
 Single syllables and words keep their quality (24 kbit/s): they carry the sounds a learner must tell apart
 (달/탈/딸). Phrases and sentences (anything with a space) are re-encoded at 16 kbit/s, which keeps speech
@@ -16,8 +19,9 @@ import subprocess
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
-SOURCE = ROOT / "artifacts" / "tts" / "ko-melo"
-TARGET = ROOT / "artifacts" / "tts" / "ko-melo-apk"
+TTS = ROOT / "artifacts" / "tts"
+SOURCE = TTS / os.environ.get("SPEECH_SOURCE", "ko-sunhi" if (TTS / "ko-sunhi" / "manifest.json").exists() else "ko-melo")
+TARGET = TTS / "apk-speech"
 PHRASE_BITRATE = "16k"
 
 
@@ -52,7 +56,7 @@ def pack(text: str, key: str) -> str:
 def main() -> None:
     manifest_path = SOURCE / "manifest.json"
     if not manifest_path.exists():
-        print("no speech in artifacts/tts/ko-melo — nothing to pack", file=sys.stderr)
+        print(f"no speech in {SOURCE} — nothing to pack", file=sys.stderr)
         return
     items = json.loads(manifest_path.read_text(encoding="utf-8"))["items"]
     TARGET.mkdir(parents=True, exist_ok=True)
