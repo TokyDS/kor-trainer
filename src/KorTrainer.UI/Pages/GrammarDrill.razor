@@ -1,16 +1,45 @@
 @page "/grammar/{Type}"
-@inject IKorTrainerApi Api
+@using KorTrainer.Domain.Grammar
+@inherits RuleFirstPageBase
 
 <PageTitle>Грамматика — KorTrainer</PageTitle>
 
-@* The key forces a fresh drill when the topic in the URL changes. *@
-<ChoiceDrill @key="Type" Load="LoadAsync" BackHref="/grammar" />
+@if (_theory is not null && !Drilling)
+{
+    <GrammarTheoryView Theory="_theory" Title="@(GrammarCatalog.Find(Type)?.Title ?? Type)" OnStart="StartAsync" />
+}
+else
+{
+    @if (ReadError is not null)
+    {
+        <p class="notice error small">Не удалось отметить правило прочитанным: @ReadError</p>
+    }
+
+    @* The key forces a fresh drill when the topic in the URL changes. *@
+    <ChoiceDrill @key="Type" Load="LoadAsync" BackHref="/grammar" />
+
+    @if (_theory is not null)
+    {
+        <RuleRecap Steps="_theory.Steps" Pitfall="@_theory.Pitfall" />
+    }
+}
 
 @code {
     private const int SetSize = 20;
 
-    [Parameter]
-    public string Type { get; set; } = string.Empty;
+    private GrammarTheory? _theory;
 
-    private Task<ExerciseSetDto> LoadAsync() => Api.GetGrammarExercisesAsync(Type, SetSize);
+    protected override string Material => StudyMaterials.GrammarRule(Type);
+
+    protected override bool LoadRule()
+    {
+        _theory = GrammarTheories.Find(Type);
+        return _theory is not null;
+    }
+
+    private async Task<ExerciseSetDto> LoadAsync()
+    {
+        await RetryMarkReadAsync();
+        return await Api.GetGrammarExercisesAsync(Type, SetSize);
+    }
 }

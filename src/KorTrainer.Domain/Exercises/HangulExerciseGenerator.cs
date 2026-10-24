@@ -21,7 +21,8 @@ public sealed class HangulExerciseGenerator(Random random)
     private const int RealSyllableOutOf = 4;
 
     /// <summary>Classic examples used when the deck does not provide enough words with sound changes.</summary>
-    private static readonly string[] SoundChangeExamples =
+    /// <summary>Words that show the pronunciation rules (also voiced in advance by tools/tts).</summary>
+    public static readonly IReadOnlyList<string> SoundChangeExamples =
     [
         "한국어", "음악", "읽어요", "좋아요", "감사합니다", "학교", "꽃이", "옷을", "있어요", "없어요",
         "먹는", "같이", "신라", "국물", "축하해요", "입학", "많아요", "앉아요", "맛있어요", "닭",
@@ -38,7 +39,8 @@ public sealed class HangulExerciseGenerator(Random random)
         HangulLevel level,
         int count,
         IReadOnlyList<string>? words = null,
-        IReadOnlySet<string>? recordedWords = null)
+        IReadOnlySet<string>? recordedWords = null,
+        char? seriesFocus = null)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(count);
         var syllables = RealSyllables(words ?? [], level);
@@ -48,7 +50,7 @@ public sealed class HangulExerciseGenerator(Random random)
             ExerciseTypes.SoundToLetter => () => SoundToLetter(level),
             ExerciseTypes.Compose => () => Compose(level, syllables),
             ExerciseTypes.Decompose => () => Decompose(level, syllables),
-            ExerciseTypes.ConsonantSeries => () => ConsonantSeries(recordedWords),
+            ExerciseTypes.ConsonantSeries => () => ConsonantSeries(recordedWords, seriesFocus),
             ExerciseTypes.FinalSound => FinalSound,
             ExerciseTypes.SoundChange => () => SoundChange(words ?? []),
             _ => throw new ArgumentException($"Unknown Hangul exercise type '{type}'.", nameof(type)),
@@ -148,9 +150,20 @@ public sealed class HangulExerciseGenerator(Random random)
     /// synthesized isolated syllables (가/카/까) sound nearly identical, whole words do not.
     /// Options keep the plain → aspirated → tense order so keys 1–3 always mean the same series.
     /// </summary>
-    public ChoiceExercise ConsonantSeries(IReadOnlySet<string>? recordedWords = null)
+    /// <summary>
+    /// Plain, aspirated or tense by ear: half the questions are minimal-pair words (불 · 풀 · 뿔), half single
+    /// syllables of one row (다 · 타 · 따). <paramref name="focus"/> keeps every question in one row.
+    /// </summary>
+    public ChoiceExercise ConsonantSeries(IReadOnlySet<string>? recordedWords = null, char? focus = null)
     {
-        var set = MinimalPairs.Playable(recordedWords).Pick(random);
+        var row = focus is { } consonant ? JamoCatalog.SeriesRow(consonant) : null;
+        var sets = MinimalPairs.Playable(recordedWords).Where(set => row is null || row.Contains(set[0].Consonant)).ToList();
+        if (sets.Count == 0 || random.Next(2) == 0)
+        {
+            return SeriesSyllable(row ?? JamoCatalog.ConsonantSeries.Pick(random));
+        }
+
+        var set = sets.Pick(random);
         int correct = random.Next(set.Count);
         var options = set
             .Select(w => new ChoiceOption(
@@ -170,6 +183,31 @@ public sealed class HangulExerciseGenerator(Random random)
             correct,
             $"Прозвучало {word.Korean} «{word.Russian}»: {JamoCatalog.SeriesName(target.Kind)} {target.Jamo}. {target.Hint}",
             SpeakText: word.Korean,
+            AutoSpeak: true);
+    }
+
+    private ChoiceExercise SeriesSyllable(IReadOnlyList<char> row)
+    {
+        char vowel = JamoCatalog.SeriesVowels.Pick(random);
+        var options = row
+            .Select(c => new ChoiceOption(
+                new Syllable(c, vowel).ToString(),
+                JamoCatalog.SeriesName(JamoCatalog.Get(c).Kind),
+                Romanizer.Romanize(new Syllable(c, vowel).ToString())))
+            .ToList();
+        int correct = random.Next(options.Count);
+        var target = JamoCatalog.Get(row[correct]);
+        string syllable = options[correct].Text;
+
+        return new ChoiceExercise(
+            ExerciseTypes.ConsonantSeries,
+            $"series:{syllable}",
+            "Какой слог прозвучал?",
+            "Пробел — послушать ещё раз. После ответа цифрами можно сравнить все варианты.",
+            options,
+            correct,
+            $"Прозвучало {syllable}: {JamoCatalog.SeriesName(target.Kind)} {target.Jamo}. {target.Hint}",
+            SpeakText: syllable,
             AutoSpeak: true);
     }
 

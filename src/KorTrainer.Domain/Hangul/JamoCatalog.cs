@@ -105,6 +105,14 @@ public static class JamoCatalog
         ['ㅅ', 'ㅆ'],
     ];
 
+    /// <summary>Vowels the series are heard with: open enough that the consonant stands out.</summary>
+    public static IReadOnlyList<char> SeriesVowels { get; } = ['ㅏ', 'ㅓ', 'ㅗ', 'ㅜ', 'ㅣ'];
+
+    /// <summary>The row a plain, aspirated or tense consonant belongs to (ㅌ → ㄷ ㅌ ㄸ).</summary>
+    public static IReadOnlyList<char> SeriesRow(char consonant) =>
+        ConsonantSeries.FirstOrDefault(row => row.Contains(consonant))
+        ?? throw new ArgumentException($"'{consonant}' has no plain/aspirated/tense series.", nameof(consonant));
+
     public static JamoInfo Get(char jamo) =>
         All.FirstOrDefault(j => j.Jamo == jamo)
         ?? throw new ArgumentOutOfRangeException(nameof(jamo), jamo, "Unknown jamo.");

@@ -1,0 +1,69 @@
+@* The rule of a grammar topic, read before its drill: meaning, how to build the form, examples, usual mistake. *@
+@using KorTrainer.Domain.Grammar
+
+<article class="theory">
+    <header class="page-header">
+        <a class="back" href="@BackHref">← Назад</a>
+        <p class="eyebrow">Правило</p>
+        <h1 lang="ko">@Title</h1>
+        <p class="theory-meaning">@Theory.Meaning</p>
+    </header>
+
+    <section class="card theory-steps" aria-labelledby="steps-heading">
+        <h2 id="steps-heading">Как построить форму</h2>
+        <ol>
+            @foreach (var step in Theory.Steps)
+            {
+                <li>@step</li>
+            }
+        </ol>
+    </section>
+
+    <section class="card theory-examples" aria-labelledby="examples-heading">
+        <h2 id="examples-heading">Примеры</h2>
+        <ul>
+            @foreach (var example in Theory.Examples)
+            {
+                int at = example.Sentence.IndexOf(example.Form, StringComparison.Ordinal);
+                <li>
+                    <div class="theory-example-line">
+                        @if (at < 0)
+                        {
+                            <span class="theory-sentence" lang="ko">@example.Sentence</span>
+                        }
+                        else
+                        {
+                            <span class="theory-sentence" lang="ko">@example.Sentence[..at]<mark>@example.Form</mark>@example.Sentence[(at + example.Form.Length)..]</span>
+                        }
+                        <SpeakButton Text="@example.Sentence" ShowKeyHint="false" />
+                    </div>
+                    <span class="muted">@example.Translation</span>
+                    <span class="theory-derivation"><span lang="ko">@example.Word</span> → <span lang="ko">@example.Form</span></span>
+                </li>
+            }
+        </ul>
+    </section>
+
+    <div class="notice warning theory-pitfall">
+        <strong>Частая ошибка</strong>
+        <p>@Theory.Pitfall</p>
+    </div>
+
+    <div class="actions">
+        <button type="button" class="btn primary" @onclick="OnStart">Понятно — к упражнениям</button>
+    </div>
+</article>
+
+@code {
+    [Parameter, EditorRequired]
+    public GrammarTheory Theory { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public string Title { get; set; } = string.Empty;
+
+    [Parameter]
+    public string BackHref { get; set; } = "/grammar";
+
+    [Parameter]
+    public EventCallback OnStart { get; set; }
+}

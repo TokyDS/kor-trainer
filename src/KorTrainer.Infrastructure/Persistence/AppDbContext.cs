@@ -17,6 +17,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
 
     public DbSet<ExerciseAttempt> ExerciseAttempts => Set<ExerciseAttempt>();
 
+    public DbSet<Mistake> Mistakes => Set<Mistake>();
+
     public DbSet<ReadingTrial> ReadingTrials => Set<ReadingTrial>();
 
     public DbSet<StudySession> StudySessions => Set<StudySession>();

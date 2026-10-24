@@ -1,0 +1,148 @@
+@page "/quick"
+@inject IKorTrainerApi Api
+
+<PageTitle>10 минут — KorTrainer</PageTitle>
+
+<header class="page-header">
+    <a class="back" href="/">← К шагу</a>
+    <h1>10 минут</h1>
+    @if (_parts is { } parts)
+    {
+        <ol class="quick-parts" aria-label="Части занятия">
+            @for (int i = 0; i < parts.Count; i++)
+            {
+                <li class="@(i < _index ? "done" : i == _index ? "active" : string.Empty)" aria-current="@(i == _index ? "step" : null)">
+                    @parts[i].Title
+                </li>
+            }
+        </ol>
+    }
+</header>
+
+<StatusViews IsLoading="_parts is null && _error is null" Error="@_error" OnRetry="LoadAsync" />
+
+@if (_parts is { } list)
+{
+    @if (_index < list.Count)
+    {
+        var part = list[_index];
+        @if (part.Kind == PartKind.Words)
+        {
+            <VocabReview Limit="QuickSession.WordCards" OnFinished="WordsDoneAsync" />
+        }
+        else
+        {
+            <ChoiceDrill @key="_index" Load="() => LoadPartAsync(part)" OnFinished="NextAsync"
+                         FinishLabel="@(_index + 1 < list.Count ? $"Дальше: {list[_index + 1].Title}" : "Завершить")" />
+        }
+    }
+    else
+    {
+        <div class="card summary">
+            <h2>Готово!</h2>
+            <p class="big-number">@Minutes <small>мин</small></p>
+            <p class="muted">@SummaryText Всё это уже засчитано в задачи шага.</p>
+            <div class="actions">
+                <a class="btn primary" href="/">К задачам шага</a>
+                <button type="button" class="btn" @onclick="LoadAsync">Ещё 10 минут</button>
+            </div>
+        </div>
+    }
+}
+
+@code {
+    private enum PartKind { Words, Mistakes, Drill }
+
+    private sealed record Part(PartKind Kind, string Title, int Size, QuickDrill? Drill = null);
+
+    private List<Part>? _parts;
+    private int _index;
+    private int _cardsReviewed;
+    private DateTime _startedUtc;
+    private string? _error;
+
+    private int Minutes => Math.Max(1, (int)Math.Round((DateTime.UtcNow - _startedUtc).TotalMinutes));
+
+    private string SummaryText
+    {
+        get
+        {
+            int sets = _parts!.Count(p => p.Kind != PartKind.Words);
+            return _cardsReviewed > 0
+                ? $"Повторено карточек: {_cardsReviewed}. Наборов упражнений: {sets}."
+                : $"Карточек к повторению не было. Наборов упражнений: {sets}.";
+        }
+    }
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _error = null;
+        _parts = null;
+        try
+        {
+            var today = await Api.GetTodayAsync();
+            var mistakes = await Api.GetMistakeSummaryAsync();
+            var weakest = (await Api.GetWeakTopicsAsync()).Select(w => QuickSession.FromRoute(w.Route)).FirstOrDefault(d => d is not null);
+            // A rule to read is not a drill, even though it opens on the drill's page.
+            var tasks = today.Step.Tasks.Where(t => !t.IsReading).Select(t => new QuickTask(t.Route, t.IsDone));
+            var drills = QuickSession.Drills(today.Step.Stage, tasks, weakest);
+
+            var parts = new List<Part> { new(PartKind.Words, "Слова", QuickSession.WordCards) };
+            if (mistakes.Due > 0)
+            {
+                parts.Add(new Part(PartKind.Mistakes, "Ошибки", QuickSession.MistakeCount));
+            }
+
+            parts.Add(new Part(PartKind.Drill, DrillTitle(drills[0]), QuickSession.DrillSize, drills[0]));
+            parts.AddRange(drills.Skip(1).Select(d => new Part(PartKind.Drill, d == weakest ? "Трудная тема" : DrillTitle(d), QuickSession.SecondDrillSize, d)));
+            _parts = parts;
+            _index = 0;
+            _cardsReviewed = 0;
+            _startedUtc = DateTime.UtcNow;
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    private Task<ExerciseSetDto> LoadPartAsync(Part part)
+    {
+        if (part.Drill is not { } drill)
+        {
+            return Api.GetMistakesAsync(part.Size);
+        }
+
+        return drill.Module switch
+        {
+            StudyModule.Hangul => Api.GetHangulExercisesAsync(drill.Type, drill.Level, part.Size),
+            StudyModule.Listening => Api.GetListeningExercisesAsync(drill.Type, part.Size),
+            StudyModule.Numbers => Api.GetNumberExercisesAsync(drill.Type, part.Size),
+            _ => Api.GetGrammarExercisesAsync(drill.Type, part.Size),
+        };
+    }
+
+    private Task WordsDoneAsync(int reviewed)
+    {
+        _cardsReviewed = reviewed;
+        return NextAsync();
+    }
+
+    private Task NextAsync()
+    {
+        _index++;
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    private static string DrillTitle(QuickDrill drill) => drill.Module switch
+    {
+        StudyModule.Hangul when drill.Type == ExerciseTypes.SoundToLetter => "Буквы на слух",
+        StudyModule.Hangul => "Хангыль",
+        StudyModule.Listening => "На слух",
+        StudyModule.Numbers => "Числа",
+        _ => "Грамматика",
+    };
+}

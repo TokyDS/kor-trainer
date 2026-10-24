@@ -42,6 +42,107 @@ public sealed class RoadmapTests
         _roadmap.Find("lesson-4")!.Stage.Should().Be(PlanStage.FirstPhrases);
     }
 
+    [Fact]
+    public void EveryTask_IsDoneInTheApp()
+    {
+        var tasks = _roadmap.Steps.SelectMany(s => s.Tasks).ToList();
+
+        tasks.Should().AllSatisfy(t => t.Route.Should().NotBeNullOrWhiteSpace(t.Key));
+        tasks.Where(t => t.Target.Metric == TaskMetric.Read)
+            .Should().AllSatisfy(t => t.Target.Material.Should().NotBeNullOrWhiteSpace(t.Key));
+    }
+
+    [Theory]
+    [InlineData("lesson-5", ExerciseTypes.Copula)]
+    [InlineData("lesson-6", ExerciseTypes.NegativeCopula)]
+    [InlineData("lesson-9", ExerciseTypes.TopicParticle)]
+    public void GrammarLessons_TeachTheRuleBeforeTheDrill(string key, string topic)
+    {
+        var tasks = _roadmap.Find(key)!.Tasks.ToList();
+
+        int rule = tasks.FindIndex(t => t.Target.Metric == TaskMetric.Read && t.Target.Material == topic);
+        int drill = tasks.FindIndex(t => t.Target.Metric == TaskMetric.Answers && t.Target.ExerciseType == topic);
+
+        rule.Should().BeGreaterThanOrEqualTo(0);
+        drill.Should().BeGreaterThan(rule);
+        tasks[rule].Route.Should().Be($"/grammar/{topic}");
+        // Blazor reads a bool query parameter as true/false only.
+        tasks[drill].Route.Should().Be($"/grammar/{topic}?drill=true");
+    }
+
+    [Theory]
+    [InlineData("lesson-7", ExerciseTypes.SinoNumbers)]
+    [InlineData("lesson-8", ExerciseTypes.NativeNumbers)]
+    [InlineData("lesson-8", ExerciseTypes.Counters)]
+    public void NumberLessons_TeachTheRuleBeforeTheDrill(string key, string type)
+    {
+        var tasks = _roadmap.Find(key)!.Tasks.ToList();
+
+        int rule = tasks.FindIndex(t => t.Target.Material == StudyMaterials.NumberRule(type));
+        int drill = tasks.FindIndex(t => t.Target.Metric == TaskMetric.Answers && t.Target.ExerciseType == type);
+
+        rule.Should().BeGreaterThanOrEqualTo(0);
+        drill.Should().Be(rule + 1);
+        tasks[rule].Route.Should().Be($"/numbers/{type}");
+        tasks[drill].Route.Should().Be($"/numbers/{type}?drill=true");
+    }
+
+    [Fact]
+    public void NumberRules_ToRead_HaveATheory()
+    {
+        var rules = _roadmap.Steps.SelectMany(s => s.Tasks)
+            .Where(t => t.Target.Metric == TaskMetric.Read && t.Route!.StartsWith("/numbers/", StringComparison.Ordinal))
+            .ToList();
+
+        rules.Should().HaveCount(3);
+        rules.Should().AllSatisfy(t => KorTrainer.Domain.Numbers.NumberTheories.Find(t.Route!["/numbers/".Length..]).Should().NotBeNull());
+    }
+
+    [Fact]
+    public void PhraseLessons_EndWithTheirSceneBeforeTheReview()
+    {
+        foreach (var lesson in _roadmap.Steps.Where(s => s.Lesson is { Day: > Roadmap.HangulLessons }))
+        {
+            var practice = lesson.Tasks[^2];
+
+            practice.Key.Should().Be("practice", lesson.Key);
+            practice.Target.Material.Should().Be(StudyMaterials.Practice(lesson.Lesson!.Day));
+            practice.Route.Should().Be($"/lesson/{lesson.Lesson.Day}/practice");
+            LessonPractices.Find(lesson.Lesson.Day).Should().NotBeNull(lesson.Key);
+        }
+    }
+
+    [Fact]
+    public void GrammarRules_ToRead_HaveATheory()
+    {
+        var rules = _roadmap.Steps.SelectMany(s => s.Tasks)
+            .Where(t => t.Target.Metric == TaskMetric.Read && t.Route!.StartsWith("/grammar/", StringComparison.Ordinal))
+            .ToList();
+
+        rules.Should().NotBeEmpty();
+        rules.Should().AllSatisfy(t => GrammarTheories.Find(t.Target.Material!).Should().NotBeNull(t.Target.Material));
+    }
+
+    [Fact]
+    public void Lessons_OpenWithTheirMaterialAndEndWithTheReview()
+    {
+        foreach (var lesson in _roadmap.Steps.Where(s => s.Lesson is not null))
+        {
+            var reading = lesson.Tasks.Where(t => t.Target.Metric == TaskMetric.Read).ToList();
+            if (lesson.Lesson!.Day <= Roadmap.HangulLessons)
+            {
+                lesson.Tasks[0].Target.Metric.Should().Be(TaskMetric.Read, lesson.Key);
+            }
+
+            if (lesson.Tasks.Any(t => t.Key == "vocab-due"))
+            {
+                lesson.Tasks[^1].Key.Should().Be("vocab-due", lesson.Key);
+            }
+
+            reading.Select(t => t.Key).Should().OnlyHaveUniqueItems(lesson.Key);
+        }
+    }
+
     [Theory]
     [InlineData("level1-1", 100)]
     [InlineData("level1-8", 800)]
@@ -56,17 +157,22 @@ public sealed class RoadmapTests
         block.Tasks.Should().Contain(t => t.Target.Metric == TaskMetric.WordsStudied && t.Target.Count == words);
     }
 
-    [Fact]
-    public void Level1Blocks_IntroduceOneGrammarTopicEach_ThenMix()
+    [Theory]
+    [InlineData(PlanStage.Level1, "level1", Roadmap.Level1Blocks)]
+    [InlineData(PlanStage.Level2, "level2", Roadmap.Level2Blocks)]
+    public void LevelBlocks_IntroduceEveryStageTopicInOrder_OneOrTwoPerBlock(PlanStage stage, string prefix, int blocks)
     {
-        var topics = GrammarCatalog.Topics.Where(t => t.Stage == PlanStage.Level1).Select(t => t.Type).ToList();
+        var topics = GrammarCatalog.Topics.Where(t => t.Stage == stage).Select(t => t.Type).ToList();
 
-        var perBlock = Enumerable.Range(1, Roadmap.Level1Blocks)
-            .Select(k => _roadmap.Find($"level1-{k}")!.Tasks.Single(t => t.Key == "grammar").Target.ExerciseType)
+        var perBlock = Enumerable.Range(1, blocks)
+            .Select(k => _roadmap.Find($"{prefix}-{k}")!.Tasks
+                .Where(t => t.Target.Module == StudyModule.Grammar)
+                .ToList())
             .ToList();
 
-        perBlock.Take(topics.Count).Should().Equal(topics);
-        perBlock.Skip(topics.Count).Should().AllSatisfy(type => type.Should().BeNull("later blocks mix all topics"));
+        perBlock.Should().AllSatisfy(tasks => tasks.Count.Should().BeInRange(1, 2));
+        perBlock.Should().AllSatisfy(tasks => tasks[0].Key.Should().Be("grammar"));
+        perBlock.SelectMany(tasks => tasks).Select(t => t.Target.ExerciseType).Should().Equal(topics);
     }
 
     [Fact]
@@ -75,9 +181,12 @@ public sealed class RoadmapTests
         _roadmap.GrammarUnlocked(_roadmap.Find("lesson-4")!).Should().BeEmpty();
         _roadmap.GrammarUnlocked(_roadmap.Find("lesson-6")!).Select(t => t.Type)
             .Should().Equal(ExerciseTypes.Copula, ExerciseTypes.NegativeCopula);
+        _roadmap.GrammarUnlocked(_roadmap.Find("level1-1")!).Select(t => t.Type)
+            .Should().Contain([ExerciseTypes.TopicParticle, ExerciseTypes.SubjectParticle])
+            .And.NotContain(ExerciseTypes.ObjectParticle);
         _roadmap.GrammarUnlocked(_roadmap.Find("level1-2")!).Select(t => t.Type)
-            .Should().Contain([ExerciseTypes.TopicParticle, ExerciseTypes.SubjectParticle, ExerciseTypes.ObjectParticle])
-            .And.NotContain(ExerciseTypes.PolitePresent);
+            .Should().Contain([ExerciseTypes.ObjectParticle, ExerciseTypes.PolitePresent])
+            .And.NotContain(ExerciseTypes.Past);
         _roadmap.GrammarUnlocked(_roadmap.Steps[^1]).Should().HaveCount(GrammarCatalog.Topics.Count);
     }
 

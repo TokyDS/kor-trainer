@@ -31,6 +31,45 @@ public enum Ending
 
     /// <summary>-아/어야 해요: "must".</summary>
     Must,
+
+    /// <summary>-(으)ㄹ 거예요: future / assumption.</summary>
+    Future,
+
+    /// <summary>-(으)ㄹ게요: "I will" (a promise to the listener).</summary>
+    Intention,
+
+    /// <summary>-(으)ㄹ까요?: "shall we?".</summary>
+    LetUs,
+
+    /// <summary>안 + -아/어요: short negation.</summary>
+    Not,
+
+    /// <summary>못 + -아/어요: "cannot".</summary>
+    Cannot,
+
+    /// <summary>-지 않아요: long negation.</summary>
+    NotJi,
+
+    /// <summary>-(으)세요: honorific present and polite request.</summary>
+    Please,
+
+    /// <summary>-아/어 주세요: "please do it for me".</summary>
+    ForMe,
+
+    /// <summary>-고 있어요: an action in progress.</summary>
+    Progressive,
+
+    /// <summary>-지만: "but".</summary>
+    But,
+
+    /// <summary>-(으)면: "if / when".</summary>
+    If,
+
+    /// <summary>-(으)러 가요: "go in order to".</summary>
+    Purpose,
+
+    /// <summary>-기 때문에: "because" (written style).</summary>
+    BecauseGi,
 }
 
 public sealed record Conjugation(string Form, string Explanation);
@@ -39,9 +78,22 @@ public sealed record Conjugation(string Form, string Explanation);
 /// Conjugates verbs and adjectives from their dictionary form (가다, 먹다, 듣다 …) by rule.
 /// Irregular classes cannot be detected from spelling and are passed in from the deck.
 /// </summary>
-public static class Conjugator
+public static partial class Conjugator
 {
     private const string BrightVowels = "ㅏㅑㅗ";
+
+    // Native one-syllable nouns + 하다 that still split: 일 안 해요, 말 안 해요.
+    private static readonly HashSet<string> SplitOneSyllableRoots = ["일", "말", "밥", "욕", "짐"];
+
+    // Vowels whose merge with 아/어 is optional in standard spelling (바꾸어요 = 바꿔요).
+    private const string OptionalContraction = "ㅗㅜㅣㅚㅐㅔ";
+
+    // Verbs whose honorific is a different word: 먹다 → 드시다, 자다 → 주무시다, 있다 → 계시다.
+    private static readonly Dictionary<string, string> HonorificStems = new()
+    {
+        ["먹"] = "드",
+        ["자"] = "주무",
+    };
 
     public static string Stem(string dictionaryForm)
     {
@@ -67,68 +119,22 @@ public static class Conjugator
             Ending.SoThat => Aeo(stem, irregularity, "서", "-아서/어서"),
             Ending.Must => Aeo(stem, irregularity, "야 해요", "-아/어야 하다"),
             Ending.Because => EuForm(stem, irregularity, "니까", "-(으)니까"),
-            Ending.Can => Can(stem, irregularity),
+            Ending.Can => Attributive(stem, irregularity, " 수 있어요", "-(으)ㄹ 수 있어요"),
+            Ending.Future => Attributive(stem, irregularity, " 거예요", "-(으)ㄹ 거예요"),
+            Ending.Intention => Attributive(stem, irregularity, "게요", "-(으)ㄹ게요 (пишется 게, читается [께])"),
+            Ending.LetUs => Attributive(stem, irregularity, "까요", "-(으)ㄹ까요"),
+            Ending.Not => Negate(stem, irregularity, "안"),
+            Ending.Cannot => Negate(stem, irregularity, "못"),
+            Ending.NotJi => new(stem + "지 않아요", $"-지 않다 присоединяется к основе {stem} без изменений, даже у неправильных глаголов: {stem}지 않아요."),
+            Ending.Please => Honorific(stem, irregularity),
+            Ending.ForMe => Aeo(stem, irregularity, " 주세요", "-아/어 주세요"),
+            Ending.Progressive => new(stem + "고 있어요", $"-고 있다 присоединяется к основе {stem} без изменений: {stem}고 있어요."),
+            Ending.But => new(stem + "지만", $"-지만 присоединяется к основе {stem} без изменений: {stem}지만."),
+            Ending.If => EuForm(stem, irregularity, "면", "-(으)면"),
+            Ending.Purpose => EuForm(stem, irregularity, "러 가요", "-(으)러 가다"),
+            Ending.BecauseGi => new(stem + "기 때문에", $"-기 때문에 присоединяется к основе {stem} без изменений: {stem}기 때문에."),
             _ => throw new ArgumentOutOfRangeException(nameof(ending), ending, null),
         };
-    }
-
-    /// <summary>
-    /// Plausible wrong forms a learner produces: wrong vowel harmony, no contraction,
-    /// ignoring (or wrongly applying) an irregular class, wrong 으 insertion.
-    /// </summary>
-    public static IReadOnlyList<string> CommonMistakes(string verb, Ending ending, Irregularity irregularity = Irregularity.None)
-    {
-        string stem = Stem(verb);
-        string correct = Conjugate(verb, ending, irregularity).Form;
-        var swappedIrregularity = irregularity == Irregularity.None ? GuessIrregularity(stem) : Irregularity.None;
-        var mistakes = new List<string>();
-
-        string? suffix = ending switch
-        {
-            Ending.PolitePresent => "요",
-            Ending.SoThat => "서",
-            Ending.Must => "야 해요",
-            _ => null,
-        };
-
-        if (suffix is not null)
-        {
-            mistakes.Add(RawAeo(stem, bright: !IsBright(stem)) + suffix);
-            mistakes.Add(RawAeo(stem, IsBright(stem)) + suffix);
-            mistakes.Add(SafeAeo(stem, swappedIrregularity) + suffix);
-        }
-        else if (ending == Ending.PolitePast)
-        {
-            mistakes.Add(PastOf(RawAeo(stem, !IsBright(stem))));
-            mistakes.Add(PastOf(RawAeo(stem, IsBright(stem))));
-            mistakes.Add(PastOf(SafeAeo(stem, swappedIrregularity)));
-            mistakes.Add(SafeAeo(stem, irregularity) + "요");
-        }
-        else if (ending == Ending.FormalPresent)
-        {
-            mistakes.Add(stem + "습니다");
-            mistakes.Add(stem + "읍니다");
-            mistakes.Add(WithFinal(stem, 'ㅂ') is { } b ? b + "니다" : stem + "ㅂ니다");
-        }
-        else if (ending is Ending.Because or Ending.Can)
-        {
-            mistakes.Add(ending == Ending.Because ? stem + "으니까" : stem + "을 수 있어요");
-            mistakes.Add(ending == Ending.Because ? stem + "니까" : (WithFinal(stem, 'ㄹ') ?? stem) + " 수 있어요");
-            mistakes.Add(Conjugate(verb, ending, swappedIrregularity).Form);
-
-            // Over-using the -아/어 form or the present attributive -는 is the other classic slip.
-            string aeo = SafeAeo(stem, irregularity);
-            mistakes.Add(ending == Ending.Because ? aeo + "서니까" : aeo + " 수 있어요");
-            mistakes.Add(ending == Ending.Because ? stem + "는니까" : stem + "는 수 있어요");
-        }
-        else
-        {
-            mistakes.Add(RawAeo(stem, IsBright(stem)) + (ending == Ending.Want ? "고 싶어요" : "고"));
-            mistakes.Add(stem + (ending == Ending.Want ? "으고 싶어요" : "으고"));
-            mistakes.Add(stem + (ending == Ending.Want ? "고 싶다요" : "구"));
-        }
-
-        return mistakes.Where(m => m != correct).Distinct().ToList();
     }
 
     public static string EndingLabel(Ending ending) => ending switch
@@ -142,6 +148,19 @@ public static class Conjugator
         Ending.Want => "-고 싶어요 «хочу»",
         Ending.Can => "-(으)ㄹ 수 있어요 «могу»",
         Ending.Must => "-아/어야 해요 «нужно»",
+        Ending.Future => "будущее -(으)ㄹ 거예요",
+        Ending.Intention => "-(으)ㄹ게요 «я сделаю (обещаю)»",
+        Ending.LetUs => "-(으)ㄹ까요? «давайте …?»",
+        Ending.Not => "отрицание 안 «не»",
+        Ending.Cannot => "отрицание 못 «не могу»",
+        Ending.NotJi => "отрицание -지 않아요",
+        Ending.Please => "уважительное -(으)세요",
+        Ending.ForMe => "просьба -아/어 주세요",
+        Ending.Progressive => "-고 있어요 «сейчас делаю»",
+        Ending.But => "-지만 «но»",
+        Ending.If => "-(으)면 «если»",
+        Ending.Purpose => "-(으)러 가요 «иду, чтобы …»",
+        Ending.BecauseGi => "-기 때문에 «из-за того, что»",
         _ => ending.ToString(),
     };
 
@@ -182,6 +201,7 @@ public static class Conjugator
         return new(vowelForm, $"Основа {stem} оканчивается на гласную → ㅂ становится патчимом последнего слога + 니다: {vowelForm}.");
     }
 
+    /// <summary>Endings with 으 after a consonant: -(으)니까, -(으)세요, -(으)면, -(으)러.</summary>
     private static Conjugation EuForm(string stem, Irregularity irregularity, string ending, string label)
     {
         var last = Syllable.Decompose(stem[^1]);
@@ -192,18 +212,35 @@ public static class Conjugator
             (Irregularity.Digeut, 'ㄷ') => (head + last.WithFinal('ㄹ') + "으" + ending, "ㄷ-неправильный: ㄷ → ㄹ перед гласной"),
             (Irregularity.Siot, 'ㅅ') => (head + last.WithFinal(null) + "으" + ending, "ㅅ-неправильный: ㅅ выпадает"),
             (Irregularity.Hieut, 'ㅎ') => (head + last.WithFinal(null) + ending, "ㅎ-неправильный: ㅎ выпадает"),
-            (_, 'ㄹ') => (head + last.WithFinal(null) + ending, "основа на ㄹ: ㄹ выпадает перед ㄴ, 으 не нужен"),
+            (_, 'ㄹ') when DropsRieul(ending) => (head + last.WithFinal(null) + ending,
+                $"основа на ㄹ: ㄹ выпадает перед {Syllable.Decompose(ending[0]).Initial}, 으 не нужен"),
+            (_, 'ㄹ') => (stem + ending, "основа на ㄹ: 으 не нужен, ㄹ остаётся"),
             (_, null) => (stem + ending, "основа на гласную: без 으"),
             _ => (stem + "으" + ending, "основа на согласную: вставляется 으"),
         };
         return new(form, $"{label}: {rule} → {form}.");
     }
 
-    private static Conjugation Can(string stem, Irregularity irregularity)
+    // ㄹ drops before ㄴ, ㅂ and ㅅ (사니까, 사세요) but stays before other sounds (살면, 놀러).
+    private static bool DropsRieul(string ending) => Syllable.Decompose(ending[0]).Initial is 'ㄴ' or 'ㅂ' or 'ㅅ';
+
+    private static Conjugation Honorific(string stem, Irregularity irregularity)
+    {
+        if (HonorificStems.TryGetValue(stem, out string? special))
+        {
+            string form = special + "세요";
+            return new(form, $"У глагола {stem}다 есть особая уважительная форма {special}시다 → {form}. Форма {EuForm(stem, irregularity, "세요", string.Empty).Form} менее вежлива.");
+        }
+
+        return EuForm(stem, irregularity, "세요", "-(으)세요 (уважительный суффикс -(으)시- + 어요)");
+    }
+
+    /// <summary>The future attributive -(으)ㄹ: 갈, 먹을, 들을, 도울, 만들.</summary>
+    private static (string Form, string Rule) AttributiveOf(string stem, Irregularity irregularity)
     {
         var last = Syllable.Decompose(stem[^1]);
         string head = stem[..^1];
-        var (attributive, rule) = (irregularity, last.Final) switch
+        return (irregularity, last.Final) switch
         {
             (Irregularity.Bieup, 'ㅂ') => (head + last.WithFinal(null) + "울", "ㅂ-неправильный: ㅂ → 우 + ㄹ"),
             (Irregularity.Digeut, 'ㄷ') => (head + last.WithFinal('ㄹ') + "을", "ㄷ-неправильный: ㄷ → ㄹ + 을"),
@@ -213,8 +250,51 @@ public static class Conjugator
             (_, null) => (head + last.WithFinal('ㄹ'), "основа на гласную: ㄹ становится патчимом"),
             _ => (stem + "을", "основа на согласную: + 을"),
         };
-        string form = attributive + " 수 있어요";
-        return new(form, $"-(으)ㄹ 수 있어요: {rule} → {form}.");
+    }
+
+    private static Conjugation Attributive(string stem, Irregularity irregularity, string tail, string label)
+    {
+        var (attributive, rule) = AttributiveOf(stem, irregularity);
+        string form = attributive + tail;
+        return new(form, $"{label}: {rule} → {form}.");
+    }
+
+    /// <summary>안/못 go before the verb, but between the noun and 하다 in 공부하다 → 공부 안 해요.</summary>
+    private static Conjugation Negate(string stem, Irregularity irregularity, string adverb)
+    {
+        string meaning = adverb == "안" ? "«не»" : "«не могу»";
+        if (IsNounHada(stem))
+        {
+            string form = $"{stem[..^1]} {adverb} 해요";
+            return new(form, $"{adverb} {meaning}: в глаголах «существительное + 하다» {adverb} встаёт перед 하다 → {form}.");
+        }
+
+        var (aeo, rule) = AeoWithRule(stem, irregularity);
+        string result = $"{adverb} {aeo}요";
+        return new(result, $"{adverb} {meaning} ставится перед глаголом в форме -아/어요: {rule} → {result}.");
+    }
+
+    /// <summary>
+    /// 공부하다, 운동하다, 일하다 split around 안/못; 하다 itself, one-syllable Sino roots (원하다, 피하다),
+    /// -아/어하다 feelings (좋아하다, 미워하다, 기뻐하다) and -이하다 (같이하다, 맞이하다) do not.
+    /// </summary>
+    private static bool IsNounHada(string stem)
+    {
+        if (stem.Length < 2 || stem[^1] != '하')
+        {
+            return false;
+        }
+
+        string root = stem[..^1];
+        if (root.Length == 1)
+        {
+            return SplitOneSyllableRoots.Contains(root);
+        }
+
+        var before = Syllable.Decompose(root[^1]);
+        bool aeoForm = !before.HasFinal && before.Medial is 'ㅏ' or 'ㅓ' or 'ㅝ';
+        bool iForm = !before.HasFinal && before.Initial == 'ㅇ' && before.Medial == 'ㅣ';
+        return !aeoForm && !iForm;
     }
 
     /// <summary>The -아/어 form (가, 먹어, 해, 마셔 …) — the base of -아요, -아서, -았어요 and -아야.</summary>

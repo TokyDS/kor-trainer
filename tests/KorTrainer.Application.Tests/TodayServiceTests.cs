@@ -64,16 +64,84 @@ public sealed class TodayServiceTests
     public async Task AllTasksDone_OffersTheNextStep()
     {
         await using var t = await TestDatabase.CreateAsync();
-        var step = (await t.Today.GetTodayAsync(Ct)).Step;
 
-        foreach (var task in step.Tasks)
-        {
-            await t.Today.SetTaskDoneAsync(task.Key, new SetTaskDoneRequest(step.Key, true), Ct);
-        }
+        await DoLessonOneAsync(t);
 
         var today = await t.Today.GetTodayAsync(Ct);
         today.ReadyForNext.Should().BeTrue();
         today.Step.NextTitle.Should().Contain("Урок 2");
+    }
+
+    [Fact]
+    public async Task LessonTasks_OpenOneAfterAnother()
+    {
+        await using var t = await TestDatabase.CreateAsync();
+
+        var fresh = (await t.Today.GetTodayAsync(Ct)).Step.Tasks;
+        await t.Today.MarkReadAsync(new MarkReadRequest(StudyMaterials.HangulGuide(1)), Ct);
+        var afterGuide = (await t.Today.GetTodayAsync(Ct)).Step.Tasks;
+
+        fresh.Select(x => x.IsLocked).Should().Equal(false, true, true, true, true, true);
+        afterGuide.Select(x => x.IsLocked).Should().Equal(false, false, true, true, true, true);
+    }
+
+    [Fact]
+    public async Task LessonTask_PractisedOutOfOrder_StaysOpen()
+    {
+        await using var t = await TestDatabase.CreateAsync();
+        await t.SetPlanStepAsync("lesson-5");
+
+        await t.Activity.RecordAttemptsAsync(
+            [new AttemptDto(StudyModule.Grammar, ExerciseTypes.Copula, "copula:책", true, 1500)], Ct);
+        var tasks = (await t.Today.GetTodayAsync(Ct)).Step.Tasks;
+
+        tasks.Single(x => x.Key == ExerciseTypes.Copula).IsLocked.Should().BeFalse();
+        tasks.Single(x => x.Key == "rule").IsLocked.Should().BeTrue("the new words come first");
+        tasks[0].Key.Should().Be("vocab-new");
+        tasks[0].IsLocked.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task BlockTasks_AreNeverLocked()
+    {
+        await using var t = await TestDatabase.CreateAsync();
+        await t.SetPlanStepAsync("level1-1");
+
+        (await t.Today.GetTodayAsync(Ct)).Step.Tasks.Should().OnlyContain(x => !x.IsLocked);
+    }
+
+    [Fact]
+    public async Task MarkRead_CompletesTheRuleOfTheCurrentLesson()
+    {
+        await using var t = await TestDatabase.CreateAsync();
+        await t.SetPlanStepAsync("lesson-5");
+
+        await t.Today.MarkReadAsync(new MarkReadRequest(StudyMaterials.GrammarRule(ExerciseTypes.Copula)), Ct);
+        var rule = (await t.Today.GetTodayAsync(Ct)).Step.Tasks.Single(x => x.Key == "rule");
+
+        rule.IsDone.Should().BeTrue();
+        rule.IsReading.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task MarkRead_OfSomethingTheStepDoesNotAsk_ChangesNothing()
+    {
+        await using var t = await TestDatabase.CreateAsync();
+
+        await t.Today.MarkReadAsync(new MarkReadRequest(StudyMaterials.GrammarRule(ExerciseTypes.Copula)), Ct);
+        await t.Today.MarkReadAsync(new MarkReadRequest(StudyMaterials.HangulGuide(2)), Ct);
+
+        (await t.Today.GetTodayAsync(Ct)).Step.Tasks.Should().OnlyContain(x => !x.IsDone);
+    }
+
+    [Fact]
+    public async Task MarkRead_WithoutAMaterial_IsRejected()
+    {
+        await using var t = await TestDatabase.CreateAsync();
+
+        var act = () => t.Today.MarkReadAsync(new MarkReadRequest(" "), Ct);
+
+        await act.Should().ThrowAsync<ValidationFailedException>();
     }
 
     [Fact]
@@ -137,37 +205,19 @@ public sealed class TodayServiceTests
         await using var t = await TestDatabase.CreateAsync();
 
         var preview = await t.Today.GetStepAsync("level1-2", Ct);
-        var tick = () => t.Today.SetTaskDoneAsync("words", new SetTaskDoneRequest("level1-2", true), Ct);
 
         preview.Step.State.Should().Be(StepState.Upcoming);
         preview.IsCurrent.Should().BeFalse();
         preview.CurrentKey.Should().Be("lesson-1");
         preview.Step.Tasks.Should().OnlyContain(task => task.Progress == 0);
-        await tick.Should().ThrowAsync<ValidationFailedException>();
     }
 
     [Fact]
-    public async Task UnknownStepOrTask_IsNotFound()
+    public async Task UnknownStep_IsNotFound()
     {
         await using var t = await TestDatabase.CreateAsync();
 
         await FluentActions.Awaiting(() => t.Today.GetStepAsync("day-42", Ct)).Should().ThrowAsync<NotFoundException>();
-        await FluentActions.Awaiting(() => t.Today.SetTaskDoneAsync("nope", new SetTaskDoneRequest("lesson-1", true), Ct))
-            .Should().ThrowAsync<NotFoundException>();
-    }
-
-    [Fact]
-    public async Task SetTaskDone_TicksAndUnticks()
-    {
-        await using var t = await TestDatabase.CreateAsync();
-
-        await t.Today.SetTaskDoneAsync("guide", new SetTaskDoneRequest("lesson-1", true), Ct);
-        var ticked = await t.Today.GetTodayAsync(Ct);
-        await t.Today.SetTaskDoneAsync("guide", new SetTaskDoneRequest("lesson-1", false), Ct);
-        var unticked = await t.Today.GetTodayAsync(Ct);
-
-        ticked.Step.Tasks.Single(x => x.Key == "guide").IsDone.Should().BeTrue();
-        unticked.Step.Tasks.Single(x => x.Key == "guide").IsDone.Should().BeFalse();
     }
 
     [Fact]
@@ -258,17 +308,28 @@ public sealed class TodayServiceTests
     }
 
     [Fact]
-    public async Task TickingTwice_StaysTicked()
+    public async Task ReadingTwice_StaysDone()
     {
         await using var t = await TestDatabase.CreateAsync();
 
-        await t.Today.SetTaskDoneAsync("guide", new SetTaskDoneRequest("lesson-1", true), Ct);
-        await t.Today.SetTaskDoneAsync("guide", new SetTaskDoneRequest("lesson-1", true), Ct);
+        await t.Today.MarkReadAsync(new MarkReadRequest(StudyMaterials.HangulGuide(1)), Ct);
+        await t.Today.MarkReadAsync(new MarkReadRequest(StudyMaterials.HangulGuide(1)), Ct);
 
         (await t.Today.GetTodayAsync(Ct)).Step.Tasks.Single(x => x.Key == "guide").IsDone.Should().BeTrue();
     }
 
-        private static List<AttemptDto> LetterAnswers(int count) => Answers(ExerciseTypes.LetterToSound, count);
+    private static List<AttemptDto> LetterAnswers(int count) => Answers(ExerciseTypes.LetterToSound, count);
+
+    private static async Task DoLessonOneAsync(TestDatabase t)
+    {
+        await t.Today.MarkReadAsync(new MarkReadRequest(StudyMaterials.HangulGuide(1)), Ct);
+        await t.Activity.RecordAttemptsAsync(
+            [.. LetterAnswers(20), .. Answers(ExerciseTypes.SoundToLetter, 20), .. Answers(ExerciseTypes.Compose, 15), .. Answers(ExerciseTypes.Decompose, 15)], Ct);
+        for (int i = 0; i < 10; i++)
+        {
+            await t.Activity.RecordReadingTrialAsync(new ReadingTrialDto("가나", 2, 1500, true), Ct);
+        }
+    }
 
     private static List<AttemptDto> Answers(string type, int count) =>
         [.. Enumerable.Range(0, count).Select(i => new AttemptDto(StudyModule.Hangul, type, $"{type}:{i}", true, 1500))];

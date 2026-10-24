@@ -26,6 +26,7 @@ public static class DependencyInjection
         AddAudio(services);
         services.AddSingleton<IHanjaGlossary, EmbeddedHanjaGlossary>();
         services.AddSingleton<ISentenceLibrary, EmbeddedSentenceLibrary>();
+        services.AddSingleton<IGrammarSentenceLibrary, EmbeddedGrammarSentenceLibrary>();
         services.AddSingleton<ITextLibrary, EmbeddedTextLibrary>();
         services.AddSingleton<ITopikItemBank, EmbeddedTopikItemBank>();
         services.AddSingleton<IWordIndexProvider, BundledWordIndex>();
@@ -43,6 +44,7 @@ public static class DependencyInjection
         services.AddSingleton<LinguaLibreAudioLibrary>();
         services.AddSingleton<IAudioLibrary>(sp => sp.GetRequiredService<LinguaLibreAudioLibrary>());
         services.AddHostedService<AudioPrefetchService>();
+        services.AddSingleton<ISynthesizedSpeech, SynthesizedSpeechDirectory>();
     }
 
     private static void EnsureDataDirectory(string connectionString)

@@ -94,12 +94,14 @@ function stopRecording() {
  * @param {string} url
  * @returns {Promise<boolean>}
  */
-export function playRecording(url) {
+export function playRecording(url, rate = 1) {
     if ('speechSynthesis' in window) {
         window.speechSynthesis.cancel();
     }
     stopRecording();
     const audio = new Audio(url);
+    // Slower playback keeps the pitch (preservesPitch is on by default).
+    audio.playbackRate = rate;
     player = audio;
     return new Promise(resolve => {
         const timer = setTimeout(() => resolve(false), AUDIO_START_TIMEOUT_MS);
@@ -117,13 +119,13 @@ let recordingObjectUrl = null;
  * @param {string} contentType
  * @returns {Promise<boolean>}
  */
-export async function playRecordingData(streamRef, contentType) {
+export async function playRecordingData(streamRef, contentType, rate = 1) {
     const bytes = await streamRef.arrayBuffer();
     if (recordingObjectUrl) {
         URL.revokeObjectURL(recordingObjectUrl);
     }
     recordingObjectUrl = URL.createObjectURL(new Blob([bytes], { type: contentType }));
-    return playRecording(recordingObjectUrl);
+    return playRecording(recordingObjectUrl, rate);
 }
 
 /** Stops a recording, e.g. before the app speaks through the system voice. */
@@ -313,6 +315,12 @@ export function applyTheme(theme) {
     } catch {
         // Storage can be unavailable (private mode); the theme still applies for this visit.
     }
+}
+
+/** Brings an element into view, centred; instantly when the learner prefers reduced motion. */
+export function scrollToElement(element) {
+    const smooth = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    element?.scrollIntoView({ block: 'center', behavior: smooth ? 'smooth' : 'auto' });
 }
 
 export function blurActive() {

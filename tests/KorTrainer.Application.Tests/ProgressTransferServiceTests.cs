@@ -2,6 +2,7 @@ using AwesomeAssertions;
 using KorTrainer.Application.Common;
 using KorTrainer.Contracts;
 using KorTrainer.Domain.Common;
+using KorTrainer.Domain.Plan;
 using KorTrainer.Domain.Srs;
 using Microsoft.EntityFrameworkCore;
 
@@ -118,7 +119,7 @@ public sealed class ProgressTransferServiceTests
         await using var source = await TestDatabase.CreateAsync();
         await source.Today.AdvanceAsync(new AdvanceRequest("lesson-1"), Ct);
         await source.Today.AdvanceAsync(new AdvanceRequest("lesson-2"), Ct);
-        await source.Today.SetTaskDoneAsync("guide", new SetTaskDoneRequest("lesson-3", true), Ct);
+        await source.Today.MarkReadAsync(new MarkReadRequest(StudyMaterials.HangulGuide(3)), Ct);
         var snapshot = await source.Progress.ExportAsync(Ct);
 
         await using var target = await TestDatabase.CreateAsync();

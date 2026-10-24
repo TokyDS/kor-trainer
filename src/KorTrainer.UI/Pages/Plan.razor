@@ -12,24 +12,7 @@
 
 @if (_plan is { } plan)
 {
-    <ol class="timeline">
-        @foreach (var stage in plan.Stages)
-        {
-            bool isCurrent = plan.Steps.Any(s => s.Stage == stage.Stage && s.State == StepState.Current);
-            <li class="@(isCurrent ? "current" : string.Empty)">
-                <span class="timeline-dates">@StageProgress(stage)</span>
-                <strong>@stage.Title</strong>
-                <span class="muted">@stage.Goal</span>
-                <div class="step-dots" aria-label="Шаги этапа">
-                    @foreach (var step in plan.Steps.Where(s => s.Stage == stage.Stage))
-                    {
-                        <a class="step-dot @step.State.ToString().ToLowerInvariant()" href="@(step.Key == plan.CurrentKey ? "/" : $"/?step={step.Key}")"
-                           title="@step.Title">@(step.State == StepState.Done ? "✓" : step.Number.ToString())</a>
-                    }
-                </div>
-            </li>
-        }
-    </ol>
+    <PathMap Plan="plan" />
 
     <h2>Уроки 1–10</h2>
     <div class="lesson-list">
@@ -53,9 +36,6 @@
     private string? _error;
 
     protected override Task OnInitializedAsync() => LoadAsync();
-
-    private static string StageProgress(StageDto stage) =>
-        stage.DoneCount == stage.StepCount ? "пройдено" : $"{stage.DoneCount} из {stage.StepCount}";
 
     private async Task LoadAsync()
     {

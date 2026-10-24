@@ -52,6 +52,24 @@
         </div>
     </header>
 
+    @if (today.IsCurrent)
+    {
+        <a class="quick-start" href="/quick">
+            <span class="quick-glyph" aria-hidden="true">10′</span>
+            <span class="quick-text">
+                <strong>10 минут</strong>
+                <span>Повторить слова и сделать упражнения шага — одной кнопкой</span>
+            </span>
+        </a>
+        @if (_mistakes is { Due: > 0 } mistakes)
+        {
+            <a class="mistakes-link" href="/mistakes">
+                <span>Работа над ошибками</span>
+                <span class="badge">@mistakes.Due</span>
+            </a>
+        }
+    }
+
     @if (today.ReadyForNext)
     {
         <div class="notice success step-done" role="status">
@@ -67,18 +85,22 @@
                 <h2 id="tasks-heading">Задачи шага</h2>
                 <span class="muted">@step.Tasks.Count(t => t.IsDone) из @step.Tasks.Count</span>
             </div>
-            <p class="muted small">Делайте в своём темпе: прогресс копится, пока шаг открыт, хоть за один вечер, хоть за неделю.</p>
-            <ul class="task-list">
+            <p class="muted small">
+                Делайте в своём темпе: прогресс копится, пока шаг открыт, хоть за один вечер, хоть за неделю.
+                @if (step.Lesson is not null)
+                {
+                    <span>Пункты урока открываются по очереди.</span>
+                }
+            </p>
+            <ol class="task-list">
                 @foreach (var task in step.Tasks)
                 {
-                    <li class="task @(task.IsDone ? "done" : string.Empty)">
-                        <button type="button" class="check" role="checkbox" aria-checked="@task.IsDone.ToString().ToLowerInvariant()"
-                                aria-label="Отметить вручную" disabled="@(_saving || step.State == StepState.Upcoming)" @onclick="() => ToggleAsync(task)">
-                            @(task.IsDone ? "✓" : string.Empty)
-                        </button>
+                    <li class="task @(task.IsDone ? "done" : string.Empty) @(task.IsLocked ? "locked" : string.Empty)">
+                        <span class="check" aria-hidden="true">@(task.IsDone ? "✓" : string.Empty)</span>
                         <div class="task-body">
                             <span class="task-title">@task.Title</span>
-                            @if (!task.IsManualOnly && task.Target > 0)
+                            <span class="visually-hidden">@(task.IsDone ? "выполнено" : task.IsLocked ? "откроется после предыдущих" : "не выполнено")</span>
+                            @if (!task.IsReading && task.Target > 0)
                             {
                                 <span class="task-progress">
                                     <span class="progress-track small"><span class="progress-fill" style="width: @(task.Progress * 100 / task.Target)%"></span></span>
@@ -86,13 +108,19 @@
                                 </span>
                             }
                         </div>
-                        @if (task.Route is not null)
+                        @if (task.IsLocked)
                         {
-                            <a class="btn small" href="@task.Route">@(task.IsDone ? "Ещё" : "Начать")</a>
+                            <span class="task-lock muted small">после предыдущих</span>
+                        }
+                        else if (task.Route is not null)
+                        {
+                            <a class="btn small @(task.IsDone ? string.Empty : "primary")" href="@task.Route">
+                                @(task.IsDone ? (task.IsReading ? "Перечитать" : "Ещё") : task.IsReading ? "Читать" : "Начать")
+                            </a>
                         }
                     </li>
                 }
-            </ul>
+            </ol>
 
             @if (today.IsCurrent && !today.ReadyForNext && step.NextKey is not null)
             {
@@ -159,6 +187,7 @@
 
     private TodayDto? _today;
     private ReminderDto? _reminder;
+    private MistakeSummaryDto? _mistakes;
     private string? _error;
     private string? _saveError;
     private bool _saving;
@@ -181,6 +210,7 @@
             _today = await Api.GetTodayAsync(StepParameter);
             // Evening nudge, mirroring the desktop and phone reminders.
             _reminder = _today.IsCurrent && DateTime.Now.Hour >= ReminderHour ? await Api.GetReminderAsync() : null;
+            _mistakes = _today.IsCurrent ? await Api.GetMistakeSummaryAsync() : null;
         }
         catch (Exception ex) when (ex is ApiException or HttpRequestException)
         {
@@ -200,21 +230,6 @@
             _today = await Api.AdvanceAsync(_today.Step.Key);
             _confirmSkip = false;
             Navigation.NavigateTo("/");
-        });
-    }
-
-    private async Task ToggleAsync(PlanTaskDto task)
-    {
-        if (_today is null)
-        {
-            return;
-        }
-
-        var step = _today.Step.Key;
-        await SaveAsync(async () =>
-        {
-            await Api.SetTaskDoneAsync(task.Key, step, !task.IsDone);
-            _today = await Api.GetTodayAsync(StepParameter);
         });
     }
 

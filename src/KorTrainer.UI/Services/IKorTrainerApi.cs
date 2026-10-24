@@ -30,9 +30,11 @@ public interface IKorTrainerApi
 
     Task<PlanDto> GetPlanAsync();
 
-    Task SetTaskDoneAsync(string taskKey, string step, bool done);
+    /// <summary>The learner read a rule, lesson notes or a guide to the end (an id from <see cref="StudyMaterials"/>).</summary>
+    Task MarkReadAsync(string material);
 
-    Task<ExerciseSetDto> GetHangulExercisesAsync(string type, int level, int count);
+    /// <param name="focus">For the consonant series: one consonant of the row to drill (ㄷ).</param>
+    Task<ExerciseSetDto> GetHangulExercisesAsync(string type, int level, int count, string? focus = null);
 
     Task<IReadOnlyList<ReadingItemDto>> GetReadingAsync(int level, int count);
 
@@ -107,6 +109,12 @@ public interface IKorTrainerApi
     Task<bool> AddWordToStudyAsync(int wordId);
 
     Task<ExerciseSetDto> GetTopikReadingAsync(string format, int count);
+
+    Task<MistakeSummaryDto> GetMistakeSummaryAsync();
+
+    Task<ExerciseSetDto> GetMistakesAsync(int count);
+
+    Task<IReadOnlyList<WeakTopicDto>> GetWeakTopicsAsync();
 
     Task<ImportResultDto> ImportProgressAsync(Stream json, CancellationToken cancellationToken);
 }

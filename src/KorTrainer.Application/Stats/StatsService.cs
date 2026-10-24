@@ -1,8 +1,11 @@
 using KorTrainer.Application.Common;
+using KorTrainer.Application.Hangul;
+using KorTrainer.Application.Numbers;
 using KorTrainer.Application.Settings;
 using KorTrainer.Application.Vocabulary;
 using KorTrainer.Contracts;
 using KorTrainer.Domain.Common;
+using KorTrainer.Domain.Grammar;
 using KorTrainer.Domain.Plan;
 using KorTrainer.Domain.Srs;
 using Microsoft.EntityFrameworkCore;
@@ -68,6 +71,44 @@ public sealed class StatsService(IAppDbContext db, SettingsService settingsServi
             readingSyllables > 0 ? Math.Round((double)readingMs / readingSyllables) : null,
             await db.WritingDrafts.CountAsync(cancellationToken));
     }
+
+    /// <summary>Topics answered worst over the last month (see <see cref="WeakTopics"/>), with a link to drill each.</summary>
+    public async Task<IReadOnlyList<WeakTopicDto>> GetWeakTopicsAsync(CancellationToken cancellationToken)
+    {
+        var settings = await settingsService.GetEntityAsync(cancellationToken);
+        var from = clock.Today(settings).AddDays(1 - WeakTopics.Days);
+        var modules = WeakTopics.Modules.ToList();
+        var tallies = await db.ExerciseAttempts
+            .Where(a => a.LocalDate >= from && modules.Contains(a.Module))
+            .GroupBy(a => new { a.Module, a.ExerciseType })
+            .Select(g => new TopicTally(g.Key.Module, g.Key.ExerciseType, g.Count(), g.Count(a => a.IsCorrect)))
+            .ToListAsync(cancellationToken);
+
+        return WeakTopics.Rank(tallies.Where(IsDrillable))
+            .Select(t => new WeakTopicDto(t.Module, t.Type, TitleOf(t), t.Attempts, (int)Math.Round(t.Accuracy * 100), RouteOf(t)))
+            .ToList();
+    }
+
+    private static bool IsDrillable(TopicTally tally) => tally.Module switch
+    {
+        StudyModule.Grammar => GrammarCatalog.Find(tally.Type) is not null,
+        StudyModule.Hangul => ExerciseTypes.HangulChoice.Contains(tally.Type),
+        _ => true,
+    };
+
+    private static string TitleOf(TopicTally tally) => tally.Module switch
+    {
+        StudyModule.Grammar => $"Грамматика: {GrammarCatalog.Find(tally.Type)!.Title}",
+        StudyModule.Hangul => $"Хангыль: {HangulService.TitleOf(tally.Type)}",
+        _ => $"Числа: {NumbersService.TitleOf(tally.Type)}",
+    };
+
+    private static string RouteOf(TopicTally tally) => tally.Module switch
+    {
+        StudyModule.Grammar => $"/grammar/{tally.Type}",
+        StudyModule.Hangul => $"/hangul/{tally.Type}",
+        _ => $"/numbers/{tally.Type}",
+    };
 
     public async Task<IReadOnlyList<DailyStatDto>> GetDailyAsync(int days, CancellationToken cancellationToken)
     {

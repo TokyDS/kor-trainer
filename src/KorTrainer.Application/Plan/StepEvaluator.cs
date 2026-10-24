@@ -21,7 +21,7 @@ public sealed class StepEvaluator(IAppDbContext db)
         ArgumentNullException.ThrowIfNull(step);
         ArgumentNullException.ThrowIfNull(window);
 
-        var manual = await db.StepTaskCompletions
+        var read = await db.StepTaskCompletions
             .Where(c => c.StepKey == step.Key)
             .Select(c => c.TaskKey)
             .ToListAsync(cancellationToken);
@@ -29,7 +29,18 @@ public sealed class StepEvaluator(IAppDbContext db)
             ? StepActivity.Empty
             : await LoadAsync(step, window, cancellationToken);
 
-        return step.Tasks.Select(t => Evaluate(t, activity, window, manual.Contains(t.Key))).ToList();
+        var tasks = step.Tasks.Select(t => Evaluate(t, activity, window, read.Contains(t.Key))).ToList();
+        if (step.Lesson is null || window.State == StepState.Done)
+        {
+            return tasks;
+        }
+
+        // A lesson is done in order; a finished step keeps whatever order it was done in. Any review counts as
+        // progress of the due-words task, so it is never "started" ahead of its turn.
+        var locked = TaskOrder.Locked(tasks
+            .Select((t, i) => new TaskState(t.IsDone, t.Progress > 0 && step.Tasks[i].Target.Metric != TaskMetric.VocabularyDueCleared))
+            .ToList());
+        return tasks.Select((t, i) => t with { IsLocked = locked[i] }).ToList();
     }
 
     private async Task<StepActivity> LoadAsync(PlanStep step, StepWindow window, CancellationToken cancellationToken)
@@ -52,12 +63,12 @@ public sealed class StepEvaluator(IAppDbContext db)
             needsDeck ? await db.WordProgress.CountAsync(cancellationToken) : 0);
     }
 
-    private static PlanTaskDto Evaluate(PlanTask task, StepActivity activity, StepWindow window, bool ticked)
+    private static PlanTaskDto Evaluate(PlanTask task, StepActivity activity, StepWindow window, bool read)
     {
         var target = task.Target;
         (int progress, int goal, bool reached) = target.Metric switch
         {
-            TaskMetric.Manual => (ticked ? 1 : 0, 1, false),
+            TaskMetric.Read => (read ? 1 : 0, 1, read),
             TaskMetric.NewWords => Count(activity.NewWords, target.Count),
             TaskMetric.VocabularyDueCleared => window.State switch
             {
@@ -73,7 +84,7 @@ public sealed class StepEvaluator(IAppDbContext db)
             _ => (0, target.Count, false),
         };
 
-        return new PlanTaskDto(task.Key, task.Title, task.Route, progress, goal, ticked || reached, target.Metric == TaskMetric.Manual);
+        return new PlanTaskDto(task.Key, task.Title, task.Route, progress, goal, reached, target.Metric == TaskMetric.Read);
 
         static (int, int, bool) Count(int value, int goal) => (Math.Min(value, goal), goal, value >= goal);
     }

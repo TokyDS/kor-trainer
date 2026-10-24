@@ -19,6 +19,15 @@ Romanization is **off by default** — the point is to learn to read Hangul with
   for as long as the step is open, manual ticks and quick links. When the tasks are done the app offers
   the next step; "Перейти дальше" is always available. Nothing moves forward just because days pass.
   Instead of a streak it shows how many of the last 7 days had study.
+- **«10 минут»** — one tap starts a short session: up to 15 due word cards, five due mistakes, a drill
+  from the step's first unfinished task, then a short listening (or letter) drill; everything counts
+  towards the step.
+- **Plan as a path** — the 42 steps as a winding path with stage badges; the walked part is solid and the
+  page opens at the current step.
+- **Трудные темы** — statistics list the Hangul, grammar and number topics with under 85% right in the
+  last 30 days; the 10-minute session drills the weakest one.
+- **Работа над ошибками** — a wrong first answer in any multiple-choice drill is kept and comes back
+  after 1, 3 and 7 days (a small Leitner schedule); three correct reviews close it, a slip starts over.
 - **Hangul**
   - letter → sound and sound → letter, with Russian sound approximations;
   - syllable composition and decomposition computed from Unicode arithmetic (no syllable tables);
@@ -39,8 +48,17 @@ Romanization is **off by default** — the point is to learn to read Hangul with
   -아/어요 with vowel harmony and contraction (가요, 봐요, 마셔요, 돼요), ㅡ-drop (써요, 바빠요) and the
   ㅂ/ㄷ/르/ㅅ/ㅎ irregular classes (더워요, 들어요, 몰라요); -습니다/ㅂ니다 with ㄹ-drop (만듭니다); past -았/었어요;
   stage 2 endings -고, -아서/어서, -(으)니까, -고 싶다, -(으)ㄹ 수 있다, -아/어야 하다.
-- Distractors are the typical learner mistakes (먹아요, 듣어요, 이워요, 먹읍니다), every answer
-  explains the rule that decided it; the "mixed" drill only uses topics the plan has opened.
+- TOPIK I grammar (29 topics in all): 와/과 and (으)로 (로 after ㄹ); negation 안/못 (공부 안 해요) and
+  -지 않다; future -(으)ㄹ 거예요, -(으)ㄹ게요, -(으)ㄹ까요; honorific -(으)세요 with 드세요/주무세요;
+  -아/어 주세요, -고 있다, -지만, -(으)면 (살면 keeps ㄹ), -(으)러 가다, -기 때문에.
+- Distractors are the typical learner mistakes (먹아요, 듣어요, 이워요, 먹읍니다, spelling by ear 머거요,
+  거에요, 갈께요), never a correct variant such as 바꾸어요; every answer explains the rule that decided it;
+  the "mixed" drill only uses topics the plan has opened.
+- Grammar in real sentences: deck verbs and nouns are found in their topic's form inside Tatoeba
+  sentences made only of words the learner already has, and blanked out (어제 영화를 ___ (보다).). Topic
+  drills ask about half their questions this way; «В предложениях» asks only gaps and hides the ending,
+  so the form is chosen by meaning among other endings of the same verb, as on TOPIK. Topics Tatoeba barely
+  covers (future, 안/못, -(으)러 가다, -기 때문에 …) get 130 original sentences written for them.
 
 **Iteration 3 — numbers**
 
@@ -156,7 +174,8 @@ About 930 words — including the minimal pairs of the plain/aspirated/tense lis
 비/피, 덜다/털다/떨다 …) — are voiced by real native speakers from [Lingua Libre](https://lingualibre.org)
 (CC0 / CC BY-SA, credited on the `/credits` page). The server downloads each file from Wikimedia
 once, caches it in the data volume and prefetches the rest in the background; see
-[`tools/audio`](tools/audio/README.md). Everything else falls back to speech synthesis.
+[`tools/audio`](tools/audio/README.md). They are off by default (Settings → «Записи носителей»), so every
+word and sentence is spoken by the same MeloTTS voice; turned on, they replace it where they exist.
 
 ### Korean voice
 
@@ -262,8 +281,8 @@ Line coverage of the server-side code is about 94% (Domain 97%, Application 91%,
 |---|---|
 | lessons 1–3 | Hangul: basic letters → iotized/compound vowels and consonant series → batchim and 연음 |
 | lessons 4–10 | first phrases: greetings, 이에요/예요, 이/가 아니에요, numbers, counters, self-introduction |
-| 8 blocks | stage 1: level 1, up to 800 words, one grammar topic per block (이/가, 을/를, -아/어요, …) |
-| 7 blocks | stage 2: level 2 endings (-고, -아서, -(으)니까, …), up to 1500 words |
+| 8 blocks | stage 1: level 1, up to 800 words, one or two grammar topics per block (이/가, 을/를, -아/어요, 안, …) |
+| 7 blocks | stage 2: level 2 endings (-고, -아서, -(으)니까, 못, -(으)면, …), up to 1500 words |
 | 1 step | mock exam and the TOPIK I/II decision |
 | 15 blocks | stage 3: TOPIK II writing 51–54, reading, listening, up to 3000 words |
 

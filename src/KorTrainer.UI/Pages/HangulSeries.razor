@@ -1,0 +1,136 @@
+@page "/hangul/series"
+@implements IDisposable
+@inject AppState State
+@using KorTrainer.Domain.Hangul
+
+<PageTitle>Три ряда согласных — KorTrainer</PageTitle>
+
+<header class="page-header">
+    <a class="back" href="/hangul">← Хангыль</a>
+    <h1>Три ряда согласных</h1>
+    <p class="muted">У корейских к, т, п, ч и с по два-три «родственника». На слух их различают по трём признакам: выдох после согласной, напряжение и высота голоса на гласной.</p>
+</header>
+
+<section class="series-kinds" aria-label="Чем различаются ряды">
+    <div class="card">
+        <h2>Обычные</h2>
+        <p class="series-letters" lang="ko">ㄱ ㄷ ㅂ ㅈ ㅅ</p>
+        <p>Мягкий, «ленивый» звук: лёгкий выдох, горло расслаблено. Гласная после них начинается <strong>ниже</strong>. В начале слова звучат почти как к, т, п, ч, между гласными — как г, д, б, дж.</p>
+    </div>
+    <div class="card">
+        <h2>С придыханием</h2>
+        <p class="series-letters" lang="ko">ㅋ ㅌ ㅍ ㅊ</p>
+        <p>После согласной — сильный выдох: поднесите ладонь ко рту и почувствуйте струю воздуха. Гласная начинается <strong>высоко</strong>.</p>
+    </div>
+    <div class="card">
+        <h2>Напряжённые</h2>
+        <p class="series-letters" lang="ko">ㄲ ㄸ ㅃ ㅉ ㅆ</p>
+        <p>Воздуха почти нет: горло и губы сжаты, звук короткий и твёрдый, будто после маленькой паузы. Гласная тоже <strong>высокая</strong>, но звучит резче.</p>
+    </div>
+</section>
+<p class="muted small">Подсказка: обычную от двух других отличает высота голоса, а придыхательную от напряжённой — выдох.</p>
+
+<section class="card" aria-labelledby="listen-heading">
+    <div class="section-head">
+        <h2 id="listen-heading">Послушать и сравнить</h2>
+        <label class="toggle">
+            <input type="checkbox" @bind="_slow" />
+            <span>Медленно</span>
+        </label>
+    </div>
+    <div class="segmented" role="tablist" aria-label="Гласная">
+        @foreach (char vowel in JamoCatalog.SeriesVowels)
+        {
+            char value = vowel;
+            <button type="button" role="tab" lang="ko" aria-selected="@(_vowel == value)" class="@(_vowel == value ? "active" : string.Empty)" @onclick="() => _vowel = value">
+                @(new Syllable('ㅇ', value).ToString())
+            </button>
+        }
+    </div>
+
+    @foreach (var row in JamoCatalog.ConsonantSeries)
+    {
+        var current = row;
+        <div class="series-row">
+            <div class="series-syllables">
+                @foreach (char consonant in current)
+                {
+                    string syllable = new Syllable(consonant, _vowel).ToString();
+                    <button type="button" class="series-syllable @(_playing == syllable ? "on" : string.Empty)" @onclick="() => PlayAsync(syllable)">
+                        <span lang="ko">@syllable</span>
+                        <small>@JamoCatalog.SeriesName(JamoCatalog.Get(consonant).Kind)</small>
+                    </button>
+                }
+                <button type="button" class="btn small" @onclick="() => PlayRowAsync(current)">▶ по порядку</button>
+            </div>
+            <div class="series-words">
+                @foreach (var set in MinimalPairs.Sets.Where(s => current.Contains(s[0].Consonant)))
+                {
+                    <span class="series-set">
+                        @foreach (var word in set)
+                        {
+                            string text = word.Korean;
+                            <button type="button" class="series-word @(_playing == text ? "on" : string.Empty)" @onclick="() => PlayAsync(text)">
+                                <span lang="ko">@text</span>
+                                <small>@word.Russian</small>
+                            </button>
+                        }
+                    </span>
+                }
+            </div>
+            <a class="series-train" href="/hangul/@ExerciseTypes.ConsonantSeries?level=2&focus=@Uri.EscapeDataString(current[0].ToString())">
+                Тренировать ряд @string.Join(" · ", current) →
+            </a>
+        </div>
+    }
+</section>
+
+<section class="card" aria-labelledby="train-heading">
+    <h2 id="train-heading">Тренировка на слух</h2>
+    <p class="muted">Слова-пары и отдельные слоги вперемешку: звучит одно, вы выбираете, что услышали. Ошибки вернутся в «Работе над ошибками».</p>
+    <a class="btn primary" href="/hangul/@ExerciseTypes.ConsonantSeries?level=2">Все ряды</a>
+</section>
+
+@code {
+    // Pause between sounds of a row: enough to hear each one apart, longer in the slow mode.
+    private const int RowPauseMs = 1100;
+    private const int SlowRowPauseMs = 1700;
+
+    private CancellationTokenSource? _row;
+    private char _vowel = JamoCatalog.SeriesVowels[0];
+    private bool _slow;
+    private string? _playing;
+
+    protected override Task OnInitializedAsync() => State.InitializeAsync();
+
+    private async Task PlayAsync(string text)
+    {
+        _row?.Cancel();
+        _playing = text;
+        await State.SpeakAsync(text, slow: _slow);
+    }
+
+    private async Task PlayRowAsync(IReadOnlyList<char> row)
+    {
+        _row?.Cancel();
+        var cancellation = _row = new CancellationTokenSource();
+        try
+        {
+            foreach (char consonant in row)
+            {
+                _playing = new Syllable(consonant, _vowel).ToString();
+                StateHasChanged();
+                await State.SpeakAsync(_playing, slow: _slow);
+                await Task.Delay(_slow ? SlowRowPauseMs : RowPauseMs, cancellation.Token);
+            }
+
+            _playing = null;
+        }
+        catch (TaskCanceledException)
+        {
+            // Another sound was asked for; it has taken over.
+        }
+    }
+
+    public void Dispose() => _row?.Cancel();
+}

@@ -39,6 +39,20 @@ public sealed class ApiTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task SynthesizedSpeech_IsServedForKnownTextsOnly()
+    {
+        var known = await _client.GetAsync($"/api/audio/tts?text={Uri.EscapeDataString(" 학교 ")}", Ct);
+        var unknown = await _client.GetAsync($"/api/audio/tts?text={Uri.EscapeDataString("없는말")}", Ct);
+        var empty = await _client.GetAsync("/api/audio/tts", Ct);
+
+        known.StatusCode.Should().Be(HttpStatusCode.OK);
+        known.Content.Headers.ContentType!.MediaType.Should().Be("audio/ogg");
+        (await known.Content.ReadAsByteArrayAsync(Ct)).Should().Equal(0x4F, 0x67, 0x67, 0x53);
+        unknown.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        empty.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
     public async Task Today_ReturnsTheFirstStepWithEnumsAsStrings()
     {
         var raw = await _client.GetStringAsync("/api/today", Ct);
@@ -61,6 +75,18 @@ public sealed class ApiTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Read_CompletesTheGuideTask_AndRejectsAnEmptyMaterial()
+    {
+        var read = await _client.PostAsJsonAsync("/api/today/read", new MarkReadRequest("hangul-guide-1"), Json, Ct);
+        var empty = await _client.PostAsJsonAsync("/api/today/read", new MarkReadRequest(""), Json, Ct);
+        var today = await _client.GetFromJsonAsync<TodayDto>("/api/today", Json, Ct);
+
+        read.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        empty.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        today!.Step.Tasks.Single(t => t.Key == "guide").IsDone.Should().BeTrue();
+    }
+
+    [Fact]
     public async Task Today_UnknownStep_Is404()
     {
         var response = await _client.GetAsync("/api/today?step=day-3", Ct);
@@ -79,6 +105,21 @@ public sealed class ApiTests : IAsyncLifetime
         post.StatusCode.Should().Be(HttpStatusCode.OK);
         today!.Step.Tasks.Single(t => t.Key == ExerciseTypes.LetterToSound).Progress.Should().Be(1);
         today.StudiedToday.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task WrongAnswerWithItsExercise_OpensAMistake()
+    {
+        var before = await _client.GetFromJsonAsync<MistakeSummaryDto>("/api/mistakes/summary", Json, Ct);
+        var set = await _client.GetFromJsonAsync<ExerciseSetDto>("/api/grammar/exercises/polite?count=1", Json, Ct);
+        var item = set!.Items[0];
+        var attempt = new AttemptDto(StudyModule.Grammar, item.Type, item.ItemKey, false, 800, item);
+
+        var post = await _client.PostAsJsonAsync("/api/attempts", new[] { attempt }, Json, Ct);
+        var after = await _client.GetFromJsonAsync<MistakeSummaryDto>("/api/mistakes/summary", Json, Ct);
+
+        post.StatusCode.Should().Be(HttpStatusCode.OK);
+        after!.Open.Should().Be(before!.Open + 1);
     }
 
     [Fact]

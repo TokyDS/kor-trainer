@@ -15,12 +15,42 @@ public sealed class ParticlesTests
     [InlineData("친구", ParticleKind.Subject, "친구가", "친구이")]
     [InlineData("물", ParticleKind.Object, "물을", "물를")]
     [InlineData("사과", ParticleKind.Object, "사과를", "사과을")]
+    [InlineData("빵", ParticleKind.With, "빵과", "빵와")]
+    [InlineData("우유", ParticleKind.With, "우유와", "우유과")]
+    [InlineData("버스", ParticleKind.Means, "버스로", "버스으로")]
+    [InlineData("손", ParticleKind.Means, "손으로", "손로")]
+    [InlineData("연필", ParticleKind.Means, "연필로", "연필으로")]
     public void Attach_ChoosesAllomorphByBatchim(string noun, ParticleKind kind, string expected, string wrong)
     {
         var result = Particles.Attach(noun, kind);
 
         result.Form.Should().Be(expected);
         result.Wrong.Should().Be(wrong);
+        result.WrongWhy.Should().NotBeNullOrWhiteSpace();
+    }
+
+    [Theory]
+    [InlineData("저", ParticleKind.Subject, "제가", "저가")]
+    [InlineData("나", ParticleKind.Subject, "내가", "나가")]
+    [InlineData("누구", ParticleKind.Subject, "누가", "누구가")]
+    [InlineData("저", ParticleKind.NegativeCopula, "제가 아니에요", "저가 아니에요")]
+    [InlineData("나", ParticleKind.NegativeCopula, "내가 아니에요", "나가 아니에요")]
+    public void Attach_ContractsPronounsBefore가(string noun, ParticleKind kind, string expected, string wrong)
+    {
+        var result = Particles.Attach(noun, kind);
+
+        result.Form.Should().Be(expected);
+        result.Wrong.Should().Be(wrong);
+        result.WrongWhy.Should().Contain(expected.Split(' ')[0]);
+        result.Explanation.Should().Contain(expected.Split(' ')[0]);
+    }
+
+    [Fact]
+    public void WrongWhy_NamesTheLastSyllable()
+    {
+        Particles.Attach("의자", ParticleKind.Copula).WrongWhy.Should().Contain("이에요").And.Contain("자").And.Contain("гласн");
+        Particles.Attach("책", ParticleKind.Copula).WrongWhy.Should().Contain("예요").And.Contain("ㄱ");
+        Particles.Attach("연필", ParticleKind.Means).WrongWhy.Should().Contain("ㄹ");
     }
 
     [Fact]
@@ -28,5 +58,6 @@ public sealed class ParticlesTests
     {
         Particles.Attach("책", ParticleKind.Copula).Explanation.Should().Contain("ㄱ").And.Contain("이에요");
         Particles.Attach("의자", ParticleKind.Copula).Explanation.Should().Contain("нет патчима");
+        Particles.Attach("연필", ParticleKind.Means).Explanation.Should().Contain("после ㄹ");
     }
 }

@@ -32,6 +32,14 @@
             <span class="muted">@mode.Description</span>
         </a>
     }
+    @if (_level >= 2)
+    {
+        <a class="mode-card" href="/hangul/series">
+            <span class="mode-glyph" lang="ko">다 타 따</span>
+            <strong>Три ряда: слушать и сравнить</strong>
+            <span class="muted">Чем различаются, ряды подряд, тренировка по одному ряду</span>
+        </a>
+    }
     <a class="mode-card" href="/hangul/reading?level=@_level">
         <span class="mode-glyph" lang="ko">읽기</span>
         <strong>Чтение на время</strong>

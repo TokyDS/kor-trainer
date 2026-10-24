@@ -6,20 +6,31 @@
 
 <PageTitle>Повторение слов — KorTrainer</PageTitle>
 
-<header class="page-header">
-    <a class="back" href="/vocab">← Словарь</a>
-    <h1>Повторение слов</h1>
-    <nav class="segmented" aria-label="Направление">
-        <a class="@(IsReverse ? string.Empty : "active")" href="/vocab/review" aria-current="@(!IsReverse)">한 → RU</a>
-        <a class="@(IsReverse ? "active" : string.Empty)" href="/vocab/review?mode=reverse" aria-current="@IsReverse">RU → 한, ввод</a>
-    </nav>
-    @if (_queue is { } q && !_done)
+@if (OnFinished.HasDelegate)
+{
+    <h2 class="drill-title">Слова</h2>
+    @if (Limit is { } limit && !_done)
     {
-        <p class="muted">К повторению: @q.DueCount · новых сегодня осталось: @q.NewRemainingToday</p>
+        <p class="muted small">Карточка @(Math.Min(_reviewed + 1, limit)) из @limit или меньше, если к повторению меньше слов</p>
     }
-</header>
+}
+else
+{
+    <header class="page-header">
+        <a class="back" href="/vocab">← Словарь</a>
+        <h1>Повторение слов</h1>
+        <nav class="segmented" aria-label="Направление">
+            <a class="@(IsReverse ? string.Empty : "active")" href="/vocab/review" aria-current="@(!IsReverse)">한 → RU</a>
+            <a class="@(IsReverse ? "active" : string.Empty)" href="/vocab/review?mode=reverse" aria-current="@IsReverse">RU → 한, ввод</a>
+        </nav>
+        @if (_queue is { } q && !_done)
+        {
+            <p class="muted">К повторению: @q.DueCount · новых сегодня осталось: @q.NewRemainingToday</p>
+        }
+    </header>
+}
 
-<StatusViews IsLoading="_loading" Error="@_error" OnRetry="LoadAsync" />
+<StatusViews IsLoading="_loading" Error="@_error" OnRetry="RetryAsync" />
 
 @if (!_loading && _error is null)
 {
@@ -149,6 +160,14 @@
     [SupplyParameterFromQuery(Name = "mode")]
     public string? Mode { get; set; }
 
+    /// <summary>Most cards to grade in this run; the short session stops after it.</summary>
+    [Parameter]
+    public int? Limit { get; set; }
+
+    /// <summary>Set when the review is one part of a longer session; receives the number of cards graded.</summary>
+    [Parameter]
+    public EventCallback<int> OnFinished { get; set; }
+
     private bool IsReverse => Mode == "reverse";
 
     /// <summary>In typing mode the check suggests a grade: Good when right, Again when wrong.</summary>
@@ -167,7 +186,11 @@
     private DateTime _sessionStartUtc = DateTime.UtcNow;
     private long _activeMs;
 
-    protected override Task OnInitializedAsync() => LoadAsync();
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+        await FinishIfDoneAsync();
+    }
 
     protected override async Task HandleKeyAsync(string key)
     {
@@ -281,7 +304,12 @@
             _reviewed++;
             _syncError = null;
             await Browser.BlurActiveAsync();
-            if (_cards.Count == 0)
+            if (Limit is { } limit && _reviewed >= limit)
+            {
+                _cards.Clear();
+                ShowNext();
+            }
+            else if (_cards.Count == 0)
             {
                 // Learning cards answered just now may already be due again (1–10 min steps).
                 await LoadAsync();
@@ -294,6 +322,7 @@
             if (_done)
             {
                 await SaveSessionAsync();
+                await FinishIfDoneAsync();
             }
         }
         catch (Exception ex) when (ex is ApiException or HttpRequestException)
@@ -326,6 +355,20 @@
         }
 
         _sessionStartUtc = DateTime.UtcNow;
+    }
+
+    private async Task RetryAsync()
+    {
+        await LoadAsync();
+        await FinishIfDoneAsync();
+    }
+
+    private async Task FinishIfDoneAsync()
+    {
+        if (_done && _error is null && OnFinished.HasDelegate)
+        {
+            await OnFinished.InvokeAsync(_reviewed);
+        }
     }
 
     private static string PhaseLabel(CardPhase phase) => phase switch

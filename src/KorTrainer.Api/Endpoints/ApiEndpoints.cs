@@ -1,3 +1,4 @@
+using KorTrainer.Application.Mistakes;
 using KorTrainer.Application.Reading;
 using KorTrainer.Application.Typing;
 using KorTrainer.Application.Sentences;
@@ -25,6 +26,8 @@ namespace KorTrainer.Api.Endpoints;
 public static class ApiEndpoints
 {
     public const string RateLimitPolicy = "api";
+
+    private const int MaxSpokenText = 300;
 
     public static IEndpointRouteBuilder MapKorTrainerApi(this IEndpointRouteBuilder app)
     {
@@ -64,6 +67,11 @@ public static class ApiEndpoints
         texts.MapGet("/{id}", (string id, ReadingService service, CancellationToken ct) => service.GetTextAsync(id, ct));
         api.MapPost("/vocab/words/{id:int}/study", (int id, VocabularyService service, CancellationToken ct) => service.AddToStudyAsync(id, ct)).WithTags("Vocabulary");
         api.MapGet("/topik/reading/{format}", (string format, int? count, TopikReadingService service, CancellationToken ct) => service.GetExercisesAsync(format, count ?? 10, ct)).WithTags("TOPIK");
+        var mistakes = api.MapGroup("/mistakes").WithTags("Mistakes");
+        mistakes.MapGet("/summary", (MistakeService service, CancellationToken ct) => service.GetSummaryAsync(ct));
+        mistakes.MapGet("/", (int? count, MistakeService service, CancellationToken ct) => service.GetDueAsync(count ?? 20, ct));
+        api.MapGroup("/stats").WithTags("Statistics")
+            .MapGet("/weak", (StatsService service, CancellationToken ct) => service.GetWeakTopicsAsync(ct));
         MapTopik(api.MapGroup("/topik").WithTags("TOPIK"));
         MapStats(api.MapGroup("/stats").WithTags("Statistics"));
         MapActivity(api.MapGroup(string.Empty).WithTags("Activity"));
@@ -86,17 +94,17 @@ public static class ApiEndpoints
         group.MapGet("/plan", (TodayService service, CancellationToken ct) => service.GetPlanAsync(ct));
         group.MapPost("/plan/advance", (AdvanceRequest request, TodayService service, CancellationToken ct) => service.AdvanceAsync(request, ct));
         group.MapGet("/reminder", (ReminderService service, CancellationToken ct) => service.GetAsync(ct));
-        group.MapPut("/today/tasks/{taskKey}", async (string taskKey, SetTaskDoneRequest request, TodayService service, CancellationToken ct) =>
+        group.MapPost("/today/read", async (MarkReadRequest request, TodayService service, CancellationToken ct) =>
         {
-            await service.SetTaskDoneAsync(taskKey, request, ct);
+            await service.MarkReadAsync(request, ct);
             return Results.NoContent();
         });
     }
 
     private static void MapHangul(RouteGroupBuilder group)
     {
-        group.MapGet("/exercises/{type}", (string type, int? level, int? count, HangulService service, CancellationToken ct) =>
-            service.GetExercisesAsync(type, level ?? 1, count ?? 20, ct));
+        group.MapGet("/exercises/{type}", (string type, int? level, int? count, string? focus, HangulService service, CancellationToken ct) =>
+            service.GetExercisesAsync(type, level ?? 1, count ?? 20, ct, focus));
         group.MapGet("/reading", (int? level, int? count, HangulService service, CancellationToken ct) =>
             service.GetReadingAsync(level ?? 3, count ?? 10, ct));
         group.MapPost("/reading-trials", async (ReadingTrialDto trial, ActivityService service, CancellationToken ct) =>
@@ -131,6 +139,22 @@ public static class ApiEndpoints
     {
         group.MapGet("/words", (IAudioLibrary audio) => audio.Words.Order(StringComparer.Ordinal));
         group.MapGet("/credits", (IAudioLibrary audio) => audio.Credits);
+        group.MapGet("/tts", async (string? text, ISynthesizedSpeech speech, HttpContext http, CancellationToken ct) =>
+        {
+            if (string.IsNullOrWhiteSpace(text) || text.Length > MaxSpokenText)
+            {
+                return Results.Problem(statusCode: StatusCodes.Status400BadRequest, title: "Нужен текст до 300 знаков.");
+            }
+
+            var file = await speech.OpenAsync(text, ct);
+            if (file is null)
+            {
+                return Results.Problem(statusCode: StatusCodes.Status404NotFound, title: "Для этого текста нет озвучки.");
+            }
+
+            http.Response.Headers.CacheControl = "public, max-age=2592000";
+            return Results.Stream(file.Content, file.ContentType, enableRangeProcessing: true);
+        });
         group.MapGet("/{word}", async (string word, IAudioLibrary audio, HttpContext http, CancellationToken ct) =>
         {
             if (!audio.Words.Contains(word))

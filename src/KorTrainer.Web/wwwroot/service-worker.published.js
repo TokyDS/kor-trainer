@@ -1,7 +1,8 @@
 // Offline support for the published app (see https://aka.ms/blazor-offline-considerations).
 //   * App shell: every file in the build's asset manifest is cached at install, so the trainer
 //     starts without the network and an update is one atomic switch to a new cache.
-//   * Recordings (/api/audio/{word}): cache first — they never change.
+//   * Recordings (/api/audio/{word}): cache first — they never change. Synthesized speech is cached by
+//     text, so a new voice bumps audioCacheName and the old audio cache is dropped on activation.
 //   * Other GET /api requests: network first, falling back to the last answer when offline,
 //     so today's plan, words and lessons stay readable. Answers are not queued: practising
 //     offline shows the usual "no connection" error when the result is saved.
@@ -14,7 +15,8 @@ self.addEventListener('fetch', event => event.respondWith(onFetch(event)));
 const cacheNamePrefix = 'offline-cache-';
 const cacheName = `${cacheNamePrefix}${self.assetsManifest.version}`;
 const apiCacheName = 'api-cache-v1';
-const audioCacheName = 'audio-cache-v1';
+const audioCacheNamePrefix = 'audio-cache-';
+const audioCacheName = `${audioCacheNamePrefix}v2`;
 const offlineAssetsInclude = [/\.dll$/, /\.pdb$/, /\.wasm/, /\.html/, /\.js$/, /\.json$/, /\.css$/, /\.woff2?$/, /\.png$/, /\.ico$/, /\.dat$/, /\.webmanifest$/];
 const offlineAssetsExclude = [/^service-worker\.js$/];
 
@@ -38,7 +40,8 @@ async function onInstall() {
 async function onActivate() {
     const cacheKeys = await caches.keys();
     await Promise.all(cacheKeys
-        .filter(key => key.startsWith(cacheNamePrefix) && key !== cacheName)
+        .filter(key => (key.startsWith(cacheNamePrefix) && key !== cacheName)
+            || (key.startsWith(audioCacheNamePrefix) && key !== audioCacheName))
         .map(key => caches.delete(key)));
     await self.clients.claim();
 }

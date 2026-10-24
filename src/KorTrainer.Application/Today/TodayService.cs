@@ -16,6 +16,8 @@ public sealed class TodayService(
     VocabularyService vocabularyService,
     StudyClock clock)
 {
+    private const int MaxMaterialLength = 64;
+
     public Task<TodayDto> GetTodayAsync(CancellationToken cancellationToken) => GetStepAsync(null, cancellationToken);
 
     /// <summary>A step of the plan: the current one by default, a finished one with the progress made in it, or an upcoming one to look ahead.</summary>
@@ -72,37 +74,52 @@ public sealed class TodayService(
         return new PlanDto(current.Step.Key, stages, steps, Roadmap.Lessons.Select(ToDto).ToList());
     }
 
-    /// <summary>Ticks or unticks a task of the current step or of a finished one.</summary>
-    public async Task SetTaskDoneAsync(string taskKey, SetTaskDoneRequest request, CancellationToken cancellationToken)
+    /// <summary>
+    /// The learner read a rule, lesson notes or a guide to the end: the current step's tasks asking to read it are done.
+    /// Reading something the current step does not ask for changes nothing.
+    /// </summary>
+    public async Task MarkReadAsync(MarkReadRequest request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
-        var current = await cursor.GetAsync(cancellationToken);
-        var step = current.Roadmap.Find(request.Step) ?? throw new NotFoundException("Такого шага в плане нет.");
         new Validator()
-            .Require(StateOf(step, current) != StepState.Upcoming, nameof(request.Step), "Отмечать задачи можно, когда шаг уже начат.")
+            .Require(!string.IsNullOrWhiteSpace(request.Material) && request.Material.Length <= MaxMaterialLength,
+                nameof(request.Material), "Не указано, что прочитано.")
             .ThrowIfInvalid();
-        if (step.Tasks.All(t => t.Key != taskKey))
+
+        var step = (await cursor.GetAsync(cancellationToken)).Step;
+        var keys = step.Tasks
+            .Where(t => t.Target.Metric == TaskMetric.Read && t.Target.Material == request.Material)
+            .Select(t => t.Key)
+            .ToList();
+        var done = await db.StepTaskCompletions
+            .Where(c => c.StepKey == step.Key && keys.Contains(c.TaskKey))
+            .Select(c => c.TaskKey)
+            .ToListAsync(cancellationToken);
+        var added = keys.Except(done).ToList();
+        if (added.Count == 0)
         {
-            throw new NotFoundException($"В шаге «{step.Title}» нет задачи '{taskKey}'.");
+            return;
         }
 
-        var existing = await db.StepTaskCompletions.SingleOrDefaultAsync(c => c.StepKey == step.Key && c.TaskKey == taskKey, cancellationToken);
-        if (request.Done && existing is null)
-        {
-            db.StepTaskCompletions.Add(new StepTaskCompletion { StepKey = step.Key, TaskKey = taskKey, CompletedUtc = clock.UtcNow });
-        }
-        else if (!request.Done && existing is not null)
-        {
-            db.StepTaskCompletions.Remove(existing);
-        }
-
+        var rows = added.Select(k => new StepTaskCompletion { StepKey = step.Key, TaskKey = k, CompletedUtc = clock.UtcNow }).ToList();
+        db.StepTaskCompletions.AddRange(rows);
         try
         {
             await db.SaveChangesAsync(cancellationToken);
         }
-        catch (DbUpdateException) when (request.Done)
+        catch (DbUpdateException)
         {
-            // Ticked twice at once (double click): the task is ticked either way.
+            // Read twice at once (two tabs): fine if the other request saved the rows; anything else is a real failure.
+            foreach (var row in rows)
+            {
+                db.Entry(row).State = EntityState.Detached;
+            }
+
+            int saved = await db.StepTaskCompletions.CountAsync(c => c.StepKey == step.Key && added.Contains(c.TaskKey), cancellationToken);
+            if (saved < added.Count)
+            {
+                throw;
+            }
         }
     }
 

@@ -20,6 +20,8 @@ public interface IAppDbContext
 
     DbSet<ExerciseAttempt> ExerciseAttempts { get; }
 
+    DbSet<Mistake> Mistakes { get; }
+
     DbSet<ReadingTrial> ReadingTrials { get; }
 
     DbSet<StudySession> StudySessions { get; }

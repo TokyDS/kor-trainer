@@ -12,3 +12,8 @@ TestResults/
 coverage/
 .claude/worktrees/
 artifacts/
+
+# Python caches (tools/tts)
+__pycache__/
+*.pyc
+.venv*/

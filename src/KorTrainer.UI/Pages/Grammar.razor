@@ -5,7 +5,7 @@
 
 <header class="page-header">
     <h1>Грамматика</h1>
-    <p class="muted">Упражнения собираются из слов колоды по правилам: частицы выбираются по патчиму, глаголы спрягаются с учётом неправильных классов. При ошибке показывается правило.</p>
+    <p class="muted">Упражнения собираются из слов колоды по правилам: частицы выбираются по патчиму, глаголы спрягаются с учётом неправильных классов. Часть вопросов — пропуски в настоящих фразах из Tatoeba. При ошибке показывается правило.</p>
 </header>
 
 <StatusViews IsLoading="_topics is null && _error is null" Error="@_error" OnRetry="LoadAsync" />
@@ -16,20 +16,33 @@
         <a class="mode-card feature" href="/grammar/@ExerciseTypes.Mixed">
             <span class="mode-glyph" lang="ko">섞기</span>
             <strong>Вперемешку</strong>
-            <span>Все темы, уже открытые планом</span>
+            <span>Все темы, уже открытые планом · @topics.Count(t => t.IsOpen) из @topics.Count</span>
         </a>
-        @foreach (var topic in topics)
-        {
-            <a class="mode-card @(topic.IsOpen ? string.Empty : "upcoming")" href="/grammar/@topic.Type">
-                <span class="mode-glyph" lang="ko">@topic.Title</span>
-                <span class="muted">@topic.Description</span>
-                @if (!topic.IsOpen)
-                {
-                    <span class="badge">по плану позже</span>
-                }
-            </a>
-        }
+        <a class="mode-card" href="/grammar/@ExerciseTypes.GrammarSentences">
+            <span class="mode-glyph" lang="ko">___</span>
+            <strong>В предложениях</strong>
+            <span class="muted">Пропуск в настоящей фразе: форму выбираете по смыслу и переводу, как на TOPIK</span>
+        </a>
     </div>
+    @foreach (var group in topics.GroupBy(t => t.Stage))
+    {
+        <section class="text-stage">
+            <h2>@StageTitle(group.Key)</h2>
+            <div class="mode-grid">
+                @foreach (var topic in group)
+                {
+                    <a class="mode-card @(topic.IsOpen ? string.Empty : "upcoming")" href="/grammar/@topic.Type">
+                        <span class="mode-glyph" lang="ko">@topic.Title</span>
+                        <span class="muted">@topic.Description</span>
+                        @if (!topic.IsOpen)
+                        {
+                            <span class="badge">по плану позже</span>
+                        }
+                    </a>
+                }
+            </div>
+        </section>
+    }
 }
 
 @code {
@@ -37,6 +50,14 @@
     private string? _error;
 
     protected override Task OnInitializedAsync() => LoadAsync();
+
+    private static string StageTitle(PlanStage stage) => stage switch
+    {
+        PlanStage.FirstPhrases => "Первые фразы",
+        PlanStage.Level1 => "Уровень 1 — до 800 слов",
+        PlanStage.Level2 => "Уровень 2 — до 1500 слов",
+        _ => "Другое",
+    };
 
     private async Task LoadAsync()
     {

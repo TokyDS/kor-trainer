@@ -66,6 +66,19 @@ internal sealed class ExerciseAttemptConfiguration : IEntityTypeConfiguration<Ex
     }
 }
 
+internal sealed class MistakeConfiguration : IEntityTypeConfiguration<Mistake>
+{
+    public void Configure(EntityTypeBuilder<Mistake> builder)
+    {
+        builder.HasKey(m => m.Id);
+        builder.HasIndex(m => new { m.Module, m.ItemKey }).IsUnique();
+        builder.HasIndex(m => new { m.ResolvedDate, m.DueDate });
+        builder.Property(m => m.ExerciseType).HasMaxLength(128);
+        builder.Property(m => m.ItemKey).HasMaxLength(128);
+        builder.Property(m => m.Payload).HasMaxLength(MistakeLimits.MaxPayloadLength);
+    }
+}
+
 internal sealed class ReadingTrialConfiguration : IEntityTypeConfiguration<ReadingTrial>
 {
     public void Configure(EntityTypeBuilder<ReadingTrial> builder)

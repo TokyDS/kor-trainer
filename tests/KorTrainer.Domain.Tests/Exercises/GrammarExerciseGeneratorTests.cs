@@ -60,9 +60,34 @@ public sealed class GrammarExerciseGeneratorTests
         foreach (var exercise in generator.Generate([topic], SampleSize, Nouns, Verbs))
         {
             string noun = exercise.Prompt.Split("___")[0];
-            exercise.Correct.Text.Should().Be(Particles.Attach(noun, ParticleKind.Copula).Form);
+            exercise.Correct.Text.Should().Be(Particles.Attach(noun, ParticleKind.Copula).Particle, "only the gap is chosen, the noun stays in the prompt");
+            exercise.Options.Select(o => o.Text).Should().BeEquivalentTo(["이에요", "예요"]);
             exercise.PromptNote.Should().StartWith("«Это ");
         }
+    }
+
+    [Fact]
+    public void ParticleExercise_KeepsWhatFollowsTheParticleInThePrompt()
+    {
+        var exercise = new GrammarExerciseGenerator(new Random(1))
+            .ParticleExercise(GrammarCatalog.Find(ExerciseTypes.NegativeCopula)!, new GrammarNoun("책", "книга"));
+
+        exercise.Prompt.Should().Be("책___ 아니에요.");
+        exercise.Options.Select(o => o.Text).Should().BeEquivalentTo(["이", "가"]);
+        exercise.Correct.Text.Should().Be("이");
+    }
+
+    [Fact]
+    public void ParticleExercise_WithAContractedPronoun_ChoosesTheWholeWord()
+    {
+        // 저 + 가 = 제가: the noun itself changes, so the gap covers it.
+        var exercise = new GrammarExerciseGenerator(new Random(1))
+            .ParticleExercise(GrammarCatalog.Find(ExerciseTypes.SubjectParticle)!, new GrammarNoun("저", "я"));
+
+        exercise.Prompt.Should().StartWith("___");
+        exercise.PromptNote.Should().Contain("(저)");
+        exercise.Options.Select(o => o.Text).Should().BeEquivalentTo(["제가", "저가"]);
+        exercise.Correct.Text.Should().Be("제가");
     }
 
     [Fact]
@@ -88,6 +113,43 @@ public sealed class GrammarExerciseGeneratorTests
         var prompts = generator.Generate(topics, SampleSize, Nouns, Verbs).Select(e => e.Prompt);
 
         prompts.Should().NotContain(["덥다", "바쁘다", "있다"]);
+    }
+
+    [Theory]
+    [InlineData(ExerciseTypes.Progressive)]
+    [InlineData(ExerciseTypes.Please)]
+    [InlineData(ExerciseTypes.ForMe)]
+    [InlineData(ExerciseTypes.Cannot)]
+    [InlineData(ExerciseTypes.Intention)]
+    [InlineData(ExerciseTypes.LetUs)]
+    public void ActionEndings_UseOnlyActionVerbs(string type)
+    {
+        var generator = new GrammarExerciseGenerator(new Random(3));
+
+        var prompts = generator.Generate([GrammarCatalog.Find(type)!], SampleSize, Nouns, Verbs).Select(e => e.Prompt);
+
+        prompts.Should().NotContain(["덥다", "바쁘다", "있다"]);
+    }
+
+    [Fact]
+    public void Cannot_SkipsVerbsWithoutAnAbilityReading()
+    {
+        var generator = new GrammarExerciseGenerator(new Random(3));
+        GrammarVerb[] verbs = [.. Verbs, new("모르다", "не знать", PartOfSpeech.Verb, Irregularity.Reu)];
+
+        var prompts = generator.Generate([GrammarCatalog.Find(ExerciseTypes.Cannot)!], SampleSize, Nouns, verbs).Select(e => e.Prompt);
+
+        prompts.Should().NotContain("모르다");
+    }
+
+    [Fact]
+    public void Purpose_SkipsVerbsOfMotion()
+    {
+        var generator = new GrammarExerciseGenerator(new Random(3));
+
+        var prompts = generator.Generate([GrammarCatalog.Find(ExerciseTypes.Purpose)!], SampleSize, Nouns, Verbs).Select(e => e.Prompt).ToList();
+
+        prompts.Should().NotContain("가다").And.Contain("먹다");
     }
 
     [Fact]

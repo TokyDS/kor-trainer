@@ -20,7 +20,8 @@ public sealed record ProgressExport(
     IReadOnlyList<PlanStepExport>? PlanSteps = null,
     IReadOnlyList<StepTaskCompletionExport>? StepTaskCompletions = null,
     IReadOnlyList<TaskCompletionExport>? TaskCompletions = null,
-    IReadOnlyList<WordNoteExport>? WordNotes = null)
+    IReadOnlyList<WordNoteExport>? WordNotes = null,
+    IReadOnlyList<MistakeExport>? Mistakes = null)
 {
     /// <summary>2: self-paced plan steps instead of per-day task ticks.</summary>
     public const int CurrentSchemaVersion = 2;
@@ -68,6 +69,17 @@ public sealed record SessionExport(StudyModule Module, DateTime StartedUtc, int 
 public sealed record TaskCompletionExport(DateOnly Date, string TaskKey, DateTime CompletedUtc);
 
 public sealed record WordNoteExport(string DeckKey, string Text, DateTime UpdatedUtc);
+
+public sealed record MistakeExport(
+    StudyModule Module,
+    string ExerciseType,
+    string ItemKey,
+    string Payload,
+    int Box,
+    int Lapses,
+    DateOnly CreatedDate,
+    DateOnly DueDate,
+    DateOnly? ResolvedDate);
 
 public sealed record PlanStepExport(string StepKey, DateTime StartedUtc, DateTime? CompletedUtc);
 

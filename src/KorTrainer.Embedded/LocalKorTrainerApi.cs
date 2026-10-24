@@ -1,3 +1,4 @@
+using KorTrainer.Application.Mistakes;
 using KorTrainer.Application.Reading;
 using KorTrainer.Application.Typing;
 using KorTrainer.Application.Sentences;
@@ -45,11 +46,11 @@ public sealed class LocalKorTrainerApi(IServiceScopeFactory scopes, ILogger<Loca
 
     public Task<PlanDto> GetPlanAsync() => Run<TodayService, PlanDto>((s, ct) => s.GetPlanAsync(ct));
 
-    public Task SetTaskDoneAsync(string taskKey, string step, bool done) =>
-        Run<TodayService>((s, ct) => s.SetTaskDoneAsync(taskKey, new SetTaskDoneRequest(step, done), ct));
+    public Task MarkReadAsync(string material) =>
+        Run<TodayService>((s, ct) => s.MarkReadAsync(new MarkReadRequest(material), ct));
 
-    public Task<ExerciseSetDto> GetHangulExercisesAsync(string type, int level, int count) =>
-        Run<HangulService, ExerciseSetDto>((s, ct) => s.GetExercisesAsync(type, level, count, ct));
+    public Task<ExerciseSetDto> GetHangulExercisesAsync(string type, int level, int count, string? focus = null) =>
+        Run<HangulService, ExerciseSetDto>((s, ct) => s.GetExercisesAsync(type, level, count, ct, focus));
 
     public Task<IReadOnlyList<ReadingItemDto>> GetReadingAsync(int level, int count) =>
         Run<HangulService, IReadOnlyList<ReadingItemDto>>((s, ct) => s.GetReadingAsync(level, count, ct));
@@ -138,6 +139,12 @@ public sealed class LocalKorTrainerApi(IServiceScopeFactory scopes, ILogger<Loca
 
     public Task<ExerciseSetDto> GetTopikReadingAsync(string format, int count) =>
         Run<TopikReadingService, ExerciseSetDto>((s, ct) => s.GetExercisesAsync(format, count, ct));
+
+    public Task<MistakeSummaryDto> GetMistakeSummaryAsync() => Run<MistakeService, MistakeSummaryDto>((s, ct) => s.GetSummaryAsync(ct));
+
+    public Task<ExerciseSetDto> GetMistakesAsync(int count) => Run<MistakeService, ExerciseSetDto>((s, ct) => s.GetDueAsync(count, ct));
+
+    public Task<IReadOnlyList<WeakTopicDto>> GetWeakTopicsAsync() => Run<StatsService, IReadOnlyList<WeakTopicDto>>((s, ct) => s.GetWeakTopicsAsync(ct));
 
     public async Task<ImportResultDto> ImportProgressAsync(Stream json, CancellationToken cancellationToken)
     {

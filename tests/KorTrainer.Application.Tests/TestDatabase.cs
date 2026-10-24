@@ -1,3 +1,4 @@
+using KorTrainer.Application.Mistakes;
 using KorTrainer.Application.Activity;
 using KorTrainer.Application.Common;
 using KorTrainer.Application.Grammar;
@@ -47,12 +48,13 @@ public sealed class TestDatabase : IAsyncDisposable
         Today = new TodayService(db, Cursor, Evaluator, Vocabulary, Clock);
         Reminders = new ReminderService(Today, Settings);
         Hangul = new HangulService(db, Settings, Clock, new Random(42), Audio, Cursor);
-        Grammar = new GrammarService(db, Cursor, new Random(42));
+        Grammar = new GrammarService(db, Cursor, Sentences, GrammarSentences, new GrammarClozeCache(), new Random(42));
         Hanja = new HanjaService(db, Glossary, Cursor, new Random(42));
         WordDetails = new WordDetailsService(db, Glossary, Sentences, Clock, new Random(42));
         Topik = new TopikService(db, Settings, Clock);
         Stats = new StatsService(db, Settings, Vocabulary, Clock);
         Progress = new ProgressTransferService(db, Settings, Clock);
+        Mistakes = new MistakeService(db, Settings, Clock, new Random(42));
     }
 
     /// <summary>Recorded words used by the listening drill; replace before calling Hangul to test recordings.</summary>
@@ -87,6 +89,8 @@ public sealed class TestDatabase : IAsyncDisposable
 
     public static EmbeddedSentenceLibrary Sentences { get; } = new();
 
+    public static EmbeddedGrammarSentenceLibrary GrammarSentences { get; } = new();
+
     public HanjaService Hanja { get; }
 
     public WordDetailsService WordDetails { get; }
@@ -96,6 +100,8 @@ public sealed class TestDatabase : IAsyncDisposable
     public StatsService Stats { get; }
 
     public ProgressTransferService Progress { get; }
+
+    public MistakeService Mistakes { get; }
 
     public static async Task<TestDatabase> CreateAsync(DateTimeOffset? now = null)
     {

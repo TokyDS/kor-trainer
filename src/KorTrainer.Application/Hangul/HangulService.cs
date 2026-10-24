@@ -28,18 +28,27 @@ public sealed class HangulService(IAppDbContext db, SettingsService settingsServ
 
     public static string TitleOf(string type) => Titles.GetValueOrDefault(type, type);
 
-    public async Task<ExerciseSetDto> GetExercisesAsync(string type, int level, int count, CancellationToken cancellationToken)
+    private static bool IsSeriesConsonant(string focus) =>
+        focus.Length == 1 && JamoCatalog.ConsonantSeries.Any(row => row.Contains(focus[0]));
+
+    /// <param name="focus">For the consonant series: one consonant of a row (ㄷ) to drill only that row.</param>
+    public async Task<ExerciseSetDto> GetExercisesAsync(string type, int level, int count, CancellationToken cancellationToken, string? focus = null)
     {
         new Validator()
             .Require(ExerciseTypes.HangulChoice.Contains(type), nameof(type), "Неизвестный тип упражнения.")
             .Require(Enum.IsDefined((HangulLevel)level), nameof(level), "Уровень: 1, 2 или 3.")
             .Require(count is >= 1 and <= MaxCount, nameof(count), $"Количество: от 1 до {MaxCount}.")
+            .Require(focus is null || (type == ExerciseTypes.ConsonantSeries && IsSeriesConsonant(focus)), nameof(focus), "Ряд согласных: ㄱ, ㄷ, ㅂ, ㅈ или ㅅ.")
             .ThrowIfInvalid();
 
         var maxStage = await MaxWordStageAsync(cancellationToken);
         var words = await db.Words.Where(w => w.Stage <= maxStage).Select(w => w.Korean).ToListAsync(cancellationToken);
+
+        // Recorded words only matter when the learner plays native recordings; otherwise every word is synthesized.
+        var settings = await settingsService.GetEntityAsync(cancellationToken);
+        var recorded = settings.NativeRecordings ? audio.Words : null;
         var generator = new HangulExerciseGenerator(random);
-        var items = generator.Generate(type, (HangulLevel)level, count, words, audio.Words).Select(ExerciseMapper.ToDto).ToList();
+        var items = generator.Generate(type, (HangulLevel)level, count, words, recorded, focus?[0]).Select(ExerciseMapper.ToDto).ToList();
         return new ExerciseSetDto(StudyModule.Hangul, type, TitleOf(type), items);
     }
 
@@ -139,7 +148,7 @@ internal static class ExerciseMapper
         e.Prompt,
         e.PromptNote,
         e.PromptRomanization,
-        e.Options.Select(o => new ChoiceOptionDto(o.Text, o.Hint, o.Romanization)).ToList(),
+        e.Options.Select(o => new ChoiceOptionDto(o.Text, o.Hint, o.Romanization, o.Why)).ToList(),
         e.CorrectIndex,
         e.Explanation,
         e.SpeakText,

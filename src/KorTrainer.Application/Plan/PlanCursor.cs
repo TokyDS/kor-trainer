@@ -133,7 +133,8 @@ public sealed class PlanCursor(IAppDbContext db, SettingsService settingsService
                 var to = StudyClock.EndOfLocalDayUtc(settings, day);
                 started = from;
                 var tasks = await evaluator.EvaluateAsync(step, new StepWindow(from, to, StepState.Done), cancellationToken);
-                if (!tasks.All(t => t.IsDone))
+                // The calendar plan had nothing to read in the app, so reading tasks cannot hold its lessons back.
+                if (!tasks.Where(t => !t.IsReading).All(t => t.IsDone))
                 {
                     break;
                 }

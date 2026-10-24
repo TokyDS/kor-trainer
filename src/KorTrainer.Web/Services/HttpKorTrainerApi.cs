@@ -24,11 +24,11 @@ public sealed class HttpKorTrainerApi(HttpClient http) : IKorTrainerApi
 
     public Task<PlanDto> GetPlanAsync() => GetAsync<PlanDto>("api/plan");
 
-    public Task SetTaskDoneAsync(string taskKey, string step, bool done) =>
-        SendAsync(HttpMethod.Put, $"api/today/tasks/{Uri.EscapeDataString(taskKey)}", new SetTaskDoneRequest(step, done));
+    public Task MarkReadAsync(string material) => SendAsync(HttpMethod.Post, "api/today/read", new MarkReadRequest(material));
 
-    public Task<ExerciseSetDto> GetHangulExercisesAsync(string type, int level, int count) =>
-        GetAsync<ExerciseSetDto>($"api/hangul/exercises/{Uri.EscapeDataString(type)}?level={level}&count={count}");
+    public Task<ExerciseSetDto> GetHangulExercisesAsync(string type, int level, int count, string? focus = null) =>
+        GetAsync<ExerciseSetDto>($"api/hangul/exercises/{Uri.EscapeDataString(type)}?level={level}&count={count}"
+            + (focus is null ? string.Empty : $"&focus={Uri.EscapeDataString(focus)}"));
 
     public Task<IReadOnlyList<ReadingItemDto>> GetReadingAsync(int level, int count) =>
         GetAsync<IReadOnlyList<ReadingItemDto>>($"api/hangul/reading?level={level}&count={count}");
@@ -137,6 +137,12 @@ public sealed class HttpKorTrainerApi(HttpClient http) : IKorTrainerApi
 
     public Task<ExerciseSetDto> GetTopikReadingAsync(string format, int count) =>
         GetAsync<ExerciseSetDto>($"api/topik/reading/{Uri.EscapeDataString(format)}?count={count}");
+
+    public Task<MistakeSummaryDto> GetMistakeSummaryAsync() => GetAsync<MistakeSummaryDto>("api/mistakes/summary");
+
+    public Task<ExerciseSetDto> GetMistakesAsync(int count) => GetAsync<ExerciseSetDto>($"api/mistakes?count={count}");
+
+    public Task<IReadOnlyList<WeakTopicDto>> GetWeakTopicsAsync() => GetAsync<IReadOnlyList<WeakTopicDto>>("api/stats/weak");
 
     public async Task<ImportResultDto> ImportProgressAsync(Stream json, CancellationToken cancellationToken)
     {

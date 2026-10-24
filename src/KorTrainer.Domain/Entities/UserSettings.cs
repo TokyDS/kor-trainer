@@ -37,4 +37,10 @@ public sealed class UserSettings
 
     /// <summary>A gentle evening nudge (Today banner, desktop and phone notification) on days without study.</summary>
     public bool RemindersEnabled { get; set; } = true;
+
+    /// <summary>
+    /// Play Lingua Libre recordings where they exist. Off by default so every word and sentence is spoken by
+    /// the same synthesized voice.
+    /// </summary>
+    public bool NativeRecordings { get; set; }
 }

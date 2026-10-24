@@ -35,6 +35,7 @@ public sealed class ProgressTransferService(IAppDbContext db, SettingsService se
         var notes = await db.WordNotes.AsNoTracking().OrderBy(n => n.WordId).ToListAsync(cancellationToken);
         var ticks = await db.StepTaskCompletions.AsNoTracking().OrderBy(c => c.StepKey).ThenBy(c => c.TaskKey).ToListAsync(cancellationToken);
         var drafts = await db.WritingDrafts.AsNoTracking().OrderBy(d => d.Id).ToListAsync(cancellationToken);
+        var mistakes = await db.Mistakes.AsNoTracking().OrderBy(m => m.Id).ToListAsync(cancellationToken);
 
         return new ProgressExport(
             ProgressExport.CurrentSchemaVersion,
@@ -52,7 +53,10 @@ public sealed class ProgressTransferService(IAppDbContext db, SettingsService se
             drafts.Select(d => new WritingDraftExport(d.TaskNumber, d.StartedUtc, d.DurationSeconds, d.Text, d.LocalDate)).ToList(),
             steps.Select(s => new PlanStepExport(s.StepKey, s.StartedUtc, s.CompletedUtc)).ToList(),
             ticks.Select(c => new StepTaskCompletionExport(c.StepKey, c.TaskKey, c.CompletedUtc)).ToList(),
-            WordNotes: notes.Where(n => keys.ContainsKey(n.WordId)).Select(n => new WordNoteExport(keys[n.WordId], n.Text, n.UpdatedUtc)).ToList());
+            WordNotes: notes.Where(n => keys.ContainsKey(n.WordId)).Select(n => new WordNoteExport(keys[n.WordId], n.Text, n.UpdatedUtc)).ToList(),
+            Mistakes: mistakes
+                .Select(m => new MistakeExport(m.Module, m.ExerciseType, m.ItemKey, m.Payload, m.Box, m.Lapses, m.CreatedDate, m.DueDate, m.ResolvedDate))
+                .ToList());
     }
 
     /// <summary>
@@ -75,6 +79,7 @@ public sealed class ProgressTransferService(IAppDbContext db, SettingsService se
         await db.PlanSteps.ExecuteDeleteAsync(cancellationToken);
         await db.StepTaskCompletions.ExecuteDeleteAsync(cancellationToken);
         await db.WritingDrafts.ExecuteDeleteAsync(cancellationToken);
+        await db.Mistakes.ExecuteDeleteAsync(cancellationToken);
 
         // Bulk deletes bypass the change tracker: forget entities loaded earlier in this scope.
         db.ChangeTracker.Clear();
@@ -143,6 +148,20 @@ public sealed class ProgressTransferService(IAppDbContext db, SettingsService se
             .Where(n => wordIds.ContainsKey(n.DeckKey))
             .DistinctBy(n => n.DeckKey)
             .Select(n => new WordNote { WordId = wordIds[n.DeckKey], Text = n.Text, UpdatedUtc = Utc(n.UpdatedUtc) }));
+        db.Mistakes.AddRange((snapshot.Mistakes ?? [])
+            .DistinctBy(m => (m.Module, m.ItemKey))
+            .Select(m => new Mistake
+            {
+                Module = m.Module,
+                ExerciseType = m.ExerciseType,
+                ItemKey = m.ItemKey,
+                Payload = m.Payload,
+                Box = m.Box,
+                Lapses = m.Lapses,
+                CreatedDate = m.CreatedDate,
+                DueDate = m.DueDate,
+                ResolvedDate = m.ResolvedDate,
+            }));
         db.WritingDrafts.AddRange(snapshot.WritingDrafts.Select(d => new WritingDraft
         {
             TaskNumber = d.TaskNumber,
@@ -254,6 +273,9 @@ public sealed class ProgressTransferService(IAppDbContext db, SettingsService se
         CheckSection(validator, snapshot.TaskCompletions, nameof(snapshot.TaskCompletions), c => IsKey(c.TaskKey));
         CheckSection(validator, snapshot.PlanSteps, nameof(snapshot.PlanSteps), s => IsKey(s.StepKey));
         CheckSection(validator, snapshot.WordNotes, nameof(snapshot.WordNotes), n => IsKey(n.DeckKey) && n.Text is { Length: > 0 and <= WordNoteLimits.MaxLength });
+        CheckSection(validator, snapshot.Mistakes, nameof(snapshot.Mistakes), m =>
+            Enum.IsDefined(m.Module) && IsKey(m.ExerciseType) && IsKey(m.ItemKey)
+            && m.Payload is { Length: > 0 and <= MistakeLimits.MaxPayloadLength } && m.Box >= 0 && m.Lapses >= 0);
         CheckSection(validator, snapshot.StepTaskCompletions, nameof(snapshot.StepTaskCompletions), c => IsKey(c.StepKey) && IsKey(c.TaskKey));
         CheckSection(validator, snapshot.WritingDrafts, nameof(snapshot.WritingDrafts), d =>
             d.TaskNumber is >= 51 and <= 54 && d.DurationSeconds is >= 0 and <= MaxSessionSeconds && d.Text is { Length: <= MaxDraftLength });

@@ -2,6 +2,7 @@
 @using KorTrainer.Domain.Hangul
 @inject IKorTrainerApi Api
 @inject AppState State
+@inject NavigationManager Navigation
 
 <PageTitle>Памятка — KorTrainer</PageTitle>
 
@@ -62,15 +63,15 @@
         </div>
     }
 
+    @if (_readError is not null)
+    {
+        <p class="notice error small">Не удалось отметить памятку прочитанной: @_readError</p>
+    }
+
     <div class="actions">
-        @if (guide.Level < 3)
-        {
-            <a class="btn primary" href="/hangul/@ExerciseTypes.LetterToSound?level=@guide.Level">Тренировать буквы</a>
-        }
-        else
-        {
-            <a class="btn primary" href="/hangul/@ExerciseTypes.FinalSound?level=3">Тренировать патчим</a>
-        }
+        <button type="button" class="btn primary" @onclick="() => FinishAsync(guide.Level)">
+            @(guide.Level < 3 ? "Прочитано — тренировать буквы" : "Прочитано — тренировать патчим")
+        </button>
         <a class="btn" href="/hangul/reading?level=@guide.Level">Чтение на время</a>
     </div>
 }
@@ -78,6 +79,7 @@
 @code {
     private HangulGuideDto? _guide;
     private string? _error;
+    private string? _readError;
 
     [SupplyParameterFromQuery]
     public int? Level { get; set; }
@@ -85,6 +87,23 @@
     protected override Task OnParametersSetAsync() => LoadAsync();
 
     private async Task SpeakAsync(string text) => await State.SpeakAsync(text);
+
+    /// <summary>The guide counts as read for the lesson, then its first drill opens.</summary>
+    private async Task FinishAsync(int level)
+    {
+        _readError = null;
+        try
+        {
+            await Api.MarkReadAsync(StudyMaterials.HangulGuide(level));
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException)
+        {
+            _readError = ex.Message;
+            return;
+        }
+
+        Navigation.NavigateTo(level < 3 ? $"/hangul/{ExerciseTypes.LetterToSound}?level={level}" : $"/hangul/{ExerciseTypes.FinalSound}?level=3");
+    }
 
     private async Task LoadAsync()
     {
