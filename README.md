@@ -247,66 +247,21 @@ dotnet ef migrations add <Name> -p src/KorTrainer.Infrastructure -s src/KorTrain
 
 | Steps | Stage |
 |---|---|
-| lessons 1–3 | Hangul: basic letters → compound vowels and consonant series → batchim and 연음 |
-| lessons 4–10 | first phrases: greetings, 이에요/예요, 이/가 아니에요, numbers, counters, introducing yourself |
-| 8 blocks | stage 1: up to 800 words, one or two grammar topics per block (이/가, 을/를, -아/어요, 안, …) |
-| 7 blocks | stage 2: level 2 endings (-고, -아서, -(으)니까, 못, -(으)면, …), up to 1,500 words |
-| 1 step | mock exam and the TOPIK I / II decision |
-| 15 blocks | stage 3: TOPIK II writing 51–54, reading and listening, up to 3,000 words |
+| lessons 1–3 | Hangul: basic letters → iotized/compound vowels and consonant series → batchim and 연음 |
+| lessons 4–10 | first phrases: greetings, 이에요/예요, 이/가 아니에요, numbers, counters, self-introduction |
+| 8 blocks | stage 1: level 1, up to 800 words, one or two grammar topics per block (이/가, 을/를, -아/어요, 안, …) |
+| 7 blocks | stage 2: level 2 endings (-고, -아서, -(으)니까, 못, -(으)면, …), up to 1500 words |
+| 1 step | mock exam and the TOPIK I/II decision |
+| 15 blocks | stage 3: TOPIK II writing 51–54, reading, listening, up to 3000 words |
 
-Every step takes as long as it takes; a forecast on the statistics page shows where your current pace leads.
+Every step takes as long as it takes. The plan was written for TOPIK in spring 2027; the forecast shows
+where your current pace leads. Learners of the earlier calendar version keep the lessons they finished
+on their day and continue from the first unfinished one.
+Official past papers are available at [topik.go.kr](https://www.topik.go.kr) — the app links to them
+and does not copy exam content.
 
-## Data sources and licences
+## License
 
-- **«한국어 학습용 어휘 목록»**, the Korean Learner's Vocabulary List by the National Institute of Korean Language
-  (국립국어원), 2003: headwords, parts of speech, hanja, levels and frequency, under
-  [KOGL Type 1](https://www.kogl.or.kr/info/licenseType1.do). See [`tools/deck`](tools/deck/README.md).
-- **Tatoeba** example sentences, [CC BY 2.0 FR](https://creativecommons.org/licenses/by/2.0/fr/), with ids and
-  authors kept. Russian for sentences without a Tatoeba translation is machine-made and marked *.
-- **Lingua Libre** recordings via Wikimedia Commons, CC0 and CC BY-SA 4.0. Every file's author is on the
-  in-app `/credits` page.
-- **Unihan** (© Unicode, Inc., Unicode License v3): English definitions as hints for the Russian hanja glosses.
-- Reading texts, TOPIK I items and grammar sentences are original. Past papers are linked on
-  [topik.go.kr](https://www.topik.go.kr), never copied.
-
-> ⚠️ Many Russian translations in the deck are machine-generated. Flag doubtful ones in the app; fixes go into
-> `Seed/words.json` or `tools/deck/*.tsv`, and the next start updates words in place without losing progress.
-
-## API
-
-<details>
-<summary>Endpoints (click to expand)</summary>
-
-| Method | Route | Purpose |
-|---|---|---|
-| GET · PUT | `/api/settings` | start date, time zone, romanization, theme, limits |
-| GET | `/api/today?step=` | a plan step with its tasks and progress, the week, vocabulary |
-| POST | `/api/plan/advance` · `/api/today/read` | finish the step (409 if it already changed) · mark a rule as read |
-| GET | `/api/plan` · `/api/reminder` | stages and steps · whether to nudge today |
-| GET | `/api/hangul/exercises/{type}?level=&count=&focus=` | Hangul drills |
-| GET · POST | `/api/hangul/reading` · `/api/hangul/reading-trials` | timed reading and its results |
-| GET | `/api/hangul/analyze?text=` · `/api/hangul/guide/{level}` | word analyzer · letter guide |
-| GET · POST | `/api/vocab/queue` · `/api/vocab/reviews` | SRS queue and answers |
-| GET | `/api/vocab/summary` · `/api/vocab/words` · `/api/vocab/topics` | vocabulary browser |
-| GET · PUT | `/api/vocab/words/{id}/details` · `/api/vocab/words/{id}/note` | roots, examples, own note |
-| PUT · DELETE · GET | `/api/vocab/words/{id}/flag` · `/api/vocab/flags` | doubtful translations |
-| POST | `/api/vocab/words/{id}/study` | put a word into learning now |
-| GET | `/api/vocab/hard` · `/api/vocab/hard/exercises/{type}` | hard words and their drills |
-| GET | `/api/grammar/topics` · `/api/grammar/exercises/{type\|mixed\|sentences}` | grammar topics and drills |
-| GET · POST | `/api/grammar/review` · `/api/grammar/review/{type}` | rule checks and their results |
-| GET | `/api/numbers/exercises/{type}` · `/api/listening/exercises/{type}` | number and listening drills |
-| GET | `/api/sentences/{dictation\|shadowing\|say-word}` | sentences and words made of yours |
-| GET | `/api/mistakes/summary` · `/api/mistakes` | the mistakes queue |
-| GET | `/api/hanja/roots` · `/api/hanja/roots/{char}` · `/api/hanja/exercises/{type}` | hanja roots |
-| GET | `/api/texts` · `/api/texts/{id}` · `/api/topik/reading/{format}` | graded texts · TOPIK I reading |
-| GET · POST | `/api/topik/writing` · `/api/topik/drafts` | TOPIK II writing guide and drafts |
-| GET | `/api/typing/{level}` | keyboard trainer texts |
-| GET | `/api/stats/overview` · `/daily` · `/forecast` · `/weak` | statistics |
-| POST | `/api/attempts` · `/api/sessions` | activity log |
-| GET | `/api/audio/words` · `/api/audio/{word}` · `/api/audio/tts?text=` | recordings and generated speech |
-| GET · POST | `/api/progress/export` · `/api/progress/import` | JSON backup |
-
-Errors are RFC 7807 problem details (`400` with field errors, `404` for unknown routes). In development the
-OpenAPI document is at `/openapi/v1.json`.
-
-</details>
+Code is released under the [MIT License](LICENSE). Bundled vocabulary, sentence and hanja data keep
+their own licenses (KOGL Type 1, CC BY 2.0 FR, Unicode License v3) — see
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) and [Data sources](#data-sources).
