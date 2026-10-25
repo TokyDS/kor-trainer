@@ -21,20 +21,14 @@
 
     <section class="card theory-examples" aria-labelledby="examples-heading">
         <h2 id="examples-heading">Примеры</h2>
+        <p class="muted small gram-legend"><span class="gram-particle">■</span> частица · <span class="gram-ending">■</span> окончание · нажмите на слово — перевод</p>
         <ul>
             @foreach (var example in Theory.Examples)
             {
-                int at = example.Sentence.IndexOf(example.Form, StringComparison.Ordinal);
                 <li>
                     <div class="theory-example-line">
-                        @if (at < 0)
-                        {
-                            <span class="theory-sentence" lang="ko">@example.Sentence</span>
-                        }
-                        else
-                        {
-                            <span class="theory-sentence" lang="ko">@example.Sentence[..at]<mark>@example.Form</mark>@example.Sentence[(at + example.Form.Length)..]</span>
-                        }
+                        @* Every word can be tapped for its sound and meaning; the form the rule teaches is marked. *@
+                        <span class="theory-sentence"><TapKorean Text="@example.Sentence" Mark="@example.Form" ColourGrammar="true" /></span>
                         <SpeakButton Text="@example.Sentence" ShowKeyHint="false" />
                     </div>
                     <span class="muted">@example.Translation</span>
@@ -51,6 +45,10 @@
 
     <div class="actions">
         <button type="button" class="btn primary" @onclick="OnStart">Понятно — к упражнениям</button>
+        @if (CheckHref is not null)
+        {
+            <a class="btn" href="@CheckHref">Уже знаю — проверить себя</a>
+        }
     </div>
 </article>
 
@@ -66,4 +64,8 @@
 
     [Parameter]
     public EventCallback OnStart { get; set; }
+
+    /// <summary>The drill as a self-check, for a learner who knows the rule already.</summary>
+    [Parameter]
+    public string? CheckHref { get; set; }
 }

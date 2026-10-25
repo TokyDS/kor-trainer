@@ -7,13 +7,13 @@
 @if (Roadmap.Lessons.FirstOrDefault(l => l.Day == Day) is not { } lesson)
 {
     <p class="notice error">Такого урока в плане нет.</p>
-    <a class="btn" href="/">К задачам шага</a>
+    <a class="btn" href="/step">К задачам шага</a>
 }
 else
 {
     <article class="theory">
         <header class="page-header">
-            <a class="back" href="/">← К задачам шага</a>
+            <a class="back" href="/step">← К задачам шага</a>
             <p class="eyebrow">Конспект урока @lesson.Day</p>
             <h1>@lesson.Title</h1>
         </header>
@@ -52,7 +52,7 @@ else
         try
         {
             await Api.MarkReadAsync(StudyMaterials.Lesson(Day));
-            Navigation.NavigateTo("/");
+            Navigation.NavigateTo("/step");
         }
         catch (Exception ex) when (ex is ApiException or HttpRequestException)
         {

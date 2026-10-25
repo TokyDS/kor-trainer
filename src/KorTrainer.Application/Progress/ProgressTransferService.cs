@@ -3,6 +3,7 @@ using KorTrainer.Application.Settings;
 using KorTrainer.Contracts;
 using KorTrainer.Domain.Entities;
 using KorTrainer.Domain.Plan;
+using KorTrainer.Domain.Srs;
 using Microsoft.EntityFrameworkCore;
 
 namespace KorTrainer.Application.Progress;
@@ -36,6 +37,8 @@ public sealed class ProgressTransferService(IAppDbContext db, SettingsService se
         var ticks = await db.StepTaskCompletions.AsNoTracking().OrderBy(c => c.StepKey).ThenBy(c => c.TaskKey).ToListAsync(cancellationToken);
         var drafts = await db.WritingDrafts.AsNoTracking().OrderBy(d => d.Id).ToListAsync(cancellationToken);
         var mistakes = await db.Mistakes.AsNoTracking().OrderBy(m => m.Id).ToListAsync(cancellationToken);
+        var rules = await db.RuleReviews.AsNoTracking().OrderBy(r => r.ExerciseType).ToListAsync(cancellationToken);
+        var flags = await db.TranslationFlags.AsNoTracking().OrderBy(f => f.WordId).ToListAsync(cancellationToken);
 
         return new ProgressExport(
             ProgressExport.CurrentSchemaVersion,
@@ -56,6 +59,10 @@ public sealed class ProgressTransferService(IAppDbContext db, SettingsService se
             WordNotes: notes.Where(n => keys.ContainsKey(n.WordId)).Select(n => new WordNoteExport(keys[n.WordId], n.Text, n.UpdatedUtc)).ToList(),
             Mistakes: mistakes
                 .Select(m => new MistakeExport(m.Module, m.ExerciseType, m.ItemKey, m.Payload, m.Box, m.Lapses, m.CreatedDate, m.DueDate, m.ResolvedDate))
+                .ToList(),
+            RuleReviews: rules.Select(r => new RuleReviewExport(r.ExerciseType, r.Box, r.DueDate, r.LastCheckedDate, r.Lapses)).ToList(),
+            TranslationFlags: flags.Where(f => keys.ContainsKey(f.WordId))
+                .Select(f => new TranslationFlagExport(keys[f.WordId], f.Russian, f.Note, f.CreatedUtc))
                 .ToList());
     }
 
@@ -80,6 +87,8 @@ public sealed class ProgressTransferService(IAppDbContext db, SettingsService se
         await db.StepTaskCompletions.ExecuteDeleteAsync(cancellationToken);
         await db.WritingDrafts.ExecuteDeleteAsync(cancellationToken);
         await db.Mistakes.ExecuteDeleteAsync(cancellationToken);
+        await db.RuleReviews.ExecuteDeleteAsync(cancellationToken);
+        await db.TranslationFlags.ExecuteDeleteAsync(cancellationToken);
 
         // Bulk deletes bypass the change tracker: forget entities loaded earlier in this scope.
         db.ChangeTracker.Clear();
@@ -162,6 +171,13 @@ public sealed class ProgressTransferService(IAppDbContext db, SettingsService se
                 DueDate = m.DueDate,
                 ResolvedDate = m.ResolvedDate,
             }));
+        db.RuleReviews.AddRange((snapshot.RuleReviews ?? [])
+            .DistinctBy(r => r.ExerciseType)
+            .Select(r => new RuleReview { ExerciseType = r.ExerciseType, Box = r.Box, DueDate = r.DueDate, LastCheckedDate = r.LastCheckedDate, Lapses = r.Lapses }));
+        db.TranslationFlags.AddRange((snapshot.TranslationFlags ?? [])
+            .Where(f => wordIds.ContainsKey(f.DeckKey))
+            .DistinctBy(f => f.DeckKey)
+            .Select(f => new TranslationFlag { WordId = wordIds[f.DeckKey], Russian = f.Russian, Note = f.Note, CreatedUtc = Utc(f.CreatedUtc) }));
         db.WritingDrafts.AddRange(snapshot.WritingDrafts.Select(d => new WritingDraft
         {
             TaskNumber = d.TaskNumber,
@@ -276,6 +292,11 @@ public sealed class ProgressTransferService(IAppDbContext db, SettingsService se
         CheckSection(validator, snapshot.Mistakes, nameof(snapshot.Mistakes), m =>
             Enum.IsDefined(m.Module) && IsKey(m.ExerciseType) && IsKey(m.ItemKey)
             && m.Payload is { Length: > 0 and <= MistakeLimits.MaxPayloadLength } && m.Box >= 0 && m.Lapses >= 0);
+        CheckSection(validator, snapshot.RuleReviews, nameof(snapshot.RuleReviews), r =>
+            Domain.Grammar.GrammarCatalog.Find(r.ExerciseType) is not null && r.Box is >= 0 and <= RuleSchedule.MaxBox && r.Lapses >= 0);
+        CheckSection(validator, snapshot.TranslationFlags, nameof(snapshot.TranslationFlags), f =>
+            IsKey(f.DeckKey) && f.Russian is { Length: <= TranslationFlagLimits.MaxTranslationLength }
+            && (f.Note is null || f.Note.Length is > 0 and <= TranslationFlagLimits.MaxNoteLength));
         CheckSection(validator, snapshot.StepTaskCompletions, nameof(snapshot.StepTaskCompletions), c => IsKey(c.StepKey) && IsKey(c.TaskKey));
         CheckSection(validator, snapshot.WritingDrafts, nameof(snapshot.WritingDrafts), d =>
             d.TaskNumber is >= 51 and <= 54 && d.DurationSeconds is >= 0 and <= MaxSessionSeconds && d.Text is { Length: <= MaxDraftLength });

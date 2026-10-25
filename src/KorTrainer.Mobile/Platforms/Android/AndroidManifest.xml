@@ -9,6 +9,8 @@
 	<uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 	<!-- Shadowing: the learner repeats a sentence and the speech recognizer checks it. -->
 	<uses-permission android:name="android.permission.RECORD_AUDIO" />
+	<!-- A short buzz on a wrong answer: MAUI's haptic feedback checks that this is declared (granted at install). -->
+	<uses-permission android:name="android.permission.VIBRATE" />
 	<queries>
 		<!-- Android 11+ only lets apps see text-to-speech engines and recognizers they declare. -->
 		<intent>

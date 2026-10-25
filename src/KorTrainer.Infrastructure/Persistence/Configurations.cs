@@ -108,6 +108,26 @@ internal sealed class WordNoteConfiguration : IEntityTypeConfiguration<WordNote>
     }
 }
 
+internal sealed class TranslationFlagConfiguration : IEntityTypeConfiguration<TranslationFlag>
+{
+    public void Configure(EntityTypeBuilder<TranslationFlag> builder)
+    {
+        builder.HasKey(f => f.WordId);
+        builder.Property(f => f.Russian).HasMaxLength(TranslationFlagLimits.MaxTranslationLength);
+        builder.Property(f => f.Note).HasMaxLength(TranslationFlagLimits.MaxNoteLength);
+        builder.HasOne(f => f.Word).WithMany().HasForeignKey(f => f.WordId).OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+internal sealed class RuleReviewConfiguration : IEntityTypeConfiguration<RuleReview>
+{
+    public void Configure(EntityTypeBuilder<RuleReview> builder)
+    {
+        builder.HasKey(r => r.ExerciseType);
+        builder.Property(r => r.ExerciseType).HasMaxLength(128);
+    }
+}
+
 internal sealed class PlanStepProgressConfiguration : IEntityTypeConfiguration<PlanStepProgress>
 {
     public void Configure(EntityTypeBuilder<PlanStepProgress> builder)

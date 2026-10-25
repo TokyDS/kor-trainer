@@ -99,18 +99,46 @@ public sealed class RoadmapTests
     }
 
     [Fact]
-    public void PhraseLessons_EndWithTheirSceneBeforeTheReview()
+    public void PhraseLessons_ListenAndSpeakBeforeTheReview()
     {
         foreach (var lesson in _roadmap.Steps.Where(s => s.Lesson is { Day: > Roadmap.HangulLessons }))
         {
-            var practice = lesson.Tasks[^2];
+            var keys = lesson.Tasks.Select(t => t.Key).ToList();
 
-            practice.Key.Should().Be("practice", lesson.Key);
-            practice.Target.Material.Should().Be(StudyMaterials.Practice(lesson.Lesson!.Day));
-            practice.Route.Should().Be($"/lesson/{lesson.Lesson.Day}/practice");
-            LessonPractices.Find(lesson.Lesson.Day).Should().NotBeNull(lesson.Key);
+            keys[^3..].Should().Equal(["listening", "say-word", "vocab-due"], lesson.Key);
+            lesson.Tasks[^3].Target.ExerciseType.Should().Be(ExerciseTypes.ListenMeaning);
+            lesson.Tasks[^2].Target.ExerciseType.Should().Be(ExerciseTypes.SayWord);
         }
     }
+
+    [Fact]
+    public void Speaking_GrowsFromWordsToPhrases()
+    {
+        static IEnumerable<string?> Speaking(PlanStep step) => step.Tasks
+            .Where(t => t.Target.ExerciseType is ExerciseTypes.SayWord or ExerciseTypes.Shadowing)
+            .Select(t => t.Target.ExerciseType);
+
+        _roadmap.Steps.Where(s => s.Stage is PlanStage.Level1 or PlanStage.Level2 or PlanStage.TopikPrep)
+            .Should().AllSatisfy(s => s.Tasks.Should().Contain(t => t.Target.Module == StudyModule.Listening && t.Target.ExerciseType != ExerciseTypes.SayWord
+                && t.Target.ExerciseType != ExerciseTypes.Shadowing, s.Key));
+        _roadmap.Steps.Where(s => s.Stage is PlanStage.Level2 or PlanStage.TopikPrep)
+            .Should().AllSatisfy(s => Speaking(s).Should().Equal([ExerciseTypes.Shadowing], s.Key));
+        Speaking(_roadmap.Find("level1-1")!).Should().Equal([ExerciseTypes.SayWord]);
+        Speaking(_roadmap.Find("lesson-1")!).Should().BeEmpty();
+    }
+
+    [Theory]
+    [InlineData("lesson-1", "ㅏ ㅓ ㅗ и слог")]
+    [InlineData("lesson-5", "이에요/예요")]
+    [InlineData("lesson-7", "числа 일 이 삼")]
+    [InlineData("level1-1", "이/가")]
+    [InlineData("mock-exam", "пробный экзамен")]
+    public void TopicOf_NamesWhatTheStepIsAbout(string key, string topic) =>
+        Roadmap.TopicOf(_roadmap.Find(key)!).Should().Contain(topic);
+
+    [Fact]
+    public void EveryStep_HasATopic() =>
+        _roadmap.Steps.Should().AllSatisfy(s => Roadmap.TopicOf(s).Should().NotBeNullOrWhiteSpace(s.Key));
 
     [Fact]
     public void GrammarRules_ToRead_HaveATheory()

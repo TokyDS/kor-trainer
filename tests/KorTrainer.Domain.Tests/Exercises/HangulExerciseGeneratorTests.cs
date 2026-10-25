@@ -267,6 +267,17 @@ public sealed class HangulExerciseGeneratorTests
     }
 
     [Fact]
+    public void Reading_TakesTheLearnersWordsFirst_ThenReserveWords_BeforePseudoWords()
+    {
+        var generator = new HangulExerciseGenerator(new Random(23));
+
+        var items = generator.Reading(HangulLevel.Basics, 3, [("나무", "дерево")], [("바다", "море"), ("나무", "дерево"), ("학교", "школа")]);
+
+        items.Select(i => i.Text).Should().BeEquivalentTo("나무", "바다", items[2].Text);
+        items.Count(i => i.Translation is null).Should().Be(1, "only one place is left for a pseudo-word");
+    }
+
+    [Fact]
     public void Generate_RejectsUnknownType()
     {
         var act = () => new HangulExerciseGenerator(new Random(1)).Generate("nope", HangulLevel.Basics, 1);

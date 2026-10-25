@@ -193,6 +193,29 @@ namespace KorTrainer.Infrastructure.Persistence.Migrations
                     b.ToTable("ReviewLogs");
                 });
 
+            modelBuilder.Entity("KorTrainer.Domain.Entities.RuleReview", b =>
+                {
+                    b.Property<string>("ExerciseType")
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Box")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateOnly>("DueDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Lapses")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateOnly>("LastCheckedDate")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("ExerciseType");
+
+                    b.ToTable("RuleReviews");
+                });
+
             modelBuilder.Entity("KorTrainer.Domain.Entities.StepTaskCompletion", b =>
                 {
                     b.Property<string>("StepKey")
@@ -234,6 +257,28 @@ namespace KorTrainer.Infrastructure.Persistence.Migrations
                     b.HasIndex("LocalDate");
 
                     b.ToTable("StudySessions");
+                });
+
+            modelBuilder.Entity("KorTrainer.Domain.Entities.TranslationFlag", b =>
+                {
+                    b.Property<int>("WordId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(300)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Russian")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("WordId");
+
+                    b.ToTable("TranslationFlags");
                 });
 
             modelBuilder.Entity("KorTrainer.Domain.Entities.UserSettings", b =>
@@ -426,6 +471,17 @@ namespace KorTrainer.Infrastructure.Persistence.Migrations
                         .HasForeignKey("WordId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("KorTrainer.Domain.Entities.TranslationFlag", b =>
+                {
+                    b.HasOne("KorTrainer.Domain.Entities.Word", "Word")
+                        .WithMany()
+                        .HasForeignKey("WordId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Word");
                 });
 
             modelBuilder.Entity("KorTrainer.Domain.Entities.WordNote", b =>

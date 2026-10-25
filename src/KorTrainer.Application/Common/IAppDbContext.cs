@@ -22,6 +22,10 @@ public interface IAppDbContext
 
     DbSet<Mistake> Mistakes { get; }
 
+    DbSet<RuleReview> RuleReviews { get; }
+
+    DbSet<TranslationFlag> TranslationFlags { get; }
+
     DbSet<ReadingTrial> ReadingTrials { get; }
 
     DbSet<StudySession> StudySessions { get; }

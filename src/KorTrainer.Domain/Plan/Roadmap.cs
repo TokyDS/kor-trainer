@@ -74,6 +74,30 @@ public sealed class Roadmap
 
     public PlanStep? Previous(PlanStep step) => step.Index > 0 ? Steps[step.Index - 1] : null;
 
+    /// <summary>A few words on what the step is about, for the map: «이에요/예요», «이/가, 을/를», «TOPIK II».</summary>
+    public static string TopicOf(PlanStep step)
+    {
+        ArgumentNullException.ThrowIfNull(step);
+        if (step.Lesson is { } lesson)
+        {
+            return PlanContent.LessonTopic(lesson.Day);
+        }
+
+        var grammar = step.Tasks
+            .Where(t => t.Target.Module == StudyModule.Grammar && t.Target.ExerciseType is not null)
+            .Select(t => GrammarCatalog.Find(t.Target.ExerciseType!)?.Title)
+            .OfType<string>()
+            .ToList();
+        return step.Stage switch
+        {
+            PlanStage.MockExam => "пробный экзамен",
+            PlanStage.TopikPrep => "TOPIK II: письмо, чтение, аудирование",
+            PlanStage.Maintenance => "поддержание формы",
+            _ when grammar.Count > 0 => string.Join(", ", grammar),
+            _ => "повторение грамматики",
+        };
+    }
+
     /// <summary>Grammar topics practiced by this step or an earlier one, in catalog order.</summary>
     public IReadOnlyList<GrammarTopic> GrammarUnlocked(PlanStep step)
     {
@@ -153,10 +177,15 @@ public sealed class Roadmap
             ? [new PlanTask("grammar", "Грамматика вперемешку: 30 упражнений", TaskTarget.Answers(StudyModule.Grammar, 30), "/grammar/mixed")]
             : introduced.Select((t, i) => GrammarTask(i == 0 ? "grammar" : $"grammar-{i + 1}", t, introduced.Count == 1 ? 20 : 15)).ToList();
 
-        // Reading and listening take turns so a block stays short.
-        var practice = block % 2 == 1
-            ? CommonTasks.Reading(10)
-            : new PlanTask("listening", "Аудирование: 20 упражнений", TaskTarget.Answers(StudyModule.Listening, 20), "/listening");
+        // Listening in every block; speaking grows from single words (level 1) to repeated phrases (level 2);
+        // timed reading every other block keeps the blocks short.
+        List<PlanTask> practice = (stage, block % 2 == 1) switch
+        {
+            (PlanStage.Level1, true) => [CommonTasks.Reading(10), CommonTasks.ListenWords(15), CommonTasks.SayWords(10)],
+            (PlanStage.Level1, false) => [CommonTasks.Listening(20), CommonTasks.Shadowing(5)],
+            (_, true) => [CommonTasks.Reading(10), CommonTasks.Listening(20), CommonTasks.Shadowing(8)],
+            _ => [CommonTasks.Listening(20), CommonTasks.Shadowing(8)],
+        };
 
         string topic = introduced.Count > 0 ? $" · грамматика: {string.Join(", ", introduced.Select(t => t.Title))}" : " · повторение грамматики";
         return new PlanStep(
@@ -167,7 +196,7 @@ public sealed class Roadmap
             $"Блок {block} из {blocks}",
             $"До {words} слов в колоде{topic}.",
             null,
-            [WordsTask(words), CommonTasks.ReviewDue, .. grammar, numbers, practice],
+            [WordsTask(words), CommonTasks.ReviewDue, .. grammar, numbers, .. practice],
             PlanContent.QuickLinks(stage, 0),
             new WordUnlock(stage, int.MaxValue),
             words);
@@ -214,6 +243,7 @@ public sealed class Roadmap
                 writing,
                 new("reading", "Чтение: 10 ответов к текстам", TaskTarget.Answers(StudyModule.Reading, TextAnswers, TextReading), "/read"),
                 new("listening", "Аудирование: 20 упражнений на слух", TaskTarget.Answers(StudyModule.Listening, 20), "/listening"),
+                CommonTasks.Shadowing(10),
             ],
             PlanContent.QuickLinks(PlanStage.TopikPrep, 0),
             new WordUnlock(PlanStage.TopikPrep, int.MaxValue),

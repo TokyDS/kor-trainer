@@ -1,0 +1,159 @@
+@* Text in which every Korean word can be tapped: it is spoken and looked up in the deck (학생이에요 → 학생). *@
+@using System.Text.RegularExpressions
+@inject IKorTrainerApi Api
+@inject AppState State
+
+<span class="tap-korean">
+    @foreach (var (token, index) in Tokens())
+    {
+        @if (IsKorean(token.Text))
+        {
+            <button type="button" class="tap-word @(token.Marked ? "marked" : string.Empty) @(_open == index ? "open" : string.Empty)" lang="ko"
+                    @onclick="() => TapAsync(index, token.Text)">
+                @if (ColourGrammar && Split(token.Text) is { } parts)
+                {
+                    @parts.Stem<span class="@parts.Kind">@parts.Suffix</span>@parts.Tail
+                }
+                else
+                {
+                    @token.Text
+                }
+            </button>
+        }
+        else
+        {
+            @token.Text
+        }
+    }
+</span>
+@if (_open is not null)
+{
+    <span class="tap-popover" role="status">
+        @if (_found is { } word)
+        {
+            <strong lang="ko">@word.Korean</strong>
+            <span>@word.Russian</span>
+        }
+        else if (_looking)
+        {
+            <span class="muted">Ищу в словаре…</span>
+        }
+        else
+        {
+            <span class="muted">В словаре не нашлось — только озвучка.</span>
+        }
+        <button type="button" class="link-button small" @onclick="() => _open = null">закрыть</button>
+    </span>
+}
+
+@code {
+    private const int SearchPage = 50;
+    private static readonly Dictionary<string, WordDto?> Cache = new(StringComparer.Ordinal);
+
+    private int? _open;
+    private bool _looking;
+    private WordDto? _found;
+
+    [Parameter, EditorRequired]
+    public string Text { get; set; } = string.Empty;
+
+    /// <summary>Colour particles and verb endings (authored rule examples only: the guess is by spelling).</summary>
+    [Parameter]
+    public bool ColourGrammar { get; set; }
+
+    /// <summary>A part of the text to highlight, e.g. the form a rule teaches.</summary>
+    [Parameter]
+    public string? Mark { get; set; }
+
+    private IEnumerable<((string Text, bool Marked) Token, int Index)> Tokens()
+    {
+        int at = Mark is { Length: > 0 } ? Text.IndexOf(Mark, StringComparison.Ordinal) : -1;
+        int index = 0;
+        foreach (Match match in Regex.Matches(Text, @"\s+|\S+"))
+        {
+            bool marked = at >= 0 && match.Index < at + Mark!.Length && match.Index + match.Length > at && !string.IsNullOrWhiteSpace(match.Value);
+            yield return ((match.Value, marked), index++);
+        }
+    }
+
+    // Longest first, so 에서 wins over 서 and 이에요 over 에요.
+    private static readonly string[] Endings =
+        ["았어요", "었어요", "했어요", "이에요", "습니다", "으세요", "으니까", "아요", "어요", "해요", "예요", "세요", "니까", "지만", "으면", "고", "면"];
+
+    private static readonly string[] ParticleSuffixes = ["에서", "으로", "하고", "은", "는", "이", "가", "을", "를", "와", "과", "로", "에", "도"];
+
+    // Words that merely end like a particle: 같이 «вместе», 많이 «много», 아이 «ребёнок».
+    private static readonly HashSet<string> NotSplit = ["같이", "많이", "아이", "오이", "고기", "누가"];
+
+    /// <summary>«학생이에요.» → 학생 + 이에요 (ending) + «.»; null when nothing known ends the word.</summary>
+    private static (string Stem, string Suffix, string Tail, string Kind)? Split(string token)
+    {
+        int end = token.Length;
+        while (end > 0 && !KorTrainer.Domain.Hangul.Syllable.IsSyllable(token[end - 1]))
+        {
+            end--;
+        }
+
+        string word = token[..end];
+        string tail = token[end..];
+        if (NotSplit.Contains(word))
+        {
+            return null;
+        }
+
+        foreach (var (list, kind) in new[] { (Endings, "gram-ending"), (ParticleSuffixes, "gram-particle") })
+        {
+            if (list.FirstOrDefault(x => word.Length > x.Length && word.EndsWith(x, StringComparison.Ordinal)) is { } suffix)
+            {
+                return (word[..^suffix.Length], suffix, tail, kind);
+            }
+        }
+
+        return null;
+    }
+
+    private static bool IsKorean(string text) => text.Any(KorTrainer.Domain.Hangul.Syllable.IsSyllable);
+
+    private static string Clean(string token) => new(token.Where(KorTrainer.Domain.Hangul.Syllable.IsSyllable).ToArray());
+
+    private async Task TapAsync(int index, string token)
+    {
+        string word = Clean(token);
+        _open = index;
+        _found = null;
+        _looking = true;
+        _ = State.SpeakAsync(word).AsTask();
+        try
+        {
+            _found = await LookUpAsync(word);
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException)
+        {
+            _found = null; // the popover says nothing was found; the word was still spoken
+        }
+        finally
+        {
+            _looking = false;
+        }
+    }
+
+    /// <summary>The word itself, else shorter and shorter beginnings of it, as a noun or a verb (먹어요 → 먹 → 먹다).</summary>
+    private async Task<WordDto?> LookUpAsync(string word)
+    {
+        if (Cache.TryGetValue(word, out var cached))
+        {
+            return cached;
+        }
+
+        WordDto? found = null;
+        for (int length = word.Length; length >= 1 && found is null; length--)
+        {
+            string stem = word[..length];
+            var page = await Api.GetWordsAsync(null, null, null, stem, 1, SearchPage);
+            found = page.Items.FirstOrDefault(w => w.Korean == stem) ?? page.Items.FirstOrDefault(w => w.Korean == stem + "다");
+        }
+
+        Cache[word] = found;
+        return found;
+    }
+}

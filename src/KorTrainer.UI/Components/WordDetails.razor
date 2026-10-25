@@ -64,6 +64,32 @@
         {
             <p class="note-text">💡 @d.Note</p>
         }
+
+        <div class="flag-row">
+            @if (d.Flag is { } flag)
+            {
+                <p class="flag-text small">
+                    <span>⚑ Перевод отмечен для проверки@(flag.Note is not null ? $": «{flag.Note}»" : ".")</span>
+                    <button type="button" class="link-button small" disabled="@_flagging" @onclick="UnflagAsync">снять</button>
+                </p>
+            }
+            else if (_flagOpen)
+            {
+                <form class="note-form" @onsubmit="FlagAsync">
+                    <input type="text" maxlength="300" placeholder="Как правильно? Можно оставить пустым" aria-label="Как правильно"
+                           @bind="_flagNote" @bind:event="oninput" />
+                    <button type="submit" class="btn small" disabled="@_flagging">Отметить</button>
+                </form>
+            }
+            else
+            {
+                <button type="button" class="link-button small flag-button" @onclick="() => _flagOpen = true">Перевод неточный?</button>
+            }
+            @if (_flagError is not null)
+            {
+                <p class="notice error small">@_flagError</p>
+            }
+        </div>
     </div>
 }
 
@@ -73,6 +99,10 @@
     private string _note = string.Empty;
     private string? _noteError;
     private bool _saving;
+    private bool _flagOpen;
+    private bool _flagging;
+    private string _flagNote = string.Empty;
+    private string? _flagError;
 
     [Parameter, EditorRequired]
     public int WordId { get; set; }
@@ -90,6 +120,9 @@
         _loadedFor = WordId;
         _details = null;
         _noteError = null;
+        _flagOpen = false;
+        _flagNote = string.Empty;
+        _flagError = null;
         try
         {
             _details = await Api.GetWordDetailsAsync(WordId);
@@ -123,6 +156,46 @@
         finally
         {
             _saving = false;
+        }
+    }
+
+    /// <summary>Keeps the doubt for a later fix of the deck; the card itself does not change.</summary>
+    private Task FlagAsync() => ChangeFlagAsync(async id => await Api.FlagTranslationAsync(id, _flagNote));
+
+    private Task UnflagAsync() => ChangeFlagAsync(async id =>
+    {
+        await Api.UnflagTranslationAsync(id);
+        return null;
+    });
+
+    private async Task ChangeFlagAsync(Func<int, Task<TranslationFlagDto?>> change)
+    {
+        if (_details is null)
+        {
+            return;
+        }
+
+        int wordId = _details.WordId;
+        _flagging = true;
+        _flagError = null;
+        try
+        {
+            var flag = await change(wordId);
+            // The card may have moved on to the next word while the request was out.
+            if (_details?.WordId == wordId)
+            {
+                _details = _details with { Flag = flag };
+                _flagOpen = false;
+                _flagNote = string.Empty;
+            }
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException)
+        {
+            _flagError = _details?.WordId == wordId ? ex.Message : null;
+        }
+        finally
+        {
+            _flagging = false;
         }
     }
 }

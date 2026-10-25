@@ -1,146 +1,198 @@
+<div align="center">
+
+<img src="src/KorTrainer.Web/wwwroot/icon-192.png" width="88" alt="KorTrainer icon: 한 on red" />
+
 # KorTrainer
 
-A self-study trainer for Korean from absolute zero to **TOPIK in spring 2027**, built as a
-clean-architecture ASP.NET Core + Blazor WebAssembly application.
+**A Korean self-study trainer: from the first letter to TOPIK, on the phone and in the browser.**
 
-The interface is in Russian (the author's native language); code, comments and docs are in English.
-Romanization is **off by default** — the point is to learn to read Hangul without crutches.
+[![.NET 10](https://img.shields.io/badge/.NET-10-512BD4?logo=dotnet&logoColor=white)](https://dotnet.microsoft.com/)
+[![Blazor](https://img.shields.io/badge/Blazor-WebAssembly%20%2B%20Hybrid-5C2D91?logo=blazor&logoColor=white)](https://dotnet.microsoft.com/apps/aspnet/web-apps/blazor)
+[![Android](https://img.shields.io/badge/Android-.NET%20MAUI-3DDC84?logo=android&logoColor=white)](https://dotnet.microsoft.com/apps/maui)
+[![EF Core + SQLite](https://img.shields.io/badge/EF%20Core-SQLite-003B57?logo=sqlite&logoColor=white)](https://learn.microsoft.com/ef/core/)
+[![Tests](https://img.shields.io/badge/tests-1%2C049%20passing-2f7d6f)](#development)
+[![Docker](https://img.shields.io/badge/Docker-compose-2496ED?logo=docker&logoColor=white)](#quick-start)
 
-| Today (desktop) | Drill (phone, dark theme) | Flashcards |
-|---|---|---|
-| ![Today](docs/screenshots/today-desktop.png) | ![Drill](docs/screenshots/drill-mobile-dark.png) | ![Review](docs/screenshots/review.png) |
+Russian interface · English code · romanization off by default: you learn to read Hangul without crutches
 
-## Features
+</div>
 
-**Iteration 1 (MVP)**
+---
 
-- **A self-paced plan** — the home page shows your current step (a lesson or a block of ~100 words)
-  with lesson notes, tasks whose progress is tracked automatically from your answers and accumulates
-  for as long as the step is open, manual ticks and quick links. When the tasks are done the app offers
-  the next step; "Перейти дальше" is always available. Nothing moves forward just because days pass.
-  Instead of a streak it shows how many of the last 7 days had study.
-- **«10 минут»** — one tap starts a short session: up to 15 due word cards, five due mistakes, a drill
-  from the step's first unfinished task, then a short listening (or letter) drill; everything counts
-  towards the step.
-- **Plan as a path** — the 42 steps as a winding path with stage badges; the walked part is solid and the
-  page opens at the current step.
-- **Трудные темы** — statistics list the Hangul, grammar and number topics with under 85% right in the
-  last 30 days; the 10-minute session drills the weakest one.
-- **Работа над ошибками** — a wrong first answer in any multiple-choice drill is kept and comes back
-  after 1, 3 and 7 days (a small Leitner schedule); three correct reviews close it, a slip starts over.
-- **Hangul**
-  - letter → sound and sound → letter, with Russian sound approximations;
-  - syllable composition and decomposition computed from Unicode arithmetic (no syllable tables);
-  - the three consonant series (가/카/까, 다/타/따, …) by ear via the browser's Korean voice;
-  - batchim: the 7 final sounds and pronunciation rules (연음, nasalization, tensification, …);
-  - timed reading with milliseconds-per-syllable statistics;
-  - a word analyzer that splits syllables into letters and explains how a word is pronounced.
-- **Vocabulary with spaced repetition** — an Anki-style SM-2 scheduler (learning steps, ease,
-  lapses) over a ~5,900-word deck: ~350 hand-picked words for the first lessons plus all three levels
-  (A/B/C) of the official NIKL learner vocabulary list, introduced by frequency as the plan reaches each stage.
-- **Keyboard first** — `1`–`4` to answer, `Enter` to continue, `Space` to hear the word.
-- Responsive layout (phone tab bar / desktop sidebar), light and dark themes.
-- Progress export/import as JSON; data stored in SQLite.
+<table>
+  <tr>
+    <td align="center"><img src="docs/screenshots/home.webp" width="200" alt="Home screen" /><br /><sub><b>Home</b>: continue, 10 minutes, due checks</sub></td>
+    <td align="center"><img src="docs/screenshots/path.webp" width="200" alt="The plan as a path" /><br /><sub><b>The plan</b>: 42 self-paced steps</sub></td>
+    <td align="center"><img src="docs/screenshots/rule.webp" width="200" alt="A grammar rule" /><br /><sub><b>Rule first</b>: grammar in colour</sub></td>
+    <td align="center"><img src="docs/screenshots/feedback.webp" width="200" alt="Feedback on a wrong answer" /><br /><sub><b>Every mistake explained</b></sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/screenshots/card.webp" width="200" alt="A vocabulary card" /><br /><sub><b>Spaced repetition</b> with examples</sub></td>
+    <td align="center"><img src="docs/screenshots/series.webp" width="200" alt="The three consonant series" /><br /><sub><b>Hangul</b>: plain, aspirated, tense</sub></td>
+    <td align="center"><img src="docs/screenshots/rules.webp" width="200" alt="A rule check" /><br /><sub><b>Rule checks</b> on a schedule</sub></td>
+    <td align="center"><img src="docs/screenshots/numbers-dark.webp" width="200" alt="Telling the time, dark theme" /><br /><sub><b>Numbers and time</b>, dark theme</sub></td>
+  </tr>
+</table>
 
-**Iteration 2 — grammar**
+<p align="center"><img src="docs/screenshots/desktop.webp" width="820" alt="The trainer on a desktop" /></p>
 
-- Drills generated from deck words by rule: 이에요/예요, 이/가 아니에요, 은/는, 이/가, 을/를 by batchim;
-  -아/어요 with vowel harmony and contraction (가요, 봐요, 마셔요, 돼요), ㅡ-drop (써요, 바빠요) and the
-  ㅂ/ㄷ/르/ㅅ/ㅎ irregular classes (더워요, 들어요, 몰라요); -습니다/ㅂ니다 with ㄹ-drop (만듭니다); past -았/었어요;
-  stage 2 endings -고, -아서/어서, -(으)니까, -고 싶다, -(으)ㄹ 수 있다, -아/어야 하다.
-- TOPIK I grammar (29 topics in all): 와/과 and (으)로 (로 after ㄹ); negation 안/못 (공부 안 해요) and
-  -지 않다; future -(으)ㄹ 거예요, -(으)ㄹ게요, -(으)ㄹ까요; honorific -(으)세요 with 드세요/주무세요;
-  -아/어 주세요, -고 있다, -지만, -(으)면 (살면 keeps ㄹ), -(으)러 가다, -기 때문에.
-- Distractors are the typical learner mistakes (먹아요, 듣어요, 이워요, 먹읍니다, spelling by ear 머거요,
-  거에요, 갈께요), never a correct variant such as 바꾸어요; every answer explains the rule that decided it;
-  the "mixed" drill only uses topics the plan has opened.
-- Grammar in real sentences: deck verbs and nouns are found in their topic's form inside Tatoeba
-  sentences made only of words the learner already has, and blanked out (어제 영화를 ___ (보다).). Topic
-  drills ask about half their questions this way; «В предложениях» asks only gaps and hides the ending,
-  so the form is chosen by meaning among other endings of the same verb, as on TOPIK. Topics Tatoeba barely
-  covers (future, 안/못, -(으)러 가다, -기 때문에 …) get 130 original sentences written for them.
+## Contents
 
-**Iteration 3 — numbers**
+- [Why](#why)
+- [What it teaches](#what-it-teaches)
+- [Under the hood](#under-the-hood)
+- [Architecture](#architecture)
+- [Quick start](#quick-start)
+- [Speech](#speech)
+- [Development](#development)
+- [Study plan](#study-plan)
+- [Data sources and licences](#data-sources-and-licences)
+- [API](#api)
 
-- Sino-Korean (no 일 before 십/백/천/만, groups by 만/억) and native numbers (한/두/세/네/스무 before counters),
-  counters (개, 명, 살, 권, 잔, 마리, 층, 번 …), clock time (native hours + Sino minutes) and money, in both
-  directions; distractors are the classic mistakes (일십오, 일만 원, 사과 삼 개, 삼 시 삼십 분).
-- An instant "how to read this number" converter running in the browser on the shared Domain code.
+## Why
 
-**Iteration 4 — TOPIK and statistics**
+I am preparing for TOPIK in spring 2027 on my own, and wanted one tool that walks the whole way: Hangul,
+first phrases, the TOPIK I vocabulary and grammar, then TOPIK II writing. It should also check my answers
+properly instead of only flipping cards. KorTrainer is that tool, and a portfolio project in C#: clean
+architecture, a pure domain model with property-style tests, one Blazor UI shared by a web app and a native
+Android app.
 
-- TOPIK II writing (쓰기, tasks 51–54): format, timing split of the 50-minute section, tips and Korean
-  phrase templates for the graph description (53) and the essay (54); a countdown timer, a 원고지-style
-  character counter with the target range and saved drafts. Past papers are linked on
-  [topik.go.kr](https://www.topik.go.kr), not copied.
-- Statistics: learned and learning words, accuracy per module (overall and last 7 days), study minutes
-  per day (bar chart with hover details and a table view), study days this week and month, reading speed.
+## What it teaches
 
-![TOPIK writing](docs/screenshots/topik-writing.png)
+### 🗺️ A plan that waits for you
 
-**Iteration 5 — practice extras**
+- **42 self-paced steps**: three Hangul lessons, seven lessons of first phrases, then blocks of ~100 words
+  with one or two grammar topics each, up to a mock exam and TOPIK II writing. Nothing moves forward because
+  days pass; a step is done when its tasks are.
+- **Every task is done in the app**, and progress is counted from your answers. Lesson tasks open one after
+  another: new words → the rule → the drill → listening → saying words aloud → review.
+- **«10 минут»** starts a short session with one tap: due cards, due mistakes, a due rule check, the step's
+  next drill and the weakest topic.
+- **Gentle by design**: the home screen shows the last seven days, not a streak. Reminders never say you are
+  "behind".
 
-- **Listening** — words you are learning are played with nothing on screen: pick the meaning, or pick the
-  spelling among sound-alikes generated by rule (other consonant series, ㅓ/ㅗ and ㅜ/ㅡ swaps, another
-  batchim) and filtered to ones that really sound different. Native recordings are preferred.
-- **Reverse cards** — `?mode=reverse` on the review page shows the Russian side; you type the Korean
-  word and get a letter-level diff (wrong vowel, missing batchim) with a suggested grade.
-- **Browse the plan** — ← / → on the home page show finished steps with the progress made in them and
-  preview upcoming ones; the plan page shows every step of every stage.
-- **Forecast** — the statistics page dates each vocabulary goal (800 / 1,500 / 3,000 words) at your
-  recent pace (new words over the last 14 days) — a guide, never a deadline.
-- **Gentle reminders** — on evenings without study the home page, a systemd user timer on Linux (20:00,
-  see [`tools/reminder`](tools/reminder/README.md)) and the Android app suggest ten minutes of practice.
-  They can be switched off in the settings.
-- **Installable app (PWA)** — a web manifest and a service worker that caches the app shell, recordings
-  and the last API answers: the trainer opens in its own window and starts without the server, showing
-  the last loaded plan (answers given offline are not saved). Browsers only enable this on `localhost`
-  or HTTPS, so a phone opening `http://<computer-ip>:8080` gets the normal online site.
+### 한 Hangul
 
-> ⚠️ **The Russian translations in both decks were machine-generated and should be reviewed.**
-> Fix them in `src/KorTrainer.Infrastructure/Seed/words.json` or `tools/deck/nikl.ru.tsv` (then run
-> `dotnet run tools/deck/BuildNiklDeck.cs`); the next start updates words in place without losing progress.
+- Letter ↔ sound with Russian approximations; building and splitting syllables; the 7 final sounds.
+- **The three consonant series** (가/카/까, 다/타/따, …): listen, compare, then drill one row.
+- Pronunciation rules (연음, nasalization, tensification, …) with a word analyzer that explains them.
+- **Timed reading** in milliseconds per syllable. Read aloud and speech recognition checks you.
+- A **두벌식 keyboard trainer** that composes syllables like a real Korean IME.
 
-**Iteration 6 — learning tools**
+### 📚 Vocabulary
 
-- **Hanja roots** — 3,200 Sino-Korean deck words carry their hanja (from the NIKL list) and 1,333
-  characters have a 훈 and a Russian gloss. `/hanja` lists the roots of the words you study with their
-  families (學 학 «учёба» → 학교, 학생, 대학, 방학…); drills ask for the common root of a word family or the
-  meaning of a word from its roots. Review cards show a word's roots.
-- **Example sentences** — 4,750 short sentences from Tatoeba, each built only from deck words, appear on
-  review cards (up to three per word).
-- **Dictation and shadowing** — a sentence made of your words is played and you type it, or you repeat it
-  aloud and speech recognition checks you (Web Speech API in the browser, Android's recognizer in the app).
-  `SentenceComparer` aligns syllables by longest common subsequence, so one missed syllable is one mistake.
-- **Keyboard trainer** — the 두벌식 layout row by row, then your words and sentences, with the next key
-  highlighted. `HangulComposer` reproduces a Korean keyboard's syllable automaton (patchim moves to the next
-  syllable, ㅗ+ㅏ → ㅘ, ㄹ+ㄱ → ㄺ), so no Korean layout has to be installed on the computer.
-- **Hard words** — words forgotten twice or answered "Again" three times get a page with roots, examples and
-  a personal memory note (kept in backups), plus meaning and sound-alike spelling drills that leave the review
-  schedule alone.
-- **Reading** — 36 original graded texts from the first phrases to TOPIK II level. Tap a word to see its
-  dictionary form (먹었어요 → 먹다), translation and roots, and add it to study; comprehension questions follow.
-- **TOPIK I reading** — 135 original items in the exam's formats (31–33 topic, 34–39 cloze, 40–42 notice,
-  43–45 same meaning, 46–48 main idea) with explanations and translations.
+- **~5,900 words**: ~350 hand-picked for the first lessons plus all three levels of the NIKL learner
+  vocabulary list, introduced by frequency as the plan reaches them.
+- **Anki-style SM-2** spaced repetition, swipe or `1`–`4` to grade, reverse cards with typed answers and a
+  letter-level diff.
+- **Memory aids** on every card: hanja roots (學 → 학교, 학생, 대학), up to three Tatoeba example sentences, your
+  own note. Words you keep forgetting get their own page and drills.
+- **«Перевод неточный?»**: flag a doubtful translation with your suggestion; the list notices when the deck
+  is corrected later.
 
-`WordIndex` links running text to the deck: it generates the stems every deck verb and adjective takes
-(via the `Conjugator`: 가/갔/간/갈/가는, 먹어/먹었/먹은/먹을/먹는 …) and matches the longest stem or noun a
-token starts with, so particles and endings simply follow. It recognizes 99% of the words in the texts.
+### ✍️ Grammar
 
-### Data sources
+- **29 TOPIK I topics**: particles (이/가, 은/는, 을/를, 와/과, (으)로), the polite and formal styles, past and
+  future, negation, -고 / -아서 / -(으)니까, -고 싶다, -(으)ㄹ 수 있다, honorifics, -고 있다, -(으)면, and more.
+- **The rule comes first**: meaning, how to build the form step by step, examples with particles and endings
+  coloured, and the usual mistake. Tap any Korean word for its sound and meaning.
+- **Distractors are real learner mistakes** (먹아요, 듣어요, 이워요, 먹읍니다, 갈께요), and each one says why it is
+  wrong. A gap asks only for the part that changes: 책___ 아니에요 → 이 / 가.
+- **Grammar in real sentences**: verb forms are found and blanked out in Tatoeba sentences built only from
+  words you already know, plus 130 original sentences for topics Tatoeba barely covers.
 
-- **«한국어 학습용 어휘 목록»** — Korean Learner's Vocabulary List, National Institute of Korean Language
-  (국립국어원), 2003: headwords, parts of speech, hanja, levels and frequency ranks. Used under
-  [KOGL Type 1](https://www.kogl.or.kr/info/licenseType1.do) (공공누리 제1유형, attribution). See
-  [`tools/deck`](tools/deck/README.md) for the export and the build script.
-- **Lingua Libre** pronunciation recordings via Wikimedia Commons — CC0 and CC BY-SA 4.0, author and
-  license of every file on the in-app `/credits` page.
-- **Tatoeba** example sentences — [CC BY 2.0 FR](https://creativecommons.org/licenses/by/2.0/fr/); sentence
-  ids and authors are kept and shown. Russian for sentences without a Tatoeba translation is machine-made
-  (marked *). Profanity, violence and politics are filtered out (`tools/sentences/excluded.txt`).
-- **Unihan** (© Unicode, Inc., Unicode License v3) — English definitions used as hints for the Russian
-  hanja glosses, which are machine-written.
-- Reading texts and TOPIK I items are original; they are not copied from real exams.
+### 🔢 Numbers
+
+Sino-Korean and native numbers, counters (개, 명, 살, 권, 잔, 마리 …), clock time (native hours, Sino minutes) and
+money, with an instant "how do I read this" converter.
+
+### 🎧 Listening, speaking, reading
+
+- Listening rises gradually: single words from lesson 4, then phrases, then shadowing whole sentences.
+- **Dictation** and **shadowing** on sentences made of your words, checked syllable by syllable.
+- **36 graded texts** with tap-to-translate (먹었어요 → 먹다) and comprehension questions.
+- **135 original TOPIK I reading items** in the exam's formats, and a TOPIK II writing (51–54) timer with a
+  원고지-style counter and saved drafts.
+
+### 🔁 Review loops
+
+| Loop | Schedule |
+|---|---|
+| Words | SM-2: learning steps, ease, lapses |
+| Mistakes | a wrong answer comes back after 1, 3 and 7 days |
+| Rules | a five-question check after 1, 3, 7, 14, 30 days, then every two months; 4 of 5 keeps it |
+| Weak topics | topics under 85 % right in 30 days are drilled in «10 минут» |
+
+### 📱 The phone app
+
+The Android app is a real APK, not a web page. The database and all the logic live on the phone, so it works
+offline. Neural speech for ~29,000 texts is bundled, a wrong answer gets a short buzz, and an evening
+reminder and a home-screen widget show what is due. Once a week the app saves a backup to
+`Downloads/KorTrainer`.
+
+## Under the hood
+
+- **Unicode syllable arithmetic.** `Syllable.Decompose` computes `initial = (c − 0xAC00) / 588`,
+  `medial = (c − 0xAC00) % 588 / 28`, `final = (c − 0xAC00) % 28`. There are no tables, and a test round-trips
+  all 11,172 syllables.
+- **A pronunciation engine.** `Pronunciation.Pronounce("감사합니다")` → `[감사함니다]`, with the list of rules
+  that fired; the drills' explanations come from it.
+- **A conjugator with irregular classes.** ㅂ/ㄷ/르/ㅅ/ㅎ verbs, vowel harmony and contraction (가요, 봐요, 돼요),
+  ㅡ-drop and ㄹ-drop. Its `ExplainedMistakes` produce the wrong forms learners actually write, each with the
+  reason it is wrong.
+- **`WordIndex`** links running text to the deck: it generates the stems every verb takes (가/갔/간/갈/가는) and
+  matches the longest one, so 99 % of the words in the texts are found.
+- **`HangulComposer`** reproduces a Korean keyboard's automaton (patchim moves to the next syllable,
+  ㅗ+ㅏ → ㅘ, ㄹ+ㄱ → ㄺ), so the typing trainer needs no Korean layout.
+- **Pure, deterministic schedulers and generators.** `SrsScheduler`, `MistakeSchedule` and `RuleSchedule`
+  are functions over immutable records; every drill is generated from rules with an injected `Random`, so
+  tests assert properties over hundreds of generated items.
+- **Time done right.** Activity stores the learner's local date when it is written, so daily statistics are a
+  plain `GROUP BY`. The clock (`TimeProvider`) is injected everywhere.
+
+## Architecture
+
+```mermaid
+flowchart LR
+    subgraph core [" "]
+        Domain["Domain<br/><sub>Hangul, grammar, SRS, plan, generators</sub>"]
+        Contracts["Contracts<br/><sub>DTOs</sub>"]
+        Application["Application<br/><sub>one service per feature</sub>"]
+        Infrastructure["Infrastructure<br/><sub>EF Core + SQLite, seed, audio</sub>"]
+    end
+    UI["UI<br/><sub>Razor pages + components</sub>"]
+    Api["Api<br/><sub>Minimal API, hosts the WASM client</sub>"]
+    Web["Web<br/><sub>Blazor WebAssembly</sub>"]
+    Embedded["Embedded<br/><sub>back end in-process</sub>"]
+    Mobile["Mobile<br/><sub>.NET MAUI Android</sub>"]
+
+    Contracts --> Domain
+    Application --> Contracts
+    Infrastructure --> Application
+    Api --> Infrastructure
+    UI --> Contracts
+    Web --> UI
+    Embedded --> UI
+    Embedded --> Infrastructure
+    Mobile --> Embedded
+```
+
+Dependencies point inwards and the Domain has none, so the same code runs on the server, in the browser and
+on the phone. The pages only know `IKorTrainerApi`, `ISpeechOutput`, `IBackupExporter` and a few other
+device services:
+
+- **in the browser**, `HttpKorTrainerApi` calls the ASP.NET Core API and speech uses the Web Speech API;
+- **on the phone**, `LocalKorTrainerApi` calls the application services directly (one DI scope per call),
+  and speech uses the bundled clips or Android's text-to-speech.
+
+| Project | What it holds |
+|---|---|
+| `KorTrainer.Domain` | Hangul (syllables, batchim, pronunciation, romanization), grammar (particles, conjugator, theory), numbers, SRS, the plan, exercise generators |
+| `KorTrainer.Application` | use cases with validation (`ValidationFailedException` → 400, `NotFoundException` → 404) and the study clock |
+| `KorTrainer.Infrastructure` | `AppDbContext`, migrations, the embedded deck, sentences and texts, Lingua Libre audio |
+| `KorTrainer.Api` | Minimal API, RFC 7807 problem details, rate limiting, OpenAPI in development |
+| `KorTrainer.UI` | every page and component, CSS with light and dark themes, JS interop |
+| `KorTrainer.Web` · `KorTrainer.Mobile` | the two hosts: WebAssembly + PWA, and the Android app |
 
 ## Quick start
 
@@ -148,132 +200,48 @@ token starts with, so particles and endings simply follow. It recognizes 99% of 
 docker compose up --build          # or: podman compose up --build
 ```
 
-Open <http://localhost:8080>. From a phone on the same network use `http://<computer-ip>:8080`.
-Data lives in the `kortrainer-data` volume (`/data/kortrainer.db`).
+Open <http://localhost:8080>. Data lives in the `kortrainer-data` volume.
 
-> 🔒 KorTrainer is a single-user app **without authentication**: anyone who can reach the port can
-> read and replace your progress (including the import endpoint). Run it on a trusted home network
-> only, or bind it to localhost by changing the port mapping to `"127.0.0.1:8080:8080"`.
+> 🔒 KorTrainer is a single-user app **without authentication**: anyone who can reach the port can read and
+> replace your progress. Run it on a trusted network, or bind it to localhost (`"127.0.0.1:8080:8080"`).
 
-Without Docker (requires the .NET 10 SDK):
+Without Docker (needs the .NET 10 SDK):
 
 ```bash
-dotnet run --project src/KorTrainer.Api      # http://localhost:5116, DB in src/KorTrainer.Api/data/
+dotnet run --project src/KorTrainer.Api      # http://localhost:5116
 ```
 
-### Android app
+**Android:** `tools/android/build-apk.sh` builds a signed release APK; setup, signing and moving your progress
+between devices are in [`tools/android`](tools/android/README.md).
 
-The phone version is a real APK: the same pages, but the database and all logic live on the phone, so
-it works without the server and offline (recordings are downloaded on first play). Build it with
-`tools/android/build-apk.sh` — setup, signing and moving your progress are described in
-[`tools/android`](tools/android/README.md).
+## Speech
 
-### Native-speaker recordings
-
-About 930 words — including the minimal pairs of the plain/aspirated/tense listening drill (바다/파다,
-비/피, 덜다/털다/떨다 …) — are voiced by real native speakers from [Lingua Libre](https://lingualibre.org)
-(CC0 / CC BY-SA, credited on the `/credits` page). The server downloads each file from Wikimedia
-once, caches it in the data volume and prefetches the rest in the background; see
-[`tools/audio`](tools/audio/README.md). They are off by default (Settings → «Записи носителей»), so every
-word and sentence is spoken by the same MeloTTS voice; turned on, they replace it where they exist.
-
-### Korean voice
-
-Listening drills use the [Web Speech API](https://developer.mozilla.org/docs/Web/API/SpeechSynthesis)
-with a `ko-KR` voice — no paid services. If the browser has no Korean voice, the app shows
-platform-specific installation instructions (Android: Google TTS → Korean; Windows: Settings → Speech;
-macOS/iOS: Spoken Content → Yuna; Linux: Chrome has the online “Google 한국의” voice).
-
-## Architecture
-
-```
-src/
-  KorTrainer.Domain          pure C#: Hangul, pronunciation, SRS, study plan, exercise generators
-  KorTrainer.Contracts       DTOs shared by the API and the Blazor client
-  KorTrainer.Application     use cases (Today, Vocabulary, Hangul, Activity, Progress), validation
-  KorTrainer.Infrastructure  EF Core + SQLite, migrations, deck seeding
-  KorTrainer.Api             Minimal API, ProblemDetails, rate limiting; hosts the WASM client
-  KorTrainer.UI              Razor class library: every page and component, CSS, JS interop
-  KorTrainer.Web             Blazor WebAssembly host: HTTP client, Web Speech, PWA
-  KorTrainer.Embedded        the back end in-process (IKorTrainerApi over the services) for the app
-  KorTrainer.Mobile          .NET MAUI Android app: BlazorWebView, Android TTS, reminders
-tests/
-  KorTrainer.Domain.Tests        unit tests of the language and scheduling logic
-  KorTrainer.Application.Tests   services against a migrated in-memory SQLite database
-  KorTrainer.Api.Tests           HTTP integration tests with WebApplicationFactory
-  KorTrainer.Embedded.Tests      the app's in-process back end on a real SQLite file
-```
-
-Dependencies point inwards: `Api → Infrastructure → Application → Domain`. The Domain project has
-no dependencies, so the same code runs on the server, inside the browser (the client uses it
-for romanization) and on the phone. The pages only know `IKorTrainerApi`, `ISpeechOutput` and
-`IBackupExporter`: the web host implements them with HTTP and the Web Speech API, the Android app
-with direct service calls and the system text-to-speech engine.
-
-### Interesting bits
-
-- **Unicode syllable math** — `Syllable.Decompose` computes
-  `initial = (code − 0xAC00) / 588`, `medial = (code − 0xAC00) % 588 / 28`, `final = (code − 0xAC00) % 28`;
-  a syllable has batchim when `(code − 0xAC00) % 28 != 0`. A test round-trips all 11,172 syllables.
-- **Pronunciation engine** — `Pronunciation.Pronounce("감사합니다")` → `[감사함니다]` and reports which
-  rules fired; the explanations in the drills come from that list. Romanization follows the
-  Revised Romanization rules on top of it (`학교` → `hakgyo`).
-- **SM-2 scheduler** — a pure function `Schedule(CardState, Grade, now) → CardState` over an
-  immutable record; the UI shows the next interval for every answer, as in Anki.
-- **Plan-driven unlocking** — lessons 1–3 drill Hangul only; lesson words open from lesson 4; stage words
-  and grammar topics open with the blocks that introduce them. The current step is the one open
-  `PlanStepProgress` row and its tasks count activity inside its time window. Activity records store
-  the learner's local date, so daily statistics are plain SQL `GROUP BY` without time zone math.
-- **Deterministic generators** — every drill is generated from rules with an injected `Random`,
-  so tests can assert properties over hundreds of generated items.
-
-## API
-
-| Method | Route | Purpose |
+| Source | Used for | Licence |
 |---|---|---|
-| GET/PUT | `/api/settings` | start date, time zone, romanization, theme, limits |
-| GET | `/api/today?step=` | a plan step (the current one by default), tasks with progress, study days, vocabulary |
-| POST | `/api/plan/advance` | finish the current step (`{ "from": key }`, 409 if it already changed) and open the next |
-| GET | `/api/reminder` | whether to nudge the learner today, with title and message |
-| GET | `/api/plan` | stages and lessons |
-| PUT | `/api/today/tasks/{key}` | manual tick |
-| GET | `/api/hangul/exercises/{type}?level=&count=` | generated multiple-choice drills |
-| GET | `/api/hangul/reading?level=&count=` | words for timed reading |
-| POST | `/api/hangul/reading-trials` | reading result |
-| GET | `/api/hangul/analyze?text=` | syllable breakdown and pronunciation |
-| GET | `/api/vocab/queue` · POST `/api/vocab/reviews` | SRS queue and answers |
-| GET | `/api/grammar/topics` · `/api/grammar/exercises/{type\|mixed}?count=` | grammar topics and drills |
-| GET | `/api/listening/exercises/{listen-meaning\|listen-spelling}?count=` | listening drills |
-| GET | `/api/numbers/exercises/{sino\|native\|counter\|time\|money\|mixed}?count=` | number drills |
-| GET | `/api/vocab/summary` · `/api/vocab/words` · `/api/vocab/topics` | vocabulary browser |
-| POST | `/api/attempts` · `/api/sessions` | activity log |
-| GET | `/api/topik/writing` · GET/POST `/api/topik/drafts` | TOPIK writing guide and drafts |
-| GET | `/api/stats/overview` · `/api/stats/daily?days=` · `/api/stats/forecast` | statistics and goal forecast |
-| GET | `/api/hanja/roots` · `/api/hanja/roots/{char}` · `/api/hanja/exercises/{hanja-root\|hanja-meaning}` | hanja roots and drills |
-| GET · PUT | `/api/vocab/words/{id}/details` · `/api/vocab/words/{id}/note` | roots, examples, own note of a word |
-| POST | `/api/vocab/words/{id}/study` | put a word into learning now (from a text) |
-| GET | `/api/vocab/hard` · `/api/vocab/hard/exercises/{hard-meaning\|hard-spelling}` | hard words and their drills |
-| GET | `/api/sentences/{dictation\|shadowing}?count=` | sentences made of the learner's words |
-| GET | `/api/typing/{level}?count=` | keyboard trainer texts (levels 1–6) |
-| GET | `/api/texts` · `/api/texts/{id}` | reading texts with tokens linked to the deck |
-| GET | `/api/topik/reading/{format\|mixed}?count=` | TOPIK I reading items |
-| GET | `/api/audio/words` · `/api/audio/{word}` · `/api/audio/credits` | native-speaker recordings |
-| GET/POST | `/api/progress/export` · `/api/progress/import` | JSON backup |
+| [MeloTTS](https://github.com/myshell-ai/MeloTTS), generated once by [`tools/tts`](tools/tts/README.md) | every deck word, sentence, syllable and drill form, one consistent voice | MIT |
+| [Lingua Libre](https://lingualibre.org) recordings | ~930 words by native speakers, when «Записи носителей» is on | CC0 / CC BY-SA, credited in the app |
+| The device's voice | only text that was not generated, such as words typed into the analyzer | — |
 
-Errors are RFC 7807 problem details (`400` with field errors, `404` for unknown routes).
-In Development the OpenAPI document is at `/openapi/v1.json`.
+Generated audio is not part of the repository; run the scripts in `tools/tts` to produce it.
+`generate_edge.py` can voice the same texts with Microsoft's SunHi voice, which pronounces final consonants
+more clearly, but its terms allow **personal use only**: never commit, publish or share that audio.
 
 ## Development
 
 ```bash
-dotnet build                                        # warnings are errors
-dotnet test                                         # ~600 tests (xUnit v3, Microsoft.Testing.Platform)
+dotnet build                     # TreatWarningsAsErrors is on for every project
+dotnet test                      # 1,049 tests: xUnit v3 on Microsoft.Testing.Platform, AwesomeAssertions
 dotnet test -- --coverage --coverage-output-format cobertura
 dotnet tool restore
 dotnet ef migrations add <Name> -p src/KorTrainer.Infrastructure -s src/KorTrainer.Api -o Persistence/Migrations
 ```
 
-Line coverage of the server-side code is about 94% (Domain 97%, Application 91%, Infrastructure 98%).
+| Test project | What it covers |
+|---|---|
+| `KorTrainer.Domain.Tests` | language rules and schedulers, property-style checks over generated drills |
+| `KorTrainer.Application.Tests` | services against a migrated in-memory SQLite database with a fake clock |
+| `KorTrainer.Api.Tests` | HTTP integration tests with `WebApplicationFactory` |
+| `KorTrainer.Embedded.Tests` | the phone's in-process back end on a real SQLite file |
 
 ## Study plan
 

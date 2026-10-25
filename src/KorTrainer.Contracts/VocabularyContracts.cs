@@ -78,8 +78,19 @@ public sealed record WordDetailsDto(
     IReadOnlyList<HanjaPartDto> Roots,
     IReadOnlyList<ExampleDto> Examples,
     string? Note,
-    string? HardReason);
+    string? HardReason,
+    TranslationFlagDto? Flag = null);
 
 public sealed record SaveNoteRequest(string? Text);
 
 public sealed record HardWordDto(int WordId, string Korean, string Russian, string Reason, int Lapses, string? Note, DateTime DueUtc);
+
+/// <param name="Russian">The translation as it was when flagged.</param>
+/// <param name="Current">The translation in the deck now; differs once it has been corrected.</param>
+/// <param name="Note">The learner's suggestion, if any.</param>
+public sealed record TranslationFlagDto(int WordId, string Korean, string Russian, string Current, string? Note, DateTime CreatedUtc)
+{
+    public bool IsCorrected => Russian != Current;
+}
+
+public sealed record FlagTranslationRequest(string? Note);

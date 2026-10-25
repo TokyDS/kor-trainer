@@ -65,6 +65,10 @@
 
     <div class="actions">
         <button type="button" class="btn primary" @onclick="OnStart">Понятно — к упражнениям</button>
+        @if (CheckHref is not null)
+        {
+            <a class="btn" href="@CheckHref">Уже знаю — проверить себя</a>
+        }
     </div>
 </article>
 
@@ -77,4 +81,8 @@
 
     [Parameter]
     public EventCallback OnStart { get; set; }
+
+    /// <summary>The drill as a self-check, for a learner who knows the rule already.</summary>
+    [Parameter]
+    public string? CheckHref { get; set; }
 }

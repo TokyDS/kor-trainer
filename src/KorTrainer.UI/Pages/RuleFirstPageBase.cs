@@ -23,6 +23,13 @@ public abstract class RuleFirstPageBase : ComponentBase
     [SupplyParameterFromQuery(Name = "drill")]
     public bool Drill { get; set; }
 
+    /// <summary>A self-check: ten questions without feedback, explained at the end.</summary>
+    [SupplyParameterFromQuery(Name = "check")]
+    public bool Check { get; set; }
+
+    /// <summary>The same drill as a self-check.</summary>
+    protected abstract string SelfCheckHref { get; }
+
     protected bool Drilling { get; private set; }
 
     protected string? ReadError { get; private set; }
@@ -39,13 +46,15 @@ public abstract class RuleFirstPageBase : ComponentBase
         {
             // Same topic, now with ?drill=true: go on to the exercises; never back to the rule mid-drill.
             Drilling |= Drill;
+            _readPending |= Check;
             return;
         }
 
         // Another topic: its rule comes first again.
         _shownType = Type;
         Drilling = Drill || !LoadRule();
-        _readPending = false;
+        // Choosing to check oneself says the rule is known: it counts as read before the first set.
+        _readPending = Check;
         ReadError = null;
     }
 

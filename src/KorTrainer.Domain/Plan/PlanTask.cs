@@ -52,9 +52,6 @@ public static class StudyMaterials
 
     /// <summary>The rule of a number drill (<c>/numbers/{type}</c>), shown before it.</summary>
     public static string NumberRule(string type) => $"numbers-{type}";
-
-    /// <summary>The scene that ends a lesson (<c>/lesson/{day}/practice</c>, <see cref="LessonPractices"/>).</summary>
-    public static string Practice(int day) => $"practice-{day}";
 }
 
 /// <param name="Key">Stable key, unique within a step; used to store that a <see cref="TaskMetric.Read"/> task was read.</param>

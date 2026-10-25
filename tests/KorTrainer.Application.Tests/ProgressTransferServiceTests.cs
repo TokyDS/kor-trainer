@@ -42,6 +42,44 @@ public sealed class ProgressTransferServiceTests
     }
 
     [Fact]
+    public async Task ExportThenImport_KeepsRuleChecksAndTranslationFlags()
+    {
+        ProgressExport snapshot;
+        await using (var source = await TestDatabase.CreateAsync())
+        {
+            var answers = Enumerable.Range(0, 5).Select(i => new AttemptDto(StudyModule.Grammar, ExerciseTypes.Copula, $"copula:{i}", true, 900)).ToArray();
+            await source.Activity.RecordAttemptsAsync(answers, Ct);
+            source.Time.Advance(TimeSpan.FromDays(1));
+            await source.RuleReviews.RecordCheckAsync(ExerciseTypes.Copula, new RuleCheckRequest(5, 5), Ct);
+            var word = await source.Db.Words.OrderBy(w => w.Id).FirstAsync(Ct);
+            await source.TranslationFlags.FlagAsync(word.Id, new FlagTranslationRequest("иначе"), Ct);
+            snapshot = await source.Progress.ExportAsync(Ct);
+        }
+
+        await using var target = await TestDatabase.CreateAsync();
+        await target.Progress.ImportAsync(snapshot, Ct);
+
+        (await target.Db.RuleReviews.SingleAsync(Ct)).Box.Should().Be(1);
+        (await target.TranslationFlags.GetAllAsync(Ct)).Should().ContainSingle().Which.Note.Should().Be("иначе");
+    }
+
+    [Fact]
+    public async Task Import_RejectsRuleChecksOfUnknownTopicsOrHugeBoxes()
+    {
+        await using var t = await TestDatabase.CreateAsync();
+        var snapshot = await t.Progress.ExportAsync(Ct);
+        var day = new DateOnly(2026, 10, 20);
+
+        var act = () => t.Progress.ImportAsync(snapshot with
+        {
+            RuleReviews = [new RuleReviewExport("nope", 1, day, day, 0), new RuleReviewExport(ExerciseTypes.Copula, int.MaxValue, day, day, 0)],
+        }, Ct);
+
+        var error = (await act.Should().ThrowAsync<ValidationFailedException>()).Which;
+        error.Errors["RuleReviews"].Should().ContainSingle().Which.Should().Contain("2");
+    }
+
+    [Fact]
     public async Task Import_ReplacesExistingProgress()
     {
         await using var t = await TestDatabase.CreateAsync();

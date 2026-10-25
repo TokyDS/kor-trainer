@@ -56,6 +56,14 @@ public static class ApiEndpoints
             await service.SaveNoteAsync(id, request, ct);
             return Results.NoContent();
         });
+        words.MapPut("/words/{id:int}/flag", (int id, FlagTranslationRequest request, TranslationFlagService service, CancellationToken ct) =>
+            service.FlagAsync(id, request, ct));
+        words.MapDelete("/words/{id:int}/flag", async (int id, TranslationFlagService service, CancellationToken ct) =>
+        {
+            await service.UnflagAsync(id, ct);
+            return Results.NoContent();
+        });
+        words.MapGet("/flags", (TranslationFlagService service, CancellationToken ct) => service.GetAllAsync(ct));
         words.MapGet("/hard", (WordDetailsService service, CancellationToken ct) => service.GetHardWordsAsync(ct));
         words.MapGet("/hard/exercises/{type}", (string type, int? count, WordDetailsService service, CancellationToken ct) => service.GetHardExercisesAsync(type, count ?? 20, ct));
         api.MapGroup("/sentences").WithTags("Sentences")
@@ -133,6 +141,9 @@ public static class ApiEndpoints
         group.MapGet("/topics", (GrammarService service, CancellationToken ct) => service.GetTopicsAsync(ct));
         group.MapGet("/exercises/{type}", (string type, int? count, GrammarService service, CancellationToken ct) =>
             service.GetExercisesAsync(type, count ?? 20, ct));
+        group.MapGet("/review", (RuleReviewService service, CancellationToken ct) => service.GetSummaryAsync(ct));
+        group.MapPost("/review/{type}", (string type, RuleCheckRequest request, RuleReviewService service, CancellationToken ct) =>
+            service.RecordCheckAsync(type, request, ct));
     }
 
     private static void MapAudio(RouteGroupBuilder group)

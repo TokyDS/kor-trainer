@@ -94,6 +94,12 @@ public interface IKorTrainerApi
 
     Task SaveWordNoteAsync(int wordId, string? text);
 
+    Task<TranslationFlagDto> FlagTranslationAsync(int wordId, string? note);
+
+    Task UnflagTranslationAsync(int wordId);
+
+    Task<IReadOnlyList<TranslationFlagDto>> GetTranslationFlagsAsync();
+
     Task<IReadOnlyList<HardWordDto>> GetHardWordsAsync();
 
     Task<ExerciseSetDto> GetHardExercisesAsync(string type, int count);
@@ -113,6 +119,10 @@ public interface IKorTrainerApi
     Task<MistakeSummaryDto> GetMistakeSummaryAsync();
 
     Task<ExerciseSetDto> GetMistakesAsync(int count);
+
+    Task<RuleReviewSummaryDto> GetRuleReviewAsync();
+
+    Task<RuleReviewTopicDto> RecordRuleCheckAsync(string type, int correct, int total);
 
     Task<IReadOnlyList<WeakTopicDto>> GetWeakTopicsAsync();
 

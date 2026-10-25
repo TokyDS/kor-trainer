@@ -3,6 +3,8 @@
 @inject AppState State
 @inject IKorTrainerApi Api
 @inject IBackupExporter Backup
+@inject IAutoBackup AutoBackup
+@inject DevicePreferences Device
 
 <PageTitle>Настройки — KorTrainer</PageTitle>
 
@@ -61,7 +63,7 @@
             <input type="checkbox" @bind="m.NativeRecordings" />
             <span>Записи носителей, где они есть</span>
         </label>
-        <small class="muted">По умолчанию всё озвучивает один голос (MeloTTS). Включите, чтобы слова с живой записью Lingua Libre звучали голосом носителя — голоса тогда будут разными.</small>
+        <small class="muted">По умолчанию всё озвучивает один синтезированный голос. Включите, чтобы слова с живой записью Lingua Libre звучали голосом носителя — голоса тогда будут разными.</small>
 
         <label>
             <span>Скорость речи: @m.SpeechRate.ToString("0.0#")</span>
@@ -77,6 +79,30 @@
             <p class="notice @(_isError ? "error" : "success") small">@_message</p>
         }
     </form>
+
+    <section class="card settings-form" aria-labelledby="device-heading">
+        <h2 id="device-heading">На этом устройстве</h2>
+        <small class="muted">Сохраняется сразу и только здесь: на телефоне и в браузере можно настроить по-разному.</small>
+
+        <label class="toggle">
+            <input type="checkbox" checked="@Device.AutoAdvance" @onchange="e => SetDeviceAsync(() => Device.AutoAdvance = (bool)e.Value!)" />
+            <span>После верного ответа — сразу дальше</span>
+        </label>
+        <label class="toggle">
+            <input type="checkbox" checked="@Device.Vibrate" @onchange="e => SetDeviceAsync(() => Device.Vibrate = (bool)e.Value!)" />
+            <span>Вибрация при ошибке</span>
+        </label>
+        <label class="toggle">
+            <input type="checkbox" checked="@Device.Sound" @onchange="e => SetDeviceAsync(() => Device.Sound = (bool)e.Value!)" />
+            <span>Звук при верном ответе</span>
+        </label>
+        <label>
+            <span>Размер корейского текста: @((int)Math.Round(Device.KoreanScale * 100))%</span>
+            <input type="range" min="@Invariant(DevicePreferences.MinKoreanScale)" max="@Invariant(DevicePreferences.MaxKoreanScale)" step="0.05"
+                   value="@Invariant(Device.KoreanScale)" @onchange="e => SetDeviceAsync(() => Device.KoreanScale = double.Parse((string)e.Value!, System.Globalization.CultureInfo.InvariantCulture))" />
+            <span class="hangul-text size-lg"><span class="text" lang="ko">한국어를 공부해요</span></span>
+        </label>
+    </section>
 
     <section class="card">
         <h2>Озвучка</h2>
@@ -113,6 +139,20 @@
         <div class="actions">
             <button type="button" class="btn" @onclick="ExportAsync">Сохранить JSON</button>
         </div>
+        @if (_autoBackup is { } auto)
+        {
+            <div class="auto-backup">
+                <p class="small">
+                    Раз в неделю копия сохраняется сама: <strong>@auto.Folder</strong>, хранятся четыре последние.
+                    @(auto.LastSavedUtc is { } last ? $"Последняя — {last.ToLocalTime().ToString("d MMMM, HH:mm", Russian)}." : "Первая появится, когда вы выйдете из приложения.")
+                </p>
+                <button type="button" class="btn small" disabled="@_autoSaving" @onclick="SaveCopyNowAsync">Сохранить копию сейчас</button>
+                @if (_autoMessage is not null)
+                {
+                    <p class="notice @(_autoError ? "error" : "success") small">@_autoMessage</p>
+                }
+            </div>
+        }
         <label class="toggle">
             <input type="checkbox" @bind="_confirmImport" />
             <span>Я понимаю, что текущий прогресс будет заменён</span>
@@ -126,6 +166,15 @@
 }
 
 @code {
+    // Range inputs read numbers with a dot whatever the page's language (0,85 is ignored).
+    private static string Invariant(double value) => value.ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+    private async Task SetDeviceAsync(Action change)
+    {
+        change();
+        await Device.SaveAsync();
+    }
+
     private const long MaxImportBytes = 20 * 1024 * 1024;
 
     private static readonly string[] TimeZones =
@@ -145,6 +194,12 @@
     private bool _confirmImport;
     private bool _importing;
     private bool _importError;
+    private AutoBackupStatus? _autoBackup;
+    private bool _autoSaving;
+    private bool _autoError;
+    private string? _autoMessage;
+
+    private static readonly System.Globalization.CultureInfo Russian = System.Globalization.CultureInfo.GetCultureInfo("ru-RU");
     private string? _importMessage;
 
     protected override async Task OnInitializedAsync()
@@ -158,6 +213,29 @@
         catch (JSException)
         {
             _voices = [];
+        }
+
+        _autoBackup = await AutoBackup.GetStatusAsync();
+    }
+
+    private async Task SaveCopyNowAsync()
+    {
+        _autoSaving = true;
+        _autoMessage = null;
+        try
+        {
+            _autoBackup = await AutoBackup.SaveNowAsync();
+            _autoError = false;
+            _autoMessage = $"Копия сохранена: {_autoBackup.Folder}.";
+        }
+        catch (Exception ex) when (ex is ApiException or IOException)
+        {
+            _autoError = true;
+            _autoMessage = ex.Message;
+        }
+        finally
+        {
+            _autoSaving = false;
         }
     }
 

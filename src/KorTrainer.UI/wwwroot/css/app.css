@@ -96,7 +96,10 @@ html, body {
     -webkit-text-size-adjust: 100%;
 }
 
-[lang="ko"] { font-family: var(--font-hangul); }
+/* Korean wraps between words only (스키 never splits into 스 / 키); an over-long word still breaks rather than overflow. */
+[lang="ko"] { font-family: var(--font-hangul); word-break: keep-all; overflow-wrap: anywhere; }
+/* The learner's Korean text size (Настройки → На этом устройстве), set as --ko-scale on the root. */
+.hangul-text .text[lang="ko"], .reading-word, .sentence-ko, .theory-sentence, .diff { zoom: var(--ko-scale, 1); }
 
 h1, h2, h3 { line-height: 1.2; margin: 0 0 var(--space-3); }
 h1 { font-size: clamp(1.6rem, 1.2rem + 1.6vw, 2.3rem); letter-spacing: -0.01em; }
@@ -163,6 +166,8 @@ h1:focus { outline: none; }
 
 .tab-icon { font-size: 1.05rem; font-weight: 700; line-height: 1.3; }
 .tab.active { color: var(--accent); }
+.tab { position: relative; }
+.tab-badge { position: absolute; top: 2px; left: calc(50% + 10px); min-width: 18px; padding: 0 5px; border-radius: 999px; background: var(--accent); color: var(--accent-ink); font: 700 0.65rem/18px var(--font-ui); text-align: center; }
 
 @media (min-width: 900px) {
     .shell { display: grid; grid-template-columns: 220px 1fr; }
@@ -290,8 +295,19 @@ h1:focus { outline: none; }
 .notice.error { background: var(--danger-soft); border-left: 4px solid var(--danger); }
 .notice.success { background: var(--celadon-soft); border-left: 4px solid var(--celadon); }
 
-.loading { display: flex; align-items: center; gap: var(--space-3); color: var(--ink-soft); padding: var(--space-5) 0; }
-.spinner { width: 18px; height: 18px; border-radius: 50%; border: 3px solid var(--rule); border-top-color: var(--accent); animation: spin 0.8s linear infinite; }
+/* Placeholders while loading: card shapes that shimmer softly (still when motion is reduced). */
+.skeleton { display: grid; gap: var(--space-4); padding: var(--space-2) 0; }
+.skeleton-card { display: grid; gap: var(--space-3); padding: var(--space-4); border-radius: var(--radius-lg); background: var(--paper-raised); border: 1px solid var(--rule); }
+.skeleton-line { display: block; height: 12px; border-radius: 6px; background: var(--paper-sunken); }
+.skeleton-line.short { width: 35%; }
+.skeleton-line.medium { width: 70%; }
+@media (prefers-reduced-motion: no-preference) {
+    .skeleton-line { animation: shimmer 1.4s ease-in-out infinite alternate; }
+}
+@keyframes shimmer { from { opacity: 1; } to { opacity: 0.45; } }
+
+/* The web app without network: answers wait until it is back. */
+.offline-banner { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; margin-bottom: var(--space-3); }
 @keyframes spin { to { transform: rotate(360deg); } }
 
 .progress-track { height: 6px; border-radius: 999px; background: var(--paper-sunken); overflow: hidden; }
@@ -353,6 +369,39 @@ h1:focus { outline: none; }
 .step-done { display: grid; gap: var(--space-2); justify-items: start; }
 .step-skip { margin-top: var(--space-4); padding-top: var(--space-3); border-top: 1px dashed var(--rule); }
 .streak-label { font-size: 0.72rem; }
+
+/* Timed reading: «Прочитал» and, where speech recognition works, «Прочитать вслух». */
+.reading-actions { display: grid; gap: var(--space-2); }
+.reading .diff-result { margin-top: var(--space-2); }
+
+/* The map home: where the learner left off, then the whole path. */
+.map-hero { display: grid; gap: var(--space-3); margin-bottom: var(--space-4); }
+
+/* Seven quiet days, today outlined: no count, no streak. */
+.week-strip { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: var(--space-2); max-width: 420px; }
+.week-strip li { display: grid; gap: 3px; justify-items: center; font: 600 0.7rem var(--font-ui); color: var(--ink-faint); }
+.week-cell { width: 100%; height: 24px; border-radius: 7px; background: var(--paper-sunken); }
+.week-strip li.studied .week-cell { background: var(--celadon); }
+.week-strip li.today .week-cell { outline: 2px solid var(--accent); outline-offset: 1px; }
+.week-strip li.today { color: var(--ink); }
+.continue {
+    display: grid;
+    gap: var(--space-2);
+    padding: var(--space-4) var(--space-5);
+    background: var(--paper-raised);
+    border: 1px solid var(--rule);
+    border-left: 4px solid var(--accent);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow);
+    color: var(--ink);
+    text-decoration: none;
+    transition: border-color var(--duration);
+}
+.continue:hover { border-color: var(--accent); }
+.continue .eyebrow { margin: 0; }
+.continue-title { font-size: 1.25rem; line-height: 1.3; text-wrap: balance; }
+.continue-meta { display: grid; gap: var(--space-1); }
+.map-heading { margin: var(--space-5) 0 var(--space-1); }
 .streak.lit { background: var(--accent); color: var(--accent-ink); transform: rotate(-2deg); box-shadow: var(--shadow); }
 
 .today-grid { display: grid; gap: var(--space-4); }
@@ -396,7 +445,17 @@ h1:focus { outline: none; }
     transition: background var(--duration), border-color var(--duration);
 }
 
-.task:not(.done) .check::before { content: counter(task); color: var(--ink-soft); font: 600 0.8rem var(--font-ui); }
+.task:not(.done) .check::before { content: attr(data-n); color: var(--ink-soft); font: 600 0.8rem var(--font-ui); }
+
+/* The current step leads with its next open task; done tasks shrink to chips above it. */
+.done-chips { list-style: none; margin: 0 0 var(--space-3); padding: 0; display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.done-chips a { display: inline-block; font-size: 0.78rem; padding: 3px 10px; border-radius: 999px; background: var(--celadon-soft); color: var(--celadon); text-decoration: none; }
+.focus-task { display: grid; gap: var(--space-2); padding: var(--space-4); margin-bottom: var(--space-3); border-radius: var(--radius-md); background: var(--paper); border: 1px solid var(--rule); border-left: 4px solid var(--accent); }
+.focus-task .eyebrow { margin: 0; }
+.focus-title { font-size: 1.15rem; line-height: 1.3; }
+.focus-task .btn { justify-self: start; }
+.focus-task .progress-track { flex: 1; min-width: 80px; }
+.task-list.compact .task { padding: var(--space-2) 0; }
 .task.done .check { background: var(--celadon); border-color: var(--celadon); color: #fff; }
 .task.locked .check { border-style: dashed; }
 .task.locked .task-title { color: var(--ink-faint); }
@@ -427,17 +486,6 @@ h1:focus { outline: none; }
 .theory-derivation { font-size: 0.85rem; color: var(--ink-faint); }
 .theory-pitfall { margin-bottom: 0; }
 .theory-recap { margin-top: var(--space-4); }
-
-/* A lesson's scene: who speaks on the left, the line, its translation on demand and an optional speaking check. */
-.practice-lines { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-4); }
-.practice-line { display: grid; grid-template-columns: 4.5rem minmax(0, 1fr); gap: var(--space-3); align-items: start; }
-.practice-line.same-speaker .practice-speaker { visibility: hidden; }
-.practice-speaker { font: 600 0.8rem var(--font-ui); color: var(--accent); padding-top: 0.45rem; letter-spacing: 0.02em; }
-.practice-body { display: grid; gap: var(--space-1); min-width: 0; }
-.practice-translation { color: var(--ink-soft); }
-.practice .link-button.small { justify-self: start; font-size: 0.85rem; }
-.speak-check { display: grid; gap: var(--space-2); justify-items: start; margin-top: var(--space-1); }
-.speak-check .diff-result { width: 100%; }
 
 /* A number rule's table: each cell is the written number over its Korean reading, and plays it. */
 .number-table { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: var(--space-2); }
@@ -630,12 +678,37 @@ input[type="text"], input[type="search"], input[type="number"], input[type="date
     75% { transform: translateX(4px); }
 }
 
+/* The answer panel sits at the bottom of the screen, above the tab bar, so «Дальше» is always under the thumb. */
 .feedback {
+    position: sticky;
+    bottom: calc(68px + env(safe-area-inset-bottom));
+    z-index: 5;
     margin-top: var(--space-4);
-    padding: var(--space-4);
+    padding: var(--space-3) var(--space-4);
     border-radius: var(--radius-md);
+    box-shadow: var(--shadow);
+    max-height: 60vh;
+    overflow-y: auto;
     animation: rise 200ms ease-out;
 }
+@media (min-width: 900px) { .feedback { bottom: var(--space-4); } }
+.feedback-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
+.feedback-head .btn { flex: none; }
+.feedback-more summary { cursor: pointer; font-size: 0.85rem; color: var(--ink-soft); margin-top: var(--space-2); }
+.auto-advance { height: 3px; margin-top: var(--space-2); border-radius: 2px; background: color-mix(in srgb, var(--celadon) 25%, transparent); overflow: hidden; }
+.auto-advance span { display: block; height: 100%; width: 100%; background: var(--celadon); transform-origin: left; animation: advance 1.1s linear forwards; }
+@keyframes advance { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@media (prefers-reduced-motion: reduce) { .auto-advance span { animation: none; } }
+
+/* The summary of a set: mistakes with their rule, then the way on through the lesson. */
+.missed { display: grid; gap: var(--space-2); text-align: left; margin: var(--space-3) 0; }
+.missed ul { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-2); }
+.missed li { border-bottom: 1px dashed var(--rule); padding-bottom: var(--space-2); }
+.missed-line { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-2); }
+.missed-line [lang="ko"] { font-size: 1.1rem; }
+.next-task { display: grid; gap: var(--space-1); text-align: left; padding: var(--space-3) var(--space-4); margin: var(--space-3) 0; border-radius: var(--radius-md); background: var(--paper); border: 1px solid var(--rule); border-left: 4px solid var(--accent); color: var(--ink); text-decoration: none; }
+.next-task .eyebrow { margin: 0; }
+.next-task .btn { justify-self: start; margin-top: var(--space-2); }
 
 .feedback.ok { background: var(--celadon-soft); border-left: 4px solid var(--celadon); }
 .feedback.bad { background: var(--danger-soft); border-left: 4px solid var(--danger); }
@@ -922,7 +995,8 @@ input[type="range"] { accent-color: var(--accent); }
 .example-ko { font-size: 1.05rem; }
 .example-ru { grid-column: 1 / -1; color: var(--ink-soft); font-size: 0.9rem; }
 .note-form { display: flex; gap: var(--space-2); }
-.note-form input { flex: 1; min-width: 0; }
+/* width: 0 — a text field otherwise asks for its default width and pushes the card wider than a phone screen. */
+.note-form input { flex: 1; min-width: 0; width: 0; }
 .note-text { margin: 0; color: var(--ink-soft); }
 .tiny { font-size: 0.75rem; margin: 0; }
 
@@ -1181,7 +1255,19 @@ del.diff-extra { color: var(--ink-faint); }
     border-color: var(--accent);
     color: var(--accent-ink);
     font-size: 1.2rem;
-    box-shadow: 0 5px 0 color-mix(in srgb, var(--accent) 70%, var(--ink)), 0 0 0 8px var(--accent-soft);
+    box-shadow: 0 5px 0 color-mix(in srgb, var(--accent) 70%, var(--ink));
+}
+/* The ring around the current step fills with its tasks (--p: 0–100). */
+.path-node.current::before {
+    content: "";
+    position: absolute;
+    inset: -9px;
+    border-radius: 50%;
+    background: conic-gradient(var(--celadon) 0 calc(var(--p, 0) * 1%), var(--accent-soft) 0);
+    /* Only an outer band shows, so the node itself keeps its colour. */
+    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 7px), #000 calc(100% - 6px));
+    mask: radial-gradient(farthest-side, transparent calc(100% - 7px), #000 calc(100% - 6px));
+    pointer-events: none;
 }
 .path-here {
     position: absolute;
@@ -1197,7 +1283,8 @@ del.diff-extra { color: var(--ink-faint); }
 .path-here.right { left: calc(50% + 44px); }
 .path-here.left { right: calc(50% + 44px); }
 /* The line runs behind the caption, so give it the page's ground. */
-.path-caption { margin-top: 4px; padding: 0 6px; border-radius: 6px; background: var(--paper); font-size: 0.72rem; color: var(--ink-soft); white-space: nowrap; }
+.path-caption { margin-top: 6px; padding: 0 6px; border-radius: 6px; background: var(--paper); font-size: 0.72rem; color: var(--ink-soft); white-space: nowrap; display: grid; justify-items: center; }
+.path-topic { font-size: 0.68rem; color: var(--ink-faint); white-space: normal; max-width: 9.5rem; text-align: center; line-height: 1.25; }
 .path-node.current { position: relative; }
 .path-node.current::after {
     content: "";
@@ -1211,7 +1298,113 @@ del.diff-extra { color: var(--ink-faint); }
 @media (prefers-reduced-motion: no-preference) {
     .path-node.current::after { animation: path-ring 2.4s ease-out infinite; }
 }
+/* Right after «Перейти дальше»: the finished node lights up, the current one arrives. */
+@media (prefers-reduced-motion: no-preference) {
+    .path-node.just-done { animation: node-done 900ms ease-out 1; }
+    .path-node.current.arrived { animation: node-arrive 700ms 500ms ease-out both; }
+}
+@keyframes node-done {
+    0% { transform: scale(1); box-shadow: 0 0 0 0 var(--celadon-soft); }
+    40% { transform: scale(1.18); box-shadow: 0 0 0 14px var(--celadon-soft); }
+    100% { transform: scale(1); box-shadow: 0 4px 0 color-mix(in srgb, var(--celadon) 70%, var(--ink)); }
+}
+@keyframes node-arrive {
+    from { transform: translateY(-18px) scale(0.85); opacity: 0; }
+    to { transform: none; opacity: 1; }
+}
 @keyframes path-ring {
     0% { transform: scale(0.85); opacity: 0.6; }
     100% { transform: scale(1.35); opacity: 0; }
 }
+
+/* Word cards follow the finger: tap turns, swipes grade (see attachSwipe in app.js). */
+.flashcard.swipeable { touch-action: pan-y; cursor: grab; user-select: none; transition: transform 180ms ease-out; }
+.flashcard.swipeable.swiping { transition: none; cursor: grabbing; }
+.swipe-hint { text-align: center; margin: var(--space-2) 0 0; }
+
+/* Korean words that can be tapped for sound and meaning (TapKorean). */
+.tap-word { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; border-bottom: 1px dotted var(--ink-faint); }
+.tap-word.marked { background: var(--accent-soft); border-radius: 4px; padding: 0 3px; border-bottom: 0; }
+.tap-word.open { border-bottom: 2px solid var(--accent); }
+.tap-popover { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-2); margin-top: var(--space-2); padding: var(--space-2) var(--space-3); border-radius: var(--radius-sm); background: var(--paper-sunken); font-size: 0.9rem; }
+.tap-popover strong { font-size: 1.05rem; }
+
+/* Word search from the home screen and «Ещё». */
+.word-search { display: flex; gap: var(--space-2); margin: var(--space-4) 0; }
+.word-search input { flex: 1; min-width: 0; font: inherit; padding: var(--space-2) var(--space-3); border-radius: var(--radius-sm); border: 1px solid var(--rule); background: var(--paper-raised); color: var(--ink); }
+.week-summary { padding: var(--space-3) var(--space-4); border-radius: var(--radius-md); background: var(--celadon-soft); margin-top: var(--space-3); }
+.week-summary p { margin: 0; }
+
+/* On a phone the question stays on top and the answers sit low, within the thumb's reach, yet on the first
+   screen: the page fills the space above the tab bar, and the drill takes only what is left under anything
+   above it (a page header, the rule of a rule check, the parts of «10 минут»). */
+@media (max-width: 899px) {
+    .page:has(> .drill > .options) {
+        display: flex;
+        flex-direction: column;
+        min-height: calc(100dvh - var(--space-4) - 88px - env(safe-area-inset-bottom));
+    }
+    .page > .drill:has(> .options) {
+        width: 100%;
+        flex: 1 0 auto;
+        display: flex;
+        flex-direction: column;
+    }
+    .drill > .options { margin-top: auto; }
+    .drill > .keys-hint { display: none; }
+}
+
+/* A hint before answering: the first step of the rule for this question. */
+.hint-button { margin-top: var(--space-2); }
+.hint { margin: var(--space-2) 0 0; padding: var(--space-2) var(--space-3); border-radius: var(--radius-sm); background: var(--warn-soft); font-size: 0.9rem; }
+
+/* Grammar in colour inside rule examples: particles celadon, endings red (TapKorean ColourGrammar). */
+.gram-particle { color: var(--celadon); font-weight: 700; }
+.gram-ending { color: var(--accent); font-weight: 700; }
+.gram-legend { margin: 0 0 var(--space-2); }
+
+/* A new page arrives with a short rise; nothing moves when the system asks for less motion. */
+@media (prefers-reduced-motion: no-preference) {
+    .page { animation: page-in 180ms ease-out; }
+}
+@keyframes page-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+/* Korean inside Russian text (titles, task names) also wraps only between words. */
+body { word-break: keep-all; overflow-wrap: break-word; }
+
+/* Rule checks: a one-line header and a slim folded rule during a check, so the answers fit on the first screen. */
+.page-header.compact { margin-bottom: var(--space-3); }
+.page-header.compact .eyebrow { margin: 0; }
+.page-header.compact + .theory-recap { margin: 0 0 var(--space-3); padding-block: var(--space-2); }
+
+/* Rule checks: results of a check and the dates of the next ones. */
+.section-heading { margin: var(--space-5) 0 var(--space-2); font-size: 1.1rem; }
+.rule-results, .rule-schedule { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-2); text-align: left; }
+.rule-results li {
+    display: grid;
+    gap: 2px;
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-sm);
+    border-left: 4px solid var(--rule);
+    background: var(--paper-sunken);
+}
+.rule-results li.passed { border-left-color: var(--celadon); }
+.rule-results li.again { border-left-color: var(--warn); }
+.rule-schedule li { display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-3); padding: var(--space-2) 0; border-bottom: 1px dashed var(--rule); }
+.rule-schedule li > span:first-child { min-width: 0; }
+.rule-schedule li > span:last-child { flex-shrink: 0; text-align: right; }
+
+/* Translation flags: a quiet link under the card, the list of flagged words. */
+.flag-row { margin-top: var(--space-2); }
+.flag-button { color: var(--ink-faint); }
+.flag-text { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-2); margin: 0; color: var(--warn); }
+.flag-list { list-style: none; padding: 0; margin: 0; display: grid; gap: var(--space-3); }
+.flag-list li { margin: 0; display: grid; gap: var(--space-1); justify-items: start; }
+.flag-list p { margin: 0; }
+.flag-word { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-3); }
+.flag-word [lang="ko"] { font-family: var(--font-hangul); font-size: 1.4rem; color: var(--ink); text-decoration: none; }
+.flag-fixed { color: var(--celadon); }
+
+/* Weekly copies on the phone. */
+.auto-backup { display: grid; gap: var(--space-2); justify-items: start; margin: var(--space-3) 0; padding: var(--space-3); border-radius: var(--radius-sm); background: var(--paper-sunken); }
+.auto-backup p { margin: 0; }

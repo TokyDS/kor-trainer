@@ -1,0 +1,23 @@
+@* Search the deck from anywhere: Korean or Russian; results open in «Слова». *@
+@inject NavigationManager Navigation
+
+<form class="word-search" role="search" @onsubmit="Search">
+    <input id="word-search-@Id" type="search" placeholder="Найти слово: 학교 или школа" maxlength="50" aria-label="Найти слово" @bind="_query" />
+    <button type="submit" class="btn" disabled="@string.IsNullOrWhiteSpace(_query)">Найти</button>
+</form>
+
+@code {
+    private string _query = string.Empty;
+
+    /// <summary>Distinguishes the input when the box appears twice in a layout.</summary>
+    [Parameter]
+    public string Id { get; set; } = "main";
+
+    private void Search()
+    {
+        if (!string.IsNullOrWhiteSpace(_query))
+        {
+            Navigation.NavigateTo($"/vocab?q={Uri.EscapeDataString(_query.Trim())}");
+        }
+    }
+}

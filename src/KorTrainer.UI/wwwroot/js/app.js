@@ -328,3 +328,174 @@ export function blurActive() {
         document.activeElement.blur();
     }
 }
+
+// --- Swipes on word cards ---------------------------------------------------------
+
+const SWIPE_DISTANCE = 80;
+const swipes = new WeakMap();
+
+/** The card follows the finger; on release reports 'left', 'right', 'up' or 'tap' to OnSwipe. */
+export function attachSwipe(element, dotNetRef) {
+    if (!element || swipes.has(element)) {
+        return;
+    }
+
+    let start = null;
+    const reset = () => {
+        element.style.transform = '';
+        element.classList.remove('swiping');
+    };
+    const down = e => {
+        if (e.target.closest('button, a, input')) {
+            return; // buttons inside the card keep their clicks
+        }
+        start = { x: e.clientX, y: e.clientY };
+        element.setPointerCapture?.(e.pointerId);
+        element.classList.add('swiping');
+    };
+    const move = e => {
+        if (!start) {
+            return;
+        }
+        const dx = e.clientX - start.x;
+        const dy = Math.min(0, e.clientY - start.y);
+        element.style.transform = `translate(${dx}px, ${dy}px) rotate(${dx / 20}deg)`;
+    };
+    const up = e => {
+        if (!start) {
+            return;
+        }
+        const dx = e.clientX - start.x;
+        const dy = e.clientY - start.y;
+        start = null;
+        reset();
+        const direction = dx > SWIPE_DISTANCE ? 'right'
+            : dx < -SWIPE_DISTANCE ? 'left'
+            : dy < -SWIPE_DISTANCE ? 'up'
+            : Math.abs(dx) < 10 && Math.abs(dy) < 10 ? 'tap'
+            : null;
+        if (direction) {
+            dotNetRef.invokeMethodAsync('OnSwipe', direction);
+        }
+    };
+    const cancel = () => {
+        start = null;
+        reset();
+    };
+    element.addEventListener('pointerdown', down);
+    element.addEventListener('pointermove', move);
+    element.addEventListener('pointerup', up);
+    element.addEventListener('pointercancel', cancel);
+    swipes.set(element, () => {
+        element.removeEventListener('pointerdown', down);
+        element.removeEventListener('pointermove', move);
+        element.removeEventListener('pointerup', up);
+        element.removeEventListener('pointercancel', cancel);
+    });
+}
+
+export function detachSwipe(element) {
+    swipes.get(element)?.();
+    swipes.delete(element);
+}
+
+// --- Scroll memory ----------------------------------------------------------------
+
+const scrollPositions = new Map();
+let restorePending = false;
+let scrollWatched = false;
+
+/** Remembers how far each page was scrolled; a back step (popstate) asks for it to come back. */
+export function rememberScroll() {
+    if (scrollWatched) {
+        return;
+    }
+    scrollWatched = true;
+    window.addEventListener('scroll', () => scrollPositions.set(location.pathname + location.search, window.scrollY), { passive: true });
+    window.addEventListener('popstate', () => { restorePending = true; });
+}
+
+/** After a back step, scrolls to where the page was, once its content is tall enough (data may still be arriving). */
+export function restoreScroll() {
+    if (!restorePending) {
+        return;
+    }
+    restorePending = false;
+    const y = scrollPositions.get(location.pathname + location.search) ?? 0;
+    let tries = 0;
+    const attempt = () => {
+        if (document.documentElement.scrollHeight - window.innerHeight >= y || tries >= 20) {
+            window.scrollTo(0, y);
+            return;
+        }
+        tries++;
+        setTimeout(attempt, 50);
+    };
+    requestAnimationFrame(attempt);
+}
+
+// --- Network ----------------------------------------------------------------------
+
+/** Reports the browser's online state now and on every change. */
+export function watchOnline(dotNetRef) {
+    const report = () => dotNetRef.invokeMethodAsync('SetOnline', navigator.onLine);
+    window.addEventListener('online', report);
+    window.addEventListener('offline', report);
+    report();
+}
+
+// --- Device preferences and answer feedback ---------------------------------------
+
+const PREFERENCES_KEY = 'kortrainer-device';
+
+export function loadPreferences() {
+    try {
+        return localStorage.getItem(PREFERENCES_KEY);
+    } catch {
+        return null; // storage blocked: defaults apply
+    }
+}
+
+export function savePreferences(json) {
+    try {
+        localStorage.setItem(PREFERENCES_KEY, json);
+    } catch {
+        // Storage can be unavailable (private mode); the choice still applies for this visit.
+    }
+}
+
+/** Korean text size, as a factor of the default size. */
+export function applyKoreanScale(scale) {
+    document.documentElement.style.setProperty('--ko-scale', String(scale));
+}
+
+/** A short buzz where the browser supports vibration. */
+export function buzz() {
+    if (navigator.vibrate) {
+        navigator.vibrate(60);
+    }
+}
+
+let chimeContext;
+
+/** A soft two-note chime for a right answer. */
+export function chime() {
+    try {
+        chimeContext ??= new AudioContext();
+        const now = chimeContext.currentTime;
+        [[660, 0], [990, 0.09]].forEach(([frequency, offset]) => {
+            const tone = chimeContext.createOscillator();
+            const gain = chimeContext.createGain();
+            tone.type = 'sine';
+            tone.frequency.value = frequency;
+            gain.gain.setValueAtTime(0.0001, now + offset);
+            gain.gain.exponentialRampToValueAtTime(0.12, now + offset + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.0001, now + offset + 0.22);
+            tone.connect(gain).connect(chimeContext.destination);
+            tone.start(now + offset);
+            tone.stop(now + offset + 0.25);
+        });
+    } catch {
+        // No Web Audio: the answer is still shown.
+    }
+}

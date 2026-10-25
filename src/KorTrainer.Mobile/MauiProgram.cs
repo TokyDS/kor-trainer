@@ -27,7 +27,12 @@ public static class MauiProgram
         builder.Services.AddScoped<ISpeechOutput, AndroidSpeechOutput>();
         builder.Services.AddSingleton<ISpeechInput, AndroidSpeechInput>();
         builder.Services.AddSingleton<IBackupExporter, ShareBackupExporter>();
+        builder.Services.AddSingleton<DownloadsAutoBackup>();
+        builder.Services.AddSingleton<IAutoBackup>(services => services.GetRequiredService<DownloadsAutoBackup>());
         builder.Services.AddScoped<AppState>();
+        builder.Services.AddScoped<DevicePreferences>();
+        builder.Services.AddSingleton(new HostInfo(IsEmbedded: true));
+        builder.Services.AddSingleton<IHaptics, AndroidHaptics>();
         builder.Services.AddSingleton<StudyReminders>();
 
         return builder.Build();

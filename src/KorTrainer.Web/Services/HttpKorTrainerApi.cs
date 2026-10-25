@@ -119,6 +119,13 @@ public sealed class HttpKorTrainerApi(HttpClient http) : IKorTrainerApi
 
     public Task SaveWordNoteAsync(int wordId, string? text) => SendAsync(HttpMethod.Put, $"api/vocab/words/{wordId}/note", new SaveNoteRequest(text));
 
+    public Task<TranslationFlagDto> FlagTranslationAsync(int wordId, string? note) =>
+        SendAsync<TranslationFlagDto>(HttpMethod.Put, $"api/vocab/words/{wordId}/flag", new FlagTranslationRequest(note));
+
+    public Task UnflagTranslationAsync(int wordId) => SendAsync(HttpMethod.Delete, $"api/vocab/words/{wordId}/flag", new { });
+
+    public Task<IReadOnlyList<TranslationFlagDto>> GetTranslationFlagsAsync() => GetAsync<IReadOnlyList<TranslationFlagDto>>("api/vocab/flags");
+
     public Task<IReadOnlyList<HardWordDto>> GetHardWordsAsync() => GetAsync<IReadOnlyList<HardWordDto>>("api/vocab/hard");
 
     public Task<ExerciseSetDto> GetHardExercisesAsync(string type, int count) =>
@@ -141,6 +148,11 @@ public sealed class HttpKorTrainerApi(HttpClient http) : IKorTrainerApi
     public Task<MistakeSummaryDto> GetMistakeSummaryAsync() => GetAsync<MistakeSummaryDto>("api/mistakes/summary");
 
     public Task<ExerciseSetDto> GetMistakesAsync(int count) => GetAsync<ExerciseSetDto>($"api/mistakes?count={count}");
+
+    public Task<RuleReviewSummaryDto> GetRuleReviewAsync() => GetAsync<RuleReviewSummaryDto>("api/grammar/review");
+
+    public Task<RuleReviewTopicDto> RecordRuleCheckAsync(string type, int correct, int total) =>
+        SendAsync<RuleReviewTopicDto>(HttpMethod.Post, $"api/grammar/review/{Uri.EscapeDataString(type)}", new RuleCheckRequest(correct, total));
 
     public Task<IReadOnlyList<WeakTopicDto>> GetWeakTopicsAsync() => GetAsync<IReadOnlyList<WeakTopicDto>>("api/stats/weak");
 

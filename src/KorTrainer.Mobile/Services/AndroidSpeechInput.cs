@@ -71,7 +71,10 @@ public sealed class AndroidSpeechInput : ISpeechInput
         public void OnError(SpeechRecognizerError error) => result.TrySetResult(new SpeechInputResult(null, error switch
         {
             SpeechRecognizerError.NoMatch or SpeechRecognizerError.SpeechTimeout => NoSpeech,
-            SpeechRecognizerError.InsufficientPermissions => "Нет доступа к микрофону.",
+            // The app has the microphone, but the system recognizer (usually «Синтезатор речи Google») does not.
+            SpeechRecognizerError.InsufficientPermissions =>
+                "У службы распознавания речи нет доступа к микрофону. Откройте Настройки → Приложения → "
+                + "«Синтезатор речи Google» (или «Распознавание и синтез речи Google») → Разрешения → Микрофон → Разрешить.",
             SpeechRecognizerError.Network or SpeechRecognizerError.NetworkTimeout => "Для распознавания нужен интернет или офлайн-пакет корейского языка.",
             _ => $"Ошибка распознавания ({error}).",
         }));

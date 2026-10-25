@@ -116,8 +116,17 @@ back end in-process. Never reference EF or ASP.NET from Domain.
    (`Numbers/NumberTheory`, computed by `KoreanNumbers`/`Counters`; `RuleFirstPageBase` serves both pages). Every
    distractor says why it is wrong (`Conjugator.ExplainedMistakes`, `ParticleResult.WrongWhy`); particle gaps ask only
    for the particle (책___ 아니에요 → 이 / 가), except contracted pronouns (저 + 가 = 제가). Feedback can unfold the
-   item's rule (`RuleRecap`). Lessons 4–10 end with a scene (`Plan/LessonPractices`, `/lesson/{day}/practice`; a test
-   checks its particle forms) with translations on demand and optional speaking (`SpeakCheck`).
+   item's rule (`RuleRecap`). Lesson scenes with optional speaking were tried and taken out for now (git history).
+   Home (`/`) is the plan map (`PathMap` with finished stages folded) with «Продолжить»; a step's tasks live at
+   `/step` (current) and `/step/{key}`; old `/?step=` links redirect. Listening and speaking rise gradually
+   (`CommonTasks.ListenWords/SayWords/Listening/Shadowing`): lessons 4–10 hear and say words (`/listening/say-word`,
+   served by `SentenceService` as words); level 1 alternates words and phrases; level 2 and TOPIK repeat phrases aloud.
+   Timed reading can be read aloud and checked by the recognizer (the learner still grades).
+12. ✅ Rule checks (`Srs/RuleSchedule`, `RuleReview` entity, `RuleReviewService`, `/rules`, a «Правило» part of `/quick`;
+   a topic joins after `MinAnswers` grammar answers, `ChoiceDrill.OnScored` reports the first set), translation flags
+   (`TranslationFlag` keeps the translation as flagged, `TranslationFlagService`, «Перевод неточный?» in `WordDetails`,
+   `/vocab/flags`) and weekly phone copies (`IAutoBackup`; `Mobile/Services/DownloadsAutoBackup` writes
+   Downloads/KorTrainer through MediaStore on `OnPause`). Rule checks and flags are part of the backup.
 
 The deck has ~5,900 words (curated + NIKL A/B/C). Next ideas: offline answer queue, phone↔laptop sync, review of
 machine translations.

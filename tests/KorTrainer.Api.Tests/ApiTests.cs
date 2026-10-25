@@ -123,6 +123,38 @@ public sealed class ApiTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task RuleReview_ListsPractisedRules_AndRejectsAnUnknownTopic()
+    {
+        var attempts = Enumerable.Range(0, 5).Select(i => new AttemptDto(StudyModule.Grammar, ExerciseTypes.Copula, $"copula:api{i}", true, 900)).ToArray();
+        await _client.PostAsJsonAsync("/api/attempts", attempts, Json, Ct);
+
+        var summary = await _client.GetFromJsonAsync<RuleReviewSummaryDto>("/api/grammar/review", Json, Ct);
+        var check = await _client.PostAsJsonAsync("/api/grammar/review/copula", new RuleCheckRequest(5, 5), Json, Ct);
+        var unknown = await _client.PostAsJsonAsync("/api/grammar/review/nope", new RuleCheckRequest(5, 5), Json, Ct);
+
+        summary!.Topics.Should().ContainSingle(t => t.Type == ExerciseTypes.Copula);
+        check.StatusCode.Should().Be(HttpStatusCode.OK);
+        unknown.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task TranslationFlag_RoundTrip()
+    {
+        var page = await _client.GetFromJsonAsync<WordPageDto>("/api/vocab/words?pageSize=1", Json, Ct);
+        int id = page!.Items[0].Id;
+
+        var flag = await _client.PutAsJsonAsync($"/api/vocab/words/{id}/flag", new FlagTranslationRequest("иначе"), Json, Ct);
+        var flags = await _client.GetFromJsonAsync<List<TranslationFlagDto>>("/api/vocab/flags", Json, Ct);
+        var remove = await _client.DeleteAsync($"/api/vocab/words/{id}/flag", Ct);
+        var missing = await _client.PutAsJsonAsync("/api/vocab/words/999999/flag", new FlagTranslationRequest(null), Json, Ct);
+
+        flag.StatusCode.Should().Be(HttpStatusCode.OK);
+        flags!.Should().ContainSingle(f => f.WordId == id && f.Note == "иначе");
+        remove.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        missing.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
     public async Task HangulExercises_ReturnRequestedSet()
     {
         var set = await _client.GetFromJsonAsync<ExerciseSetDto>("/api/hangul/exercises/decompose?level=3&count=7", Json, Ct);

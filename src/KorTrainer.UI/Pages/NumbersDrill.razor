@@ -6,7 +6,7 @@
 
 @if (_theory is not null && !Drilling)
 {
-    <NumberTheoryView Theory="_theory" OnStart="StartAsync" />
+    <NumberTheoryView Theory="_theory" OnStart="StartAsync" CheckHref="@SelfCheckHref" />
 }
 else
 {
@@ -16,7 +16,7 @@ else
     }
 
     @* The key forces a fresh drill when the type in the URL changes. *@
-    <ChoiceDrill @key="Type" Load="LoadAsync" BackHref="/numbers" />
+    <ChoiceDrill @key="@($"{Type}:{Check}")" Load="LoadAsync" BackHref="/numbers" SelfCheck="Check" SelfCheckHref="@SelfCheckHref" />
 
     @if (_theory is not null)
     {
@@ -26,6 +26,9 @@ else
 
 @code {
     private const int SetSize = 20;
+    private const int SelfCheckSize = 10;
+
+    protected override string SelfCheckHref => $"/numbers/{Uri.EscapeDataString(Type)}?drill=true&check=true";
 
     private NumberTheory? _theory;
 
@@ -40,6 +43,6 @@ else
     private async Task<ExerciseSetDto> LoadAsync()
     {
         await RetryMarkReadAsync();
-        return await Api.GetNumberExercisesAsync(Type, SetSize);
+        return await Api.GetNumberExercisesAsync(Type, Check ? SelfCheckSize : SetSize);
     }
 }

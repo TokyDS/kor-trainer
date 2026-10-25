@@ -1,0 +1,84 @@
+@page "/vocab/flags"
+@inject IKorTrainerApi Api
+
+<PageTitle>Переводы на проверку — KorTrainer</PageTitle>
+
+<header class="page-header">
+    <a class="back" href="/more">← Ещё</a>
+    <h1>Переводы на проверку</h1>
+    <p class="muted">Слова, где перевод показался неточным. Отметить слово можно на карточке, после показа перевода, — «Перевод неточный?».</p>
+</header>
+
+<StatusViews IsLoading="_flags is null && _error is null" Error="@_error" OnRetry="LoadAsync" />
+
+@if (_flags is { Count: 0 })
+{
+    <div class="card summary">
+        <h2>Отмеченных слов нет</h2>
+        <p class="muted">Если перевод покажется странным, отметьте его — исправления войдут в следующую версию колоды.</p>
+    </div>
+}
+else if (_flags is { } flags)
+{
+    <ul class="flag-list">
+        @foreach (var flag in flags)
+        {
+            <li class="card">
+                <div class="flag-word">
+                    <a lang="ko" href="/vocab?q=@Uri.EscapeDataString(flag.Korean)">@flag.Korean</a>
+                    <span>@flag.Current</span>
+                </div>
+                @if (flag.IsCorrected)
+                {
+                    <p class="small flag-fixed">Исправлено, было: «@flag.Russian»</p>
+                }
+                @if (flag.Note is not null)
+                {
+                    <p class="muted small">Ваш вариант: «@flag.Note»</p>
+                }
+                <button type="button" class="link-button small" disabled="@_busy" @onclick="() => UnflagAsync(flag)">
+                    @(flag.IsCorrected ? "убрать из списка" : "снять отметку")
+                </button>
+            </li>
+        }
+    </ul>
+}
+
+@code {
+    private List<TranslationFlagDto>? _flags;
+    private string? _error;
+    private bool _busy;
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _error = null;
+        try
+        {
+            _flags = [.. await Api.GetTranslationFlagsAsync()];
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    private async Task UnflagAsync(TranslationFlagDto flag)
+    {
+        _busy = true;
+        try
+        {
+            await Api.UnflagTranslationAsync(flag.WordId);
+            _flags = _flags?.Where(f => f.WordId != flag.WordId).ToList();
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

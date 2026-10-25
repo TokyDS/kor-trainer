@@ -1,5 +1,6 @@
 @page "/listening/dictation"
 @page "/listening/shadowing"
+@page "/listening/say-word"
 @using KorTrainer.Domain.Hangul
 @inject IKorTrainerApi Api
 @inject AppState State
@@ -7,12 +8,12 @@
 @inject NavigationManager Navigation
 @implements IAsyncDisposable
 
-<PageTitle>@(IsDictation ? "Диктант" : "Повторение вслух") — KorTrainer</PageTitle>
+<PageTitle>@Heading — KorTrainer</PageTitle>
 
 <section class="drill sentence-drill">
     <header class="drill-head">
         <a class="btn small" href="/listening">← Аудирование</a>
-        <h1>@(IsDictation ? "Диктант" : "Повторение вслух")</h1>
+        <h1>@Heading</h1>
         @if (_set is not null && _position < _set.Items.Count)
         {
             <span class="muted">@(_position + 1) / @_set.Items.Count</span>
@@ -25,7 +26,9 @@
     {
         @if (!set.FromStudiedWords && _position == 0 && _comparison is null)
         {
-            <p class="notice small">Ваших выученных слов пока маловато — часть предложений из слов, которые ещё впереди.</p>
+            <p class="notice small">@(IsWords
+                ? "Выученных слов пока маловато — добавлены слова текущего урока."
+                : "Ваших выученных слов пока маловато — часть предложений из слов, которые ещё впереди.")</p>
         }
 
         @if (!IsDictation && _recognitionAvailable == false)
@@ -108,15 +111,19 @@
                     </div>
                 }
             </div>
-            <p class="muted tiny">Предложение: Tatoeba #@item.Id, автор @item.Author (CC BY 2.0 FR)@(item.MachineTranslated ? "; * машинный перевод" : string.Empty).</p>
+            @if (!IsWords)
+            {
+                <p class="muted tiny">Предложение: Tatoeba #@item.Id, автор @item.Author (CC BY 2.0 FR)@(item.MachineTranslated ? "; * машинный перевод" : string.Empty).</p>
+            }
         }
         else
         {
             <div class="card drill-summary">
                 <h2>Готово!</h2>
                 <p>Засчитано: @_passed из @set.Items.Count.</p>
+                <NextTaskCard />
                 <div class="actions">
-                    <button type="button" class="btn primary" @onclick="LoadAsync">Ещё 10 предложений</button>
+                    <button type="button" class="btn primary" @onclick="LoadAsync">@(IsWords ? "Ещё 10 слов" : "Ещё 10 предложений")</button>
                     <a class="btn" href="/listening">К аудированию</a>
                 </div>
             </div>
@@ -146,9 +153,14 @@
 
     private bool IsDictation => Navigation.Uri.Contains("/dictation", StringComparison.Ordinal);
 
+    /// <summary>Single words said aloud: the gentle start of shadowing.</summary>
+    private bool IsWords => Navigation.Uri.Contains("/say-word", StringComparison.Ordinal);
+
     private string? _loadedType;
 
-    private string Type => IsDictation ? ExerciseTypes.Dictation : ExerciseTypes.Shadowing;
+    private string Type => IsDictation ? ExerciseTypes.Dictation : IsWords ? ExerciseTypes.SayWord : ExerciseTypes.Shadowing;
+
+    private string Heading => IsDictation ? "Диктант" : IsWords ? "Произношение слов" : "Повторение вслух";
 
     private PracticeSentenceDto? Current => _set is not null && _position < _set.Items.Count ? _set.Items[_position] : null;
 
@@ -263,7 +275,7 @@
         try
         {
             int ms = (int)Math.Min(_itemTimer.ElapsedMilliseconds, 120_000);
-            await Api.RecordAttemptsAsync([new AttemptDto(StudyModule.Listening, Type, $"sentence:{item.Id}", correct, ms)]);
+            await Api.RecordAttemptsAsync([new AttemptDto(StudyModule.Listening, Type, IsWords ? $"word:{item.Id}" : $"sentence:{item.Id}", correct, ms)]);
         }
         catch (Exception ex) when (ex is ApiException or HttpRequestException)
         {
