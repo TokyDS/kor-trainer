@@ -58,7 +58,7 @@
         {
             <NavLink class="tab" href="/hangul"><span class="tab-icon" lang="ko">한</span>Хангыль</NavLink>
         }
-        <NavLink class="tab" href="/vocab"><span class="tab-icon" lang="ko">말</span>Слова</NavLink>
+        <a class="tab @(IsWords ? "active" : string.Empty)" href="/vocab"><span class="tab-icon" lang="ko">말</span>Слова</a>
         <NavLink class="tab" href="/more"><span class="tab-icon">⋯</span>Ещё</NavLink>
     </nav>
 </div>
@@ -98,6 +98,10 @@
         await Preferences.LoadAsync();
         await RefreshTabAsync();
     }
+
+    /// <summary>«Слова» covers the deck pages, except the review that has its own tab after the Hangul lessons.</summary>
+    private bool IsWords => PagePath is var path && (path == "vocab" || path.StartsWith("vocab/", StringComparison.Ordinal))
+        && !(_pastHangul && path == "vocab/review");
 
     private string PagePath => Navigation.ToBaseRelativePath(Navigation.Uri).Split('?', '#')[0];
 

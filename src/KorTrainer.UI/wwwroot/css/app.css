@@ -454,6 +454,7 @@ h1:focus { outline: none; }
 .focus-task .eyebrow { margin: 0; }
 .focus-title { font-size: 1.15rem; line-height: 1.3; }
 .focus-task .btn { justify-self: start; }
+.focus-task .progress-track { flex: 1; min-width: 80px; }
 .task-list.compact .task { padding: var(--space-2) 0; }
 .task.done .check { background: var(--celadon); border-color: var(--celadon); color: #fff; }
 .task.locked .check { border-style: dashed; }
@@ -1254,7 +1255,6 @@ del.diff-extra { color: var(--ink-faint); }
     color: var(--accent-ink);
     font-size: 1.2rem;
     box-shadow: 0 5px 0 color-mix(in srgb, var(--accent) 70%, var(--ink));
-    isolation: isolate;
 }
 /* The ring around the current step fills with its tasks (--p: 0–100). */
 .path-node.current::before {
@@ -1263,7 +1263,10 @@ del.diff-extra { color: var(--ink-faint); }
     inset: -9px;
     border-radius: 50%;
     background: conic-gradient(var(--celadon) 0 calc(var(--p, 0) * 1%), var(--accent-soft) 0);
-    z-index: -1;
+    /* Only an outer band shows, so the node itself keeps its colour. */
+    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 7px), #000 calc(100% - 6px));
+    mask: radial-gradient(farthest-side, transparent calc(100% - 7px), #000 calc(100% - 6px));
+    pointer-events: none;
 }
 .path-here {
     position: absolute;
@@ -1356,3 +1359,6 @@ del.diff-extra { color: var(--ink-faint); }
     .page { animation: page-in 180ms ease-out; }
 }
 @keyframes page-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+/* Korean inside Russian text (titles, task names) also wraps only between words. */
+body { word-break: keep-all; overflow-wrap: break-word; }

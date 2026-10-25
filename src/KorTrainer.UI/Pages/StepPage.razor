@@ -101,8 +101,8 @@
             <ol class="task-list @(focus is not null ? "compact" : string.Empty)">
                 @foreach (var (task, number) in listed)
                 {
-                    <li class="task @(task.IsDone ? "done" : string.Empty) @(task.IsLocked ? "locked" : string.Empty)" data-n="@number">
-                        <span class="check" aria-hidden="true">@(task.IsDone ? "✓" : string.Empty)</span>
+                    <li class="task @(task.IsDone ? "done" : string.Empty) @(task.IsLocked ? "locked" : string.Empty)">
+                        <span class="check" data-n="@number" aria-hidden="true">@(task.IsDone ? "✓" : string.Empty)</span>
                         <div class="task-body">
                             <span class="task-title">@task.Title</span>
                             <span class="visually-hidden">@(task.IsDone ? "выполнено" : task.IsLocked ? "откроется после предыдущих" : "не выполнено")</span>

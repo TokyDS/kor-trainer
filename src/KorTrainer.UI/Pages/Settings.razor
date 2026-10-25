@@ -97,9 +97,9 @@
         </label>
         <label>
             <span>Размер корейского текста: @((int)Math.Round(Device.KoreanScale * 100))%</span>
-            <input type="range" min="@DevicePreferences.MinKoreanScale" max="@DevicePreferences.MaxKoreanScale" step="0.05"
-                   value="@Device.KoreanScale" @onchange="e => SetDeviceAsync(() => Device.KoreanScale = double.Parse((string)e.Value!, System.Globalization.CultureInfo.InvariantCulture))" />
-            <span class="hangul-text lg"><span class="text" lang="ko">한국어를 공부해요</span></span>
+            <input type="range" min="@Invariant(DevicePreferences.MinKoreanScale)" max="@Invariant(DevicePreferences.MaxKoreanScale)" step="0.05"
+                   value="@Invariant(Device.KoreanScale)" @onchange="e => SetDeviceAsync(() => Device.KoreanScale = double.Parse((string)e.Value!, System.Globalization.CultureInfo.InvariantCulture))" />
+            <span class="hangul-text size-lg"><span class="text" lang="ko">한국어를 공부해요</span></span>
         </label>
     </section>
 
@@ -151,6 +151,9 @@
 }
 
 @code {
+    // Range inputs read numbers with a dot whatever the page's language (0,85 is ignored).
+    private static string Invariant(double value) => value.ToString(System.Globalization.CultureInfo.InvariantCulture);
+
     private async Task SetDeviceAsync(Action change)
     {
         change();
