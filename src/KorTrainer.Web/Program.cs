@@ -16,6 +16,7 @@ builder.Services.AddScoped<ISpeechInput, BrowserSpeechInput>();
 builder.Services.AddScoped<IBackupExporter, WebBackupExporter>();
 builder.Services.AddScoped<AppState>();
 builder.Services.AddScoped<DevicePreferences>();
+builder.Services.AddSingleton(new HostInfo(IsEmbedded: false));
 builder.Services.AddScoped<IHaptics, BrowserHaptics>();
 
 await builder.Build().RunAsync();

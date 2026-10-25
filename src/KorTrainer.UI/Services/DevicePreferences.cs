@@ -63,3 +63,6 @@ public sealed class BrowserHaptics(BrowserInterop browser) : IHaptics
 {
     public ValueTask BuzzAsync() => browser.InvokeVoidAsync("buzz");
 }
+
+/// <param name="IsEmbedded">The back end runs inside the app (Android), so the network is never needed.</param>
+public sealed record HostInfo(bool IsEmbedded);

@@ -29,6 +29,7 @@ public static class MauiProgram
         builder.Services.AddSingleton<IBackupExporter, ShareBackupExporter>();
         builder.Services.AddScoped<AppState>();
         builder.Services.AddScoped<DevicePreferences>();
+        builder.Services.AddSingleton(new HostInfo(IsEmbedded: true));
         builder.Services.AddSingleton<IHaptics, AndroidHaptics>();
         builder.Services.AddSingleton<StudyReminders>();
 

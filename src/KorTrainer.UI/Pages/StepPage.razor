@@ -228,11 +228,13 @@
             return;
         }
 
+        string finished = _today.Step.Key;
         await SaveAsync(async () =>
         {
-            _today = await Api.AdvanceAsync(_today.Step.Key);
+            _today = await Api.AdvanceAsync(finished);
             _confirmSkip = false;
-            Navigation.NavigateTo("/step");
+            // The map shows the move: the finished step lights up, the path reaches the next one.
+            Navigation.NavigateTo($"/?from={Uri.EscapeDataString(finished)}");
         });
     }
 

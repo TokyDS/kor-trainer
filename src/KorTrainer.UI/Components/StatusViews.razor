@@ -1,4 +1,4 @@
-@* Loading spinner or error message with a retry button. *@
+@* While loading: grey placeholders in the shape of cards (the page does not jump when it arrives); on error, the reason and a retry. *@
 @if (Error is not null)
 {
     <div class="notice error" role="alert">
@@ -12,7 +12,18 @@
 }
 else if (IsLoading)
 {
-    <div class="loading" role="status" aria-live="polite"><span class="spinner"></span> Загрузка…</div>
+    <div class="skeleton" role="status" aria-live="polite">
+        <span class="visually-hidden">Загрузка…</span>
+        <div class="skeleton-card" aria-hidden="true">
+            <span class="skeleton-line short"></span>
+            <span class="skeleton-line"></span>
+            <span class="skeleton-line medium"></span>
+        </div>
+        <div class="skeleton-card" aria-hidden="true">
+            <span class="skeleton-line medium"></span>
+            <span class="skeleton-line"></span>
+        </div>
+    </div>
 }
 
 @code {

@@ -61,7 +61,7 @@
 
     <h2 class="map-heading">План до TOPIK</h2>
     <p class="muted small">Нажмите на шаг, чтобы открыть его задачи. Пройденные можно повторить, следующие — посмотреть заранее.</p>
-    <PathMap Plan="plan" FoldDone="true" ScrollToCurrent="false" />
+    <PathMap Plan="plan" FoldDone="true" ScrollToCurrent="@(From is not null)" Finished="@From" />
 }
 
 @code {
@@ -76,6 +76,10 @@
     /// <summary>Old links (<c>/?step=level1-2</c>) open the step's own page.</summary>
     [SupplyParameterFromQuery(Name = "step")]
     public string? StepParameter { get; set; }
+
+    /// <summary>The step just finished: the map lights it up once.</summary>
+    [SupplyParameterFromQuery(Name = "from")]
+    public string? From { get; set; }
 
     protected override async Task OnInitializedAsync()
     {

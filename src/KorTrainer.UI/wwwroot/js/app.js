@@ -329,6 +329,86 @@ export function blurActive() {
     }
 }
 
+// --- Swipes on word cards ---------------------------------------------------------
+
+const SWIPE_DISTANCE = 80;
+const swipes = new WeakMap();
+
+/** The card follows the finger; on release reports 'left', 'right', 'up' or 'tap' to OnSwipe. */
+export function attachSwipe(element, dotNetRef) {
+    if (!element || swipes.has(element)) {
+        return;
+    }
+
+    let start = null;
+    const reset = () => {
+        element.style.transform = '';
+        element.classList.remove('swiping');
+    };
+    const down = e => {
+        if (e.target.closest('button, a, input')) {
+            return; // buttons inside the card keep their clicks
+        }
+        start = { x: e.clientX, y: e.clientY };
+        element.setPointerCapture?.(e.pointerId);
+        element.classList.add('swiping');
+    };
+    const move = e => {
+        if (!start) {
+            return;
+        }
+        const dx = e.clientX - start.x;
+        const dy = Math.min(0, e.clientY - start.y);
+        element.style.transform = `translate(${dx}px, ${dy}px) rotate(${dx / 20}deg)`;
+    };
+    const up = e => {
+        if (!start) {
+            return;
+        }
+        const dx = e.clientX - start.x;
+        const dy = e.clientY - start.y;
+        start = null;
+        reset();
+        const direction = dx > SWIPE_DISTANCE ? 'right'
+            : dx < -SWIPE_DISTANCE ? 'left'
+            : dy < -SWIPE_DISTANCE ? 'up'
+            : Math.abs(dx) < 10 && Math.abs(dy) < 10 ? 'tap'
+            : null;
+        if (direction) {
+            dotNetRef.invokeMethodAsync('OnSwipe', direction);
+        }
+    };
+    const cancel = () => {
+        start = null;
+        reset();
+    };
+    element.addEventListener('pointerdown', down);
+    element.addEventListener('pointermove', move);
+    element.addEventListener('pointerup', up);
+    element.addEventListener('pointercancel', cancel);
+    swipes.set(element, () => {
+        element.removeEventListener('pointerdown', down);
+        element.removeEventListener('pointermove', move);
+        element.removeEventListener('pointerup', up);
+        element.removeEventListener('pointercancel', cancel);
+    });
+}
+
+export function detachSwipe(element) {
+    swipes.get(element)?.();
+    swipes.delete(element);
+}
+
+// --- Network ----------------------------------------------------------------------
+
+/** Reports the browser's online state now and on every change. */
+export function watchOnline(dotNetRef) {
+    const report = () => dotNetRef.invokeMethodAsync('SetOnline', navigator.onLine);
+    window.addEventListener('online', report);
+    window.addEventListener('offline', report);
+    report();
+}
+
 // --- Device preferences and answer feedback ---------------------------------------
 
 const PREFERENCES_KEY = 'kortrainer-device';

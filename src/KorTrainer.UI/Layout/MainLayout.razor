@@ -2,7 +2,10 @@
 @inject AppState State
 @inject NavigationManager Navigation
 @inject DevicePreferences Preferences
-@implements IDisposable
+@inject HostInfo Host
+@inject BrowserInterop Browser
+@inject IKorTrainerApi Api
+@implements IAsyncDisposable
 
 <div class="shell">
     <aside class="sidebar" aria-label="Разделы">
@@ -23,6 +26,13 @@
     </aside>
 
     <main class="content">
+        @if (!_online)
+        {
+            <div class="notice warning offline-banner" role="status">
+                <strong>Нет сети.</strong>
+                <p>Ответы не сохранятся, пока она не появится. Приложение на телефоне работает и без сети.</p>
+            </div>
+        }
         @if (State.LoadError is not null)
         {
             <div class="notice error" role="alert">Сервер недоступен: @State.LoadError</div>
@@ -32,7 +42,21 @@
 
     <nav class="tabbar" aria-label="Разделы">
         <a class="tab @(IsStudy ? "active" : string.Empty)" href="/"><span class="tab-icon" lang="ko">공부</span>Учёба</a>
-        <NavLink class="tab" href="/hangul"><span class="tab-icon" lang="ko">한</span>Хангыль</NavLink>
+        @if (_pastHangul)
+        {
+            @* After the Hangul lessons the tab brings what is due; Hangul stays under «Ещё». *@
+            <NavLink class="tab" href="/vocab/review">
+                <span class="tab-icon" lang="ko">복습</span>Повторение
+                @if (_due > 0)
+                {
+                    <span class="tab-badge" aria-label="@_due к повторению">@(_due > 99 ? "99+" : _due)</span>
+                }
+            </NavLink>
+        }
+        else
+        {
+            <NavLink class="tab" href="/hangul"><span class="tab-icon" lang="ko">한</span>Хангыль</NavLink>
+        }
         <NavLink class="tab" href="/vocab"><span class="tab-icon" lang="ko">말</span>Слова</NavLink>
         <NavLink class="tab" href="/more"><span class="tab-icon">⋯</span>Ещё</NavLink>
     </nav>
@@ -56,6 +80,11 @@
         ("Настройки", "/settings"),
     ];
 
+    private DotNetObjectReference<MainLayout>? _self;
+    private bool _online = true;
+    private bool _pastHangul;
+    private int _due;
+
     /// <summary>The study tab covers the map (<c>/</c>) and the step pages (<c>/step…</c>).</summary>
     private bool IsStudy => Navigation.ToBaseRelativePath(Navigation.Uri).Split('?', '#')[0] is var path
         && (path.Length == 0 || path == "step" || path.StartsWith("step/", StringComparison.Ordinal));
@@ -66,15 +95,56 @@
         Navigation.LocationChanged += OnLocationChanged;
         await State.InitializeAsync();
         await Preferences.LoadAsync();
+        await RefreshTabAsync();
     }
 
-    public void Dispose()
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // The app on the phone has its back end inside: no network banner there.
+        if (firstRender && !Host.IsEmbedded)
+        {
+            _self = DotNetObjectReference.Create(this);
+            await Browser.InvokeVoidAsync("watchOnline", _self);
+        }
+    }
+
+    [JSInvokable]
+    public void SetOnline(bool online)
+    {
+        _online = online;
+        InvokeAsync(StateHasChanged);
+    }
+
+    /// <summary>Which tab sits second and how much is due; refreshed on every page change.</summary>
+    private async Task RefreshTabAsync()
+    {
+        try
+        {
+            var today = await Api.GetTodayAsync(null);
+            var mistakes = await Api.GetMistakeSummaryAsync();
+            _pastHangul = today.Step.Stage > PlanStage.Hangul;
+            _due = today.Vocabulary.DueNow + mistakes.Due;
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException)
+        {
+            // The tab keeps its last state; the page shows the error itself.
+        }
+    }
+
+    public async ValueTask DisposeAsync()
     {
         State.Changed -= OnStateChanged;
         Navigation.LocationChanged -= OnLocationChanged;
+        _self?.Dispose();
+        await ValueTask.CompletedTask;
     }
 
     private void OnStateChanged() => InvokeAsync(StateHasChanged);
 
-    private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e) => InvokeAsync(StateHasChanged);
+    private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e) =>
+        InvokeAsync(async () =>
+        {
+            await RefreshTabAsync();
+            StateHasChanged();
+        });
 }

@@ -12,7 +12,7 @@
 
     int first = Plan.Steps.ToList().IndexOf(steps[0]);
     bool isCurrent = steps.Any(s => s.State == StepState.Current);
-    bool folded = FoldDone && stage.DoneCount == stage.StepCount && !_unfolded.Contains(stage.Stage);
+    bool folded = FoldDone && stage.DoneCount == stage.StepCount && !_unfolded.Contains(stage.Stage) && steps.All(s => s.Key != Finished);
     <section class="path-stage @(isCurrent ? "current" : string.Empty) @(folded ? "folded" : string.Empty)" aria-labelledby="stage-@stage.Stage">
         <header class="path-stage-head">
             <span class="path-badge @(stage.DoneCount == stage.StepCount ? "done" : string.Empty)" lang="ko" aria-hidden="true">@Badge(stage.Stage)</span>
@@ -44,12 +44,12 @@
                     <li style="left: @Px(x); top: @Px(y)">
                         @if (step.State == StepState.Current)
                         {
-                            <a @ref="_current" class="path-node current" href="/step" style="--p: @Percent(step)" aria-label="@step.Title — текущий шаг@(step.Done is { } d ? $", сделано {d} из {step.Total}" : string.Empty)">@step.Number</a>
+                            <a @ref="_current" class="path-node current @(Finished is not null ? "arrived" : string.Empty)" href="/step" style="--p: @Percent(step)" aria-label="@step.Title — текущий шаг@(step.Done is { } d ? $", сделано {d} из {step.Total}" : string.Empty)">@step.Number</a>
                             <span class="path-here @(x < Width / 2.0 ? "right" : "left")">Вы здесь</span>
                         }
                         else
                         {
-                            <a class="path-node @state" href="/step/@Uri.EscapeDataString(step.Key)" aria-label="@step.Title — @StateText(step.State)">
+                            <a class="path-node @state @(step.Key == Finished ? "just-done" : string.Empty)" href="/step/@Uri.EscapeDataString(step.Key)" aria-label="@step.Title — @StateText(step.State)">
                                 @(step.State == StepState.Done ? "✓" : step.Number.ToString(CultureInfo.InvariantCulture))
                             </a>
                         }
@@ -85,6 +85,10 @@
     /// <summary>Fold finished stages to their heading, so the current step sits near the top.</summary>
     [Parameter]
     public bool FoldDone { get; set; }
+
+    /// <summary>A step just finished: it lights up and the current node arrives, once.</summary>
+    [Parameter]
+    public string? Finished { get; set; }
 
     /// <summary>Scroll the current step into view once rendered (off where something above it matters more).</summary>
     [Parameter]
