@@ -1,14 +1,16 @@
 @page "/hangul/reading"
 @inherits KeyboardComponentBase
+@using KorTrainer.Domain.Hangul
 @inject IKorTrainerApi Api
 @inject AppState State
+@inject ISpeechInput SpeechInput
 
 <PageTitle>Чтение на время — KorTrainer</PageTitle>
 
 <header class="page-header">
     <a class="back" href="/hangul">← Хангыль</a>
     <h1>Чтение на время</h1>
-    <p class="muted">Прочитайте слово вслух и сразу нажмите <kbd>Enter</kbd>. Затем сверьтесь с озвучкой и честно оцените себя.</p>
+    <p class="muted">Прочитайте слово вслух и сразу нажмите <kbd>Enter</kbd> — или «🎙 Прочитать вслух», и произношение проверит распознавание речи. Затем сверьтесь с озвучкой и оцените себя.</p>
 </header>
 
 <StatusViews IsLoading="_loading" Error="@_error" OnRetry="LoadAsync" />
@@ -52,6 +54,17 @@
                     }
                     <p>@(item.Translation ?? "псевдослово — тренировка чтения")</p>
                     <p class="muted">@_elapsedMs мс · @(_elapsedMs / Math.Max(1, item.SyllableCount)) мс на слог</p>
+                    @if (_comparison is { } c)
+                    {
+                        <div class="diff-result @(c.Score >= PassScore ? "passed" : "failed")">
+                            <p class="verdict">@(c.Score >= PassScore ? "Распознано верно" : "Распознано иначе") · @((int)Math.Round(c.Score * 100))%</p>
+                            <p class="muted small">Услышано: <span lang="ko">@_heard</span></p>
+                        </div>
+                    }
+                    else if (_heardError is not null)
+                    {
+                        <p class="notice warning small">@_heardError</p>
+                    }
                     <SpeakButton Text="@item.Text" />
                 </div>
             }
@@ -59,7 +72,13 @@
 
         @if (!_revealed)
         {
-            <button type="button" class="btn primary wide" @onclick="Reveal">Прочитал <kbd>Enter</kbd></button>
+            <div class="reading-actions">
+                <button type="button" class="btn primary wide" disabled="@_listening" @onclick="Reveal">Прочитал <kbd>Enter</kbd></button>
+                @if (_canListen)
+                {
+                    <button type="button" class="btn wide" disabled="@_listening" @onclick="ReadAloudAsync">@(_listening ? "🎙 Говорите…" : "🎙 Прочитать вслух")</button>
+                }
+            </div>
         }
         else
         {
@@ -79,6 +98,9 @@
 @code {
     private const int SetSize = 10;
 
+    /// <summary>Share of syllables the recognizer must hear for "распознано верно"; the learner still grades.</summary>
+    private const double PassScore = 0.8;
+
     private readonly System.Diagnostics.Stopwatch _timer = new();
     private List<ReadingItemDto> _items = [];
     private ReadingStatsDto? _stats;
@@ -94,13 +116,22 @@
     private int _correctSyllables;
     private DateTime _sessionStartUtc;
     private long _activeMs;
+    private bool _canListen;
+    private bool _listening;
+    private string? _heard;
+    private string? _heardError;
+    private SentenceComparison? _comparison;
 
     [SupplyParameterFromQuery]
     public int? Level { get; set; }
 
     private string SessionSpeed => _correctSyllables == 0 ? "—" : (_correctMs / _correctSyllables).ToString();
 
-    protected override Task OnInitializedAsync() => LoadAsync();
+    protected override async Task OnInitializedAsync()
+    {
+        _canListen = await SpeechInput.IsAvailableAsync();
+        await LoadAsync();
+    }
 
     protected override async Task HandleKeyAsync(string key)
     {
@@ -114,7 +145,7 @@
             return;
         }
 
-        if (!_revealed && key is "Enter" or "Space")
+        if (!_revealed && !_listening && key is "Enter" or "Space")
         {
             Reveal();
         }
@@ -162,11 +193,44 @@
 
     private void Reveal()
     {
+        StopTimer();
+        _revealed = true;
+        _ = State.SpeakAsync(_items[_position].Text).AsTask();
+    }
+
+    /// <summary>
+    /// The time stops at the tap, as with «Прочитал»; then the recognizer listens and the answer is compared with the
+    /// spelling and the pronunciation ([꼳] for 꽃). Pseudo-words are often heard as real words, so the learner grades.
+    /// </summary>
+    private async Task ReadAloudAsync()
+    {
+        StopTimer();
+        var item = _items[_position];
+        _listening = true;
+        StateHasChanged();
+        try
+        {
+            var result = await SpeechInput.ListenAsync();
+            _heard = result.Text;
+            _heardError = result.Text is null ? result.Error : null;
+            _comparison = result.Text is null ? null : new[] { item.Text, item.Pronounced }
+                .Select(expected => SentenceComparer.Compare(expected, result.Text))
+                .MaxBy(c => c.Score);
+        }
+        finally
+        {
+            _listening = false;
+        }
+
+        _revealed = true;
+        _ = State.SpeakAsync(item.Text).AsTask();
+    }
+
+    private void StopTimer()
+    {
         _timer.Stop();
         _elapsedMs = (int)Math.Min(_timer.ElapsedMilliseconds, int.MaxValue);
         _activeMs += Math.Min(_elapsedMs, 60_000);
-        _revealed = true;
-        _ = State.SpeakAsync(_items[_position].Text).AsTask();
     }
 
     private async Task GradeAsync(bool readCorrectly)
@@ -191,6 +255,9 @@
 
         _position++;
         _revealed = false;
+        _comparison = null;
+        _heard = null;
+        _heardError = null;
         if (_position >= _items.Count)
         {
             _finished = true;

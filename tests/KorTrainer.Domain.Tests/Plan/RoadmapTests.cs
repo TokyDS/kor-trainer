@@ -99,6 +99,35 @@ public sealed class RoadmapTests
     }
 
     [Fact]
+    public void PhraseLessons_ListenAndSpeakBeforeTheReview()
+    {
+        foreach (var lesson in _roadmap.Steps.Where(s => s.Lesson is { Day: > Roadmap.HangulLessons }))
+        {
+            var keys = lesson.Tasks.Select(t => t.Key).ToList();
+
+            keys[^3..].Should().Equal(["listening", "say-word", "vocab-due"], lesson.Key);
+            lesson.Tasks[^3].Target.ExerciseType.Should().Be(ExerciseTypes.ListenMeaning);
+            lesson.Tasks[^2].Target.ExerciseType.Should().Be(ExerciseTypes.SayWord);
+        }
+    }
+
+    [Fact]
+    public void Speaking_GrowsFromWordsToPhrases()
+    {
+        static IEnumerable<string?> Speaking(PlanStep step) => step.Tasks
+            .Where(t => t.Target.ExerciseType is ExerciseTypes.SayWord or ExerciseTypes.Shadowing)
+            .Select(t => t.Target.ExerciseType);
+
+        _roadmap.Steps.Where(s => s.Stage is PlanStage.Level1 or PlanStage.Level2 or PlanStage.TopikPrep)
+            .Should().AllSatisfy(s => s.Tasks.Should().Contain(t => t.Target.Module == StudyModule.Listening && t.Target.ExerciseType != ExerciseTypes.SayWord
+                && t.Target.ExerciseType != ExerciseTypes.Shadowing, s.Key));
+        _roadmap.Steps.Where(s => s.Stage is PlanStage.Level2 or PlanStage.TopikPrep)
+            .Should().AllSatisfy(s => Speaking(s).Should().Equal([ExerciseTypes.Shadowing], s.Key));
+        Speaking(_roadmap.Find("level1-1")!).Should().Equal([ExerciseTypes.SayWord]);
+        Speaking(_roadmap.Find("lesson-1")!).Should().BeEmpty();
+    }
+
+    [Fact]
     public void GrammarRules_ToRead_HaveATheory()
     {
         var rules = _roadmap.Steps.SelectMany(s => s.Tasks)

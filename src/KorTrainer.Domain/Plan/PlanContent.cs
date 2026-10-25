@@ -14,6 +14,23 @@ internal static class CommonTasks
 
     public static PlanTask Reading(int count, int level = 3) =>
         new("reading", $"Чтение на время: {count} слов", new TaskTarget(TaskMetric.ReadingTrials, count), $"/hangul/reading?level={level}");
+
+    // Listening and speaking grow step by step: words heard → words said → any listening → phrases repeated aloud.
+
+    public static PlanTask ListenWords(int count) =>
+        new("listening", $"На слух: {count} слов", TaskTarget.Answers(StudyModule.Listening, count, ExerciseTypes.ListenMeaning),
+            $"/listening/{ExerciseTypes.ListenMeaning}");
+
+    public static PlanTask SayWords(int count) =>
+        new("say-word", $"Произношение: {count} слов", TaskTarget.Answers(StudyModule.Listening, count, ExerciseTypes.SayWord),
+            "/listening/say-word");
+
+    public static PlanTask Listening(int count) =>
+        new("listening", $"Аудирование: {count} упражнений", TaskTarget.Answers(StudyModule.Listening, count), "/listening");
+
+    public static PlanTask Shadowing(int count) =>
+        new("shadowing", $"Повторить вслух: {count} фраз", TaskTarget.Answers(StudyModule.Listening, count, ExerciseTypes.Shadowing),
+            "/listening/shadowing");
 }
 
 /// <summary>Russian learning content of the plan: stage names, lesson notes and lesson tasks.</summary>
@@ -131,6 +148,8 @@ internal static class PlanContent
             Notes(4),
             CommonTasks.NewWords(newWordsPerDay),
             CommonTasks.Reading(10),
+            CommonTasks.ListenWords(10),
+            CommonTasks.SayWords(5),
             CommonTasks.ReviewDue,
         ],
         5 =>
@@ -138,6 +157,8 @@ internal static class PlanContent
             CommonTasks.NewWords(newWordsPerDay),
             Rule(Copula, "이에요/예요"),
             Grammar(Copula, "이에요/예요", 20),
+            CommonTasks.ListenWords(10),
+            CommonTasks.SayWords(5),
             CommonTasks.ReviewDue,
         ],
         6 =>
@@ -145,6 +166,8 @@ internal static class PlanContent
             CommonTasks.NewWords(newWordsPerDay),
             Rule(NegativeCopula, "이/가 아니에요"),
             Grammar(NegativeCopula, "이/가 아니에요", 20),
+            CommonTasks.ListenWords(10),
+            CommonTasks.SayWords(5),
             CommonTasks.ReviewDue,
         ],
         7 =>
@@ -152,6 +175,8 @@ internal static class PlanContent
             NumberRule("rule", SinoNumbers, "сино-корейских чисел"),
             Numbers(SinoNumbers, "Сино-корейские числа", 20),
             CommonTasks.NewWords(newWordsPerDay),
+            CommonTasks.ListenWords(10),
+            CommonTasks.SayWords(5),
             CommonTasks.ReviewDue,
         ],
         8 =>
@@ -161,6 +186,8 @@ internal static class PlanContent
             NumberRule("rule-2", Counters, "счётных слов"),
             Numbers(Counters, "Счётные слова", 15),
             CommonTasks.NewWords(newWordsPerDay),
+            CommonTasks.ListenWords(10),
+            CommonTasks.SayWords(5),
             CommonTasks.ReviewDue,
         ],
         9 =>
@@ -168,6 +195,8 @@ internal static class PlanContent
             CommonTasks.NewWords(newWordsPerDay),
             Rule(TopicParticle, "은/는"),
             Grammar(TopicParticle, "은/는", 20),
+            CommonTasks.ListenWords(10),
+            CommonTasks.SayWords(5),
             CommonTasks.ReviewDue,
         ],
         10 =>
@@ -175,6 +204,8 @@ internal static class PlanContent
             new("grammar", "Грамматика вперемешку: 20 упражнений", TaskTarget.Answers(StudyModule.Grammar, 20), "/grammar/mixed"),
             new("numbers", "Числа вперемешку: 20 упражнений", TaskTarget.Answers(StudyModule.Numbers, 20), "/numbers/mixed"),
             CommonTasks.Reading(15),
+            CommonTasks.ListenWords(15),
+            CommonTasks.SayWords(8),
             CommonTasks.ReviewDue,
         ],
         _ => [],

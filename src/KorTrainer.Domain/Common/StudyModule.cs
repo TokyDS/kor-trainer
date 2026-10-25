@@ -62,6 +62,7 @@ public static class ExerciseTypes
     public const string ListenSpelling = "listen-spelling";
     public const string Dictation = "dictation";
     public const string Shadowing = "shadowing";
+    public const string SayWord = "say-word";
 
     public const string HanjaRoot = "hanja-root";
     public const string HanjaMeaning = "hanja-meaning";

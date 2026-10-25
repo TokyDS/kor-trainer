@@ -118,7 +118,10 @@ back end in-process. Never reference EF or ASP.NET from Domain.
    for the particle (책___ 아니에요 → 이 / 가), except contracted pronouns (저 + 가 = 제가). Feedback can unfold the
    item's rule (`RuleRecap`). Lesson scenes with optional speaking were tried and taken out for now (git history).
    Home (`/`) is the plan map (`PathMap` with finished stages folded) with «Продолжить»; a step's tasks live at
-   `/step` (current) and `/step/{key}`; old `/?step=` links redirect.
+   `/step` (current) and `/step/{key}`; old `/?step=` links redirect. Listening and speaking rise gradually
+   (`CommonTasks.ListenWords/SayWords/Listening/Shadowing`): lessons 4–10 hear and say words (`/listening/say-word`,
+   served by `SentenceService` as words); level 1 alternates words and phrases; level 2 and TOPIK repeat phrases aloud.
+   Timed reading can be read aloud and checked by the recognizer (the learner still grades).
 
 The deck has ~5,900 words (curated + NIKL A/B/C). Next ideas: offline answer queue, phone↔laptop sync, review of
 machine translations.
