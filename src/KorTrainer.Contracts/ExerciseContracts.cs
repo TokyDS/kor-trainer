@@ -31,4 +31,16 @@ public sealed record AttemptDto(StudyModule Module, string ExerciseType, string 
 /// <param name="Resolved">Mistakes closed after three correct reviews.</param>
 public sealed record MistakeSummaryDto(int Due, int Open, int Resolved);
 
+/// <param name="Type">The grammar topic.</param>
+/// <param name="Box">Checks passed in a row; 0 until the first one.</param>
+/// <param name="IsDue">The check is due today or was due earlier.</param>
+public sealed record RuleReviewTopicDto(string Type, string Title, int Box, DateOnly Due, bool IsDue);
+
+/// <param name="Due">Rules to check today.</param>
+/// <param name="Topics">Every practised rule, the due ones first.</param>
+public sealed record RuleReviewSummaryDto(int Due, IReadOnlyList<RuleReviewTopicDto> Topics);
+
+/// <param name="Correct">Answers right at the first try, without a hint.</param>
+public sealed record RuleCheckRequest(int Correct, int Total);
+
 public sealed record SessionDto(StudyModule Module, DateTime StartedUtc, int DurationSeconds);

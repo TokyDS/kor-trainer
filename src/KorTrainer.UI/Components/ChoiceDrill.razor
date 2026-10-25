@@ -255,6 +255,10 @@
     [Parameter]
     public string FinishLabel { get; set; } = "Дальше";
 
+    /// <summary>Called once when a set is answered to the end, before its summary shows.</summary>
+    [Parameter]
+    public EventCallback<DrillScore> OnScored { get; set; }
+
     private ChoiceExerciseDto? Current => _position < _items.Count ? _items[_position] : null;
 
     private int ProgressPercent => _items.Count == 0 ? 0 : _position * 100 / _items.Count;
@@ -491,6 +495,7 @@
         {
             _finished = true;
             await SaveSessionAsync();
+            await OnScored.InvokeAsync(new DrillScore(_firstTryCorrect, _uniqueCount));
             return;
         }
 

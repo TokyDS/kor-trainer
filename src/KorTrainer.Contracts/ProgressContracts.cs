@@ -21,7 +21,9 @@ public sealed record ProgressExport(
     IReadOnlyList<StepTaskCompletionExport>? StepTaskCompletions = null,
     IReadOnlyList<TaskCompletionExport>? TaskCompletions = null,
     IReadOnlyList<WordNoteExport>? WordNotes = null,
-    IReadOnlyList<MistakeExport>? Mistakes = null)
+    IReadOnlyList<MistakeExport>? Mistakes = null,
+    IReadOnlyList<RuleReviewExport>? RuleReviews = null,
+    IReadOnlyList<TranslationFlagExport>? TranslationFlags = null)
 {
     /// <summary>2: self-paced plan steps instead of per-day task ticks.</summary>
     public const int CurrentSchemaVersion = 2;
@@ -88,3 +90,7 @@ public sealed record StepTaskCompletionExport(string StepKey, string TaskKey, Da
 public sealed record WritingDraftExport(int TaskNumber, DateTime StartedUtc, int DurationSeconds, string Text, DateOnly LocalDate);
 
 public sealed record ImportResultDto(int Words, int SkippedWords, int Reviews, int Attempts, int ReadingTrials, int Sessions, int PlanSteps, int WritingDrafts);
+
+public sealed record RuleReviewExport(string ExerciseType, int Box, DateOnly DueDate, DateOnly LastCheckedDate, int Lapses);
+
+public sealed record TranslationFlagExport(string DeckKey, string Russian, string? Note, DateTime CreatedUtc);

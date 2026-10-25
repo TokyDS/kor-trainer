@@ -58,6 +58,13 @@
             <span class="badge">@mistakes.Due</span>
         </a>
     }
+    @if (_rules is { Due: > 0 } rules)
+    {
+        <a class="mistakes-link" href="/rules">
+            <span>Повторение правил</span>
+            <span class="badge">@rules.Due</span>
+        </a>
+    }
 
     @if (_week is { } totals)
     {
@@ -81,6 +88,7 @@
     private PlanDto? _plan;
     private ReminderDto? _reminder;
     private MistakeSummaryDto? _mistakes;
+    private RuleReviewSummaryDto? _rules;
     private DailyStatDto? _week;
     private string? _error;
 
@@ -118,6 +126,7 @@
             // Evening nudge, mirroring the desktop and phone reminders.
             _reminder = DateTime.Now.Hour >= ReminderHour ? await Api.GetReminderAsync() : null;
             _mistakes = await Api.GetMistakeSummaryAsync();
+            _rules = await Api.GetRuleReviewAsync();
             // Sundays only: a quiet look back at the week, no comparisons.
             _week = DateTime.Now.DayOfWeek == DayOfWeek.Sunday ? WeekOf(await Api.GetDailyStatsAsync(StudyRhythm.WeekDays)) : null;
         }

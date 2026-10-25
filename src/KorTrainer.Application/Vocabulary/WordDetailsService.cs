@@ -27,6 +27,7 @@ public sealed class WordDetailsService(IAppDbContext db, IHanjaGlossary glossary
         var word = await db.Words.AsNoTracking().Include(w => w.Progress).SingleOrDefaultAsync(w => w.Id == wordId, cancellationToken)
             ?? throw new NotFoundException("Такого слова нет в колоде.");
         var note = await db.WordNotes.AsNoTracking().Where(n => n.WordId == wordId).Select(n => n.Text).SingleOrDefaultAsync(cancellationToken);
+        var flag = await db.TranslationFlags.AsNoTracking().SingleOrDefaultAsync(f => f.WordId == wordId, cancellationToken);
 
         var roots = new List<HanjaPartDto>();
         foreach (var pair in Domain.Vocabulary.Hanja.Align(word.Korean, word.PartOfSpeech, word.Hanja))
@@ -47,7 +48,8 @@ public sealed class WordDetailsService(IAppDbContext db, IHanjaGlossary glossary
         var examples = sentences.ForWord(word.DeckKey).Take(ExampleCount)
             .Select(s => new ExampleDto(s.Id, s.Korean, s.Russian, s.MachineTranslated, s.Author))
             .ToList();
-        return new WordDetailsDto(word.Id, word.Korean, word.Russian, word.Hanja, roots, examples, note, hardReason);
+        return new WordDetailsDto(word.Id, word.Korean, word.Russian, word.Hanja, roots, examples, note, hardReason,
+            flag is null ? null : TranslationFlagService.ToDto(flag, word));
     }
 
     /// <summary>Saves the learner's memory aid; an empty text removes it.</summary>

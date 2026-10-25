@@ -53,6 +53,8 @@ public static class DependencyInjection
         services.AddScoped<ReadingService>();
         services.AddScoped<TopikReadingService>();
         services.AddScoped<MistakeService>();
+        services.AddScoped<RuleReviewService>();
+        services.AddScoped<TranslationFlagService>();
         services.AddScoped<ProgressTransferService>();
         return services;
     }

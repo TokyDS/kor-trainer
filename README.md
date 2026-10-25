@@ -28,6 +28,13 @@ Romanization is **off by default** — the point is to learn to read Hangul with
   last 30 days; the 10-minute session drills the weakest one.
 - **Работа над ошибками** — a wrong first answer in any multiple-choice drill is kept and comes back
   after 1, 3 and 7 days (a small Leitner schedule); three correct reviews close it, a slip starts over.
+- **Повторение правил** — a grammar topic with five answers comes back as a five-question check the next
+  day, then after 3, 7, 14, 30 and every 60 days (`RuleSchedule`); four right answers keep it, fewer start
+  over. Due checks show on the home screen and as one part of «10 минут».
+- **Переводы на проверку** — any card can be flagged as a doubtful translation, with an optional
+  suggestion; the flags travel in backups and the list notices when the deck has since been corrected.
+- **Weekly copies on the phone** — leaving the app writes a backup to Downloads/KorTrainer once a week
+  (the four newest stay), so reinstalling or clearing the app loses nothing.
 - **Hangul**
   - letter → sound and sound → letter, with Russian sound approximations;
   - syllable composition and decomposition computed from Unicode arithmetic (no syllable tables);
@@ -243,6 +250,7 @@ with direct service calls and the system text-to-speech engine.
 | GET | `/api/hangul/analyze?text=` | syllable breakdown and pronunciation |
 | GET | `/api/vocab/queue` · POST `/api/vocab/reviews` | SRS queue and answers |
 | GET | `/api/grammar/topics` · `/api/grammar/exercises/{type\|mixed}?count=` | grammar topics and drills |
+| GET · POST | `/api/grammar/review` · `/api/grammar/review/{type}` | spaced rule checks and their results |
 | GET | `/api/listening/exercises/{listen-meaning\|listen-spelling}?count=` | listening drills |
 | GET | `/api/numbers/exercises/{sino\|native\|counter\|time\|money\|mixed}?count=` | number drills |
 | GET | `/api/vocab/summary` · `/api/vocab/words` · `/api/vocab/topics` | vocabulary browser |
@@ -252,6 +260,7 @@ with direct service calls and the system text-to-speech engine.
 | GET | `/api/hanja/roots` · `/api/hanja/roots/{char}` · `/api/hanja/exercises/{hanja-root\|hanja-meaning}` | hanja roots and drills |
 | GET · PUT | `/api/vocab/words/{id}/details` · `/api/vocab/words/{id}/note` | roots, examples, own note of a word |
 | POST | `/api/vocab/words/{id}/study` | put a word into learning now (from a text) |
+| PUT · DELETE · GET | `/api/vocab/words/{id}/flag` · `/api/vocab/flags` | doubtful translations |
 | GET | `/api/vocab/hard` · `/api/vocab/hard/exercises/{hard-meaning\|hard-spelling}` | hard words and their drills |
 | GET | `/api/sentences/{dictation\|shadowing}?count=` | sentences made of the learner's words |
 | GET | `/api/typing/{level}?count=` | keyboard trainer texts (levels 1–6) |

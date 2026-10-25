@@ -14,6 +14,7 @@ builder.Services.AddScoped<BrowserInterop>();
 builder.Services.AddScoped<ISpeechOutput, BrowserSpeechOutput>();
 builder.Services.AddScoped<ISpeechInput, BrowserSpeechInput>();
 builder.Services.AddScoped<IBackupExporter, WebBackupExporter>();
+builder.Services.AddSingleton<IAutoBackup, NoAutoBackup>();
 builder.Services.AddScoped<AppState>();
 builder.Services.AddScoped<DevicePreferences>();
 builder.Services.AddSingleton(new HostInfo(IsEmbedded: false));

@@ -27,6 +27,10 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
 
     public DbSet<WordNote> WordNotes => Set<WordNote>();
 
+    public DbSet<TranslationFlag> TranslationFlags => Set<TranslationFlag>();
+
+    public DbSet<RuleReview> RuleReviews => Set<RuleReview>();
+
     public DbSet<StepTaskCompletion> StepTaskCompletions => Set<StepTaskCompletion>();
 
     public DbSet<WritingDraft> WritingDrafts => Set<WritingDraft>();

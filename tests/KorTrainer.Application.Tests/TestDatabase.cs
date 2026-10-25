@@ -55,6 +55,8 @@ public sealed class TestDatabase : IAsyncDisposable
         Stats = new StatsService(db, Settings, Vocabulary, Clock);
         Progress = new ProgressTransferService(db, Settings, Clock);
         Mistakes = new MistakeService(db, Settings, Clock, new Random(42));
+        RuleReviews = new RuleReviewService(db, Settings, Clock);
+        TranslationFlags = new TranslationFlagService(db, Clock);
     }
 
     /// <summary>Recorded words used by the listening drill; replace before calling Hangul to test recordings.</summary>
@@ -102,6 +104,10 @@ public sealed class TestDatabase : IAsyncDisposable
     public ProgressTransferService Progress { get; }
 
     public MistakeService Mistakes { get; }
+
+    public RuleReviewService RuleReviews { get; }
+
+    public TranslationFlagService TranslationFlags { get; }
 
     public static async Task<TestDatabase> CreateAsync(DateTimeOffset? now = null)
     {

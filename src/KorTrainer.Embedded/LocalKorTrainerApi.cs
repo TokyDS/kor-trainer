@@ -121,6 +121,14 @@ public sealed class LocalKorTrainerApi(IServiceScopeFactory scopes, ILogger<Loca
 
     public Task SaveWordNoteAsync(int wordId, string? text) => Run<WordDetailsService>((s, ct) => s.SaveNoteAsync(wordId, new SaveNoteRequest(text), ct));
 
+    public Task<TranslationFlagDto> FlagTranslationAsync(int wordId, string? note) =>
+        Run<TranslationFlagService, TranslationFlagDto>((s, ct) => s.FlagAsync(wordId, new FlagTranslationRequest(note), ct));
+
+    public Task UnflagTranslationAsync(int wordId) => Run<TranslationFlagService>((s, ct) => s.UnflagAsync(wordId, ct));
+
+    public Task<IReadOnlyList<TranslationFlagDto>> GetTranslationFlagsAsync() =>
+        Run<TranslationFlagService, IReadOnlyList<TranslationFlagDto>>((s, ct) => s.GetAllAsync(ct));
+
     public Task<IReadOnlyList<HardWordDto>> GetHardWordsAsync() => Run<WordDetailsService, IReadOnlyList<HardWordDto>>((s, ct) => s.GetHardWordsAsync(ct));
 
     public Task<ExerciseSetDto> GetHardExercisesAsync(string type, int count) =>
@@ -143,6 +151,11 @@ public sealed class LocalKorTrainerApi(IServiceScopeFactory scopes, ILogger<Loca
     public Task<MistakeSummaryDto> GetMistakeSummaryAsync() => Run<MistakeService, MistakeSummaryDto>((s, ct) => s.GetSummaryAsync(ct));
 
     public Task<ExerciseSetDto> GetMistakesAsync(int count) => Run<MistakeService, ExerciseSetDto>((s, ct) => s.GetDueAsync(count, ct));
+
+    public Task<RuleReviewSummaryDto> GetRuleReviewAsync() => Run<RuleReviewService, RuleReviewSummaryDto>((s, ct) => s.GetSummaryAsync(ct));
+
+    public Task<RuleReviewTopicDto> RecordRuleCheckAsync(string type, int correct, int total) =>
+        Run<RuleReviewService, RuleReviewTopicDto>((s, ct) => s.RecordCheckAsync(type, new RuleCheckRequest(correct, total), ct));
 
     public Task<IReadOnlyList<WeakTopicDto>> GetWeakTopicsAsync() => Run<StatsService, IReadOnlyList<WeakTopicDto>>((s, ct) => s.GetWeakTopicsAsync(ct));
 

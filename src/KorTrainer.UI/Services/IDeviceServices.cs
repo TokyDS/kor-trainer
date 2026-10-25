@@ -36,3 +36,25 @@ public interface IBackupExporter
 {
     Task ExportAsync();
 }
+
+/// <param name="LastSavedUtc">When the last automatic copy was written; null before the first one.</param>
+/// <param name="Folder">Where the copies are, as a file manager shows it.</param>
+public sealed record AutoBackupStatus(DateTime? LastSavedUtc, string Folder);
+
+/// <summary>Weekly copies of the progress into a folder outside the app, so a lost or reset app loses nothing.</summary>
+public interface IAutoBackup
+{
+    /// <summary>Null where no automatic copies are made (the browser keeps data on the server).</summary>
+    Task<AutoBackupStatus?> GetStatusAsync();
+
+    /// <summary>Writes a copy now; throws <see cref="IOException"/> when the folder cannot be written.</summary>
+    Task<AutoBackupStatus> SaveNowAsync();
+}
+
+/// <summary>The browser: progress lives on the server, its backup is the manual export.</summary>
+public sealed class NoAutoBackup : IAutoBackup
+{
+    public Task<AutoBackupStatus?> GetStatusAsync() => Task.FromResult<AutoBackupStatus?>(null);
+
+    public Task<AutoBackupStatus> SaveNowAsync() => throw new NotSupportedException("Автокопии делает только приложение на телефоне.");
+}

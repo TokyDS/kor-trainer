@@ -995,7 +995,8 @@ input[type="range"] { accent-color: var(--accent); }
 .example-ko { font-size: 1.05rem; }
 .example-ru { grid-column: 1 / -1; color: var(--ink-soft); font-size: 0.9rem; }
 .note-form { display: flex; gap: var(--space-2); }
-.note-form input { flex: 1; min-width: 0; }
+/* width: 0 — a text field otherwise asks for its default width and pushes the card wider than a phone screen. */
+.note-form input { flex: 1; min-width: 0; width: 0; }
 .note-text { margin: 0; color: var(--ink-soft); }
 .tiny { font-size: 0.75rem; margin: 0; }
 
@@ -1362,3 +1363,35 @@ del.diff-extra { color: var(--ink-faint); }
 
 /* Korean inside Russian text (titles, task names) also wraps only between words. */
 body { word-break: keep-all; overflow-wrap: break-word; }
+
+/* Rule checks: results of a check and the dates of the next ones. */
+.section-heading { margin: var(--space-5) 0 var(--space-2); font-size: 1.1rem; }
+.rule-results, .rule-schedule { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-2); text-align: left; }
+.rule-results li {
+    display: grid;
+    gap: 2px;
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-sm);
+    border-left: 4px solid var(--rule);
+    background: var(--paper-sunken);
+}
+.rule-results li.passed { border-left-color: var(--celadon); }
+.rule-results li.again { border-left-color: var(--warn); }
+.rule-schedule li { display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-3); padding: var(--space-2) 0; border-bottom: 1px dashed var(--rule); }
+.rule-schedule li > span:first-child { min-width: 0; }
+.rule-schedule li > span:last-child { flex-shrink: 0; text-align: right; }
+
+/* Translation flags: a quiet link under the card, the list of flagged words. */
+.flag-row { margin-top: var(--space-2); }
+.flag-button { color: var(--ink-faint); }
+.flag-text { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-2); margin: 0; color: var(--warn); }
+.flag-list { list-style: none; padding: 0; margin: 0; display: grid; gap: var(--space-3); }
+.flag-list li { margin: 0; display: grid; gap: var(--space-1); justify-items: start; }
+.flag-list p { margin: 0; }
+.flag-word { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-3); }
+.flag-word [lang="ko"] { font-family: var(--font-hangul); font-size: 1.4rem; color: var(--ink); text-decoration: none; }
+.flag-fixed { color: var(--celadon); }
+
+/* Weekly copies on the phone. */
+.auto-backup { display: grid; gap: var(--space-2); justify-items: start; margin: var(--space-3) 0; padding: var(--space-3); border-radius: var(--radius-sm); background: var(--paper-sunken); }
+.auto-backup p { margin: 0; }

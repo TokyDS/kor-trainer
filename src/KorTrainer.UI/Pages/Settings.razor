@@ -3,6 +3,7 @@
 @inject AppState State
 @inject IKorTrainerApi Api
 @inject IBackupExporter Backup
+@inject IAutoBackup AutoBackup
 @inject DevicePreferences Device
 
 <PageTitle>Настройки — KorTrainer</PageTitle>
@@ -138,6 +139,20 @@
         <div class="actions">
             <button type="button" class="btn" @onclick="ExportAsync">Сохранить JSON</button>
         </div>
+        @if (_autoBackup is { } auto)
+        {
+            <div class="auto-backup">
+                <p class="small">
+                    Раз в неделю копия сохраняется сама: <strong>@auto.Folder</strong>, хранятся четыре последние.
+                    @(auto.LastSavedUtc is { } last ? $"Последняя — {last.ToLocalTime().ToString("d MMMM, HH:mm", Russian)}." : "Первая появится, когда вы выйдете из приложения.")
+                </p>
+                <button type="button" class="btn small" disabled="@_autoSaving" @onclick="SaveCopyNowAsync">Сохранить копию сейчас</button>
+                @if (_autoMessage is not null)
+                {
+                    <p class="notice @(_autoError ? "error" : "success") small">@_autoMessage</p>
+                }
+            </div>
+        }
         <label class="toggle">
             <input type="checkbox" @bind="_confirmImport" />
             <span>Я понимаю, что текущий прогресс будет заменён</span>
@@ -179,6 +194,12 @@
     private bool _confirmImport;
     private bool _importing;
     private bool _importError;
+    private AutoBackupStatus? _autoBackup;
+    private bool _autoSaving;
+    private bool _autoError;
+    private string? _autoMessage;
+
+    private static readonly System.Globalization.CultureInfo Russian = System.Globalization.CultureInfo.GetCultureInfo("ru-RU");
     private string? _importMessage;
 
     protected override async Task OnInitializedAsync()
@@ -192,6 +213,29 @@
         catch (JSException)
         {
             _voices = [];
+        }
+
+        _autoBackup = await AutoBackup.GetStatusAsync();
+    }
+
+    private async Task SaveCopyNowAsync()
+    {
+        _autoSaving = true;
+        _autoMessage = null;
+        try
+        {
+            _autoBackup = await AutoBackup.SaveNowAsync();
+            _autoError = false;
+            _autoMessage = $"Копия сохранена: {_autoBackup.Folder}.";
+        }
+        catch (Exception ex) when (ex is ApiException or IOException)
+        {
+            _autoError = true;
+            _autoMessage = ex.Message;
+        }
+        finally
+        {
+            _autoSaving = false;
         }
     }
 

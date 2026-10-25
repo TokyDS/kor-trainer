@@ -30,6 +30,12 @@
         {
             <VocabReview Limit="QuickSession.WordCards" OnFinished="WordsDoneAsync" />
         }
+        else if (part.Kind == PartKind.Rule)
+        {
+            <ChoiceDrill @key="_index" Load="() => Api.GetGrammarExercisesAsync(part.Rule!.Type, part.Size)" OnFinished="NextAsync"
+                         OnScored="score => RecordRuleAsync(part.Rule!, score)"
+                         FinishLabel="@(_index + 1 < list.Count ? $"Дальше: {list[_index + 1].Title}" : "Завершить")" />
+        }
         else
         {
             <ChoiceDrill @key="_index" Load="() => LoadPartAsync(part)" OnFinished="NextAsync"
@@ -51,13 +57,14 @@
 }
 
 @code {
-    private enum PartKind { Words, Mistakes, Drill }
+    private enum PartKind { Words, Mistakes, Rule, Drill }
 
-    private sealed record Part(PartKind Kind, string Title, int Size, QuickDrill? Drill = null);
+    private sealed record Part(PartKind Kind, string Title, int Size, QuickDrill? Drill = null, RuleReviewTopicDto? Rule = null);
 
     private List<Part>? _parts;
     private int _index;
     private int _cardsReviewed;
+    private bool _ruleChecked;
     private DateTime _startedUtc;
     private string? _error;
 
@@ -84,6 +91,7 @@
         {
             var today = await Api.GetTodayAsync();
             var mistakes = await Api.GetMistakeSummaryAsync();
+            var rule = await DueRuleAsync();
             var weakest = (await Api.GetWeakTopicsAsync()).Select(w => QuickSession.FromRoute(w.Route)).FirstOrDefault(d => d is not null);
             // A rule to read is not a drill, even though it opens on the drill's page.
             var tasks = today.Step.Tasks.Where(t => !t.IsReading).Select(t => new QuickTask(t.Route, t.IsDone));
@@ -95,11 +103,18 @@
                 parts.Add(new Part(PartKind.Mistakes, "Ошибки", QuickSession.MistakeCount));
             }
 
+            // The rule that has waited longest for its check.
+            if (rule is not null)
+            {
+                parts.Add(new Part(PartKind.Rule, "Правило", RuleSchedule.CheckSize, Rule: rule));
+            }
+
             parts.Add(new Part(PartKind.Drill, DrillTitle(drills[0]), QuickSession.DrillSize, drills[0]));
             parts.AddRange(drills.Skip(1).Select(d => new Part(PartKind.Drill, d == weakest ? "Трудная тема" : DrillTitle(d), QuickSession.SecondDrillSize, d)));
             _parts = parts;
             _index = 0;
             _cardsReviewed = 0;
+            _ruleChecked = false;
             _startedUtc = DateTime.UtcNow;
         }
         catch (Exception ex) when (ex is ApiException or HttpRequestException)
@@ -122,6 +137,38 @@
             StudyModule.Numbers => Api.GetNumberExercisesAsync(drill.Type, part.Size),
             _ => Api.GetGrammarExercisesAsync(drill.Type, part.Size),
         };
+    }
+
+    /// <summary>The rule that has waited longest; the session goes on without one if the checks cannot be read.</summary>
+    private async Task<RuleReviewTopicDto?> DueRuleAsync()
+    {
+        try
+        {
+            return (await Api.GetRuleReviewAsync()).Topics.FirstOrDefault(t => t.IsDue);
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>The first set of the rule is its check; a failed save only means the rule stays due.</summary>
+    private async Task RecordRuleAsync(RuleReviewTopicDto rule, DrillScore score)
+    {
+        if (_ruleChecked)
+        {
+            return;
+        }
+
+        _ruleChecked = true;
+        try
+        {
+            await Api.RecordRuleCheckAsync(rule.Type, score.Correct, score.Total);
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException)
+        {
+            _ruleChecked = false;
+        }
     }
 
     private Task WordsDoneAsync(int reviewed)

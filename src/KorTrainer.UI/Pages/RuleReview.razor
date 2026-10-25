@@ -1,0 +1,155 @@
+@page "/rules"
+@using KorTrainer.Domain.Grammar
+@inject IKorTrainerApi Api
+
+<PageTitle>Повторение правил — KorTrainer</PageTitle>
+
+<header class="page-header">
+    <a class="back" href="/">← Назад</a>
+    <h1>Повторение правил</h1>
+    <p class="muted">@(Current is null ? Rule : $"Правило {_index + 1} из {_queue.Count} · {RuleSchedule.CheckSize} вопросов, засчитывается первый подход")</p>
+</header>
+
+@if (Current is { } topic)
+{
+    @if (GrammarTheories.Find(topic.Type) is { } theory)
+    {
+        <RuleRecap Steps="theory.Steps" Pitfall="@theory.Pitfall" />
+    }
+    <ChoiceDrill @key="topic.Type" Load="() => Api.GetGrammarExercisesAsync(topic.Type, RuleSchedule.CheckSize)"
+                 OnScored="score => RecordAsync(topic, score)" OnFinished="NextAsync"
+                 FinishLabel="@(_index + 1 < _queue.Count ? "Следующее правило" : "Итоги")" />
+}
+else
+{
+    <StatusViews IsLoading="_summary is null && _error is null" Error="@_error" OnRetry="LoadAsync" />
+
+    @if (_results.Count > 0)
+    {
+        <div class="card summary">
+            <h2>Проверка закончена</h2>
+            <ul class="rule-results">
+                @foreach (var result in _results)
+                {
+                    <li class="@(result.Passed ? "passed" : "again")">
+                        <strong>@result.Title</strong>
+                        <span class="muted small">@result.Score.Correct из @result.Score.Total · @result.Next</span>
+                    </li>
+                }
+            </ul>
+            @if (_saveError is not null)
+            {
+                <p class="notice error small">Не все результаты сохранились: @_saveError</p>
+            }
+            <div class="actions">
+                <a class="btn primary" href="/step">К задачам шага</a>
+            </div>
+        </div>
+    }
+    else if (_summary is { } summary)
+    {
+        <div class="card summary">
+            <h2>На сегодня правил нет</h2>
+            <p class="muted">
+                @(summary.Topics.Count == 0
+                    ? "Тема попадёт сюда на следующий день после первых упражнений по ней."
+                    : $"Ждут своего дня: {summary.Topics.Count}.")
+            </p>
+        </div>
+    }
+
+    @if (_summary is { Topics.Count: > 0 } all)
+    {
+        <h2 class="section-heading">Изученные правила</h2>
+        <ul class="rule-schedule">
+            @foreach (var item in all.Topics)
+            {
+                <li>
+                    <span>@item.Title</span>
+                    <span class="muted small">@When(item)</span>
+                </li>
+            }
+        </ul>
+    }
+}
+
+@code {
+    private const string Rule = "Правило возвращается на короткую проверку через 1, 3, 7, 14 и 30 дней, дальше — раз в два месяца. "
+        + "Четыре верных ответа из пяти — правило держится, иначе оно вернётся завтра.";
+
+    private static readonly System.Globalization.CultureInfo Russian = System.Globalization.CultureInfo.GetCultureInfo("ru-RU");
+
+    private sealed record Result(string Type, string Title, DrillScore Score, bool Passed, string Next);
+
+    private RuleReviewSummaryDto? _summary;
+    private List<RuleReviewTopicDto> _queue = [];
+    private readonly List<Result> _results = [];
+    private int _index;
+    private bool _checked;
+    private string? _error;
+    private string? _saveError;
+
+    /// <summary>The rule being checked; null before loading and once the due rules have all been gone through.</summary>
+    private RuleReviewTopicDto? Current => !_checked && _index < _queue.Count ? _queue[_index] : null;
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _error = null;
+        try
+        {
+            _summary = await Api.GetRuleReviewAsync();
+            if (!_checked)
+            {
+                _queue = _summary.Topics.Where(t => t.IsDue).ToList();
+                _index = 0;
+            }
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    private async Task RecordAsync(RuleReviewTopicDto topic, DrillScore score)
+    {
+        // Another set of the same rule is practice: the check is the first one.
+        if (_results.Any(r => r.Type == topic.Type))
+        {
+            return;
+        }
+
+        bool passed = RuleSchedule.Passed(score.Correct, score.Total);
+        string next = passed ? "держится" : "вернётся завтра";
+        try
+        {
+            var updated = await Api.RecordRuleCheckAsync(topic.Type, score.Correct, score.Total);
+            if (passed)
+            {
+                next = $"следующая проверка {updated.Due.ToString("d MMMM", Russian)}";
+            }
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException)
+        {
+            _saveError = ex.Message;
+        }
+
+        _results.Add(new Result(topic.Type, topic.Title, score, passed, next));
+    }
+
+    private async Task NextAsync()
+    {
+        _index++;
+        if (_index >= _queue.Count)
+        {
+            _checked = true;
+            // The list under the results shows the new dates.
+            await LoadAsync();
+        }
+    }
+
+    private static string When(RuleReviewTopicDto topic) => topic.IsDue
+        ? "проверить сегодня"
+        : $"проверка {topic.Due.ToString("d MMMM", Russian)}";
+}

@@ -46,11 +46,15 @@ public class MainActivity : MauiAppCompatActivity
         }
     }
 
-    // Leaving the app is when the counts on the widget change.
+    // Leaving the app is when the counts on the widget change, and when a weekly copy has the latest progress.
     protected override void OnPause()
     {
         base.OnPause();
         TodayWidget.RequestUpdate(this);
+        if (IPlatformApplication.Current?.Services.GetService<DownloadsAutoBackup>() is { } backup)
+        {
+            _ = backup.SaveIfDueAsync();
+        }
     }
 
     // Android 13+ asks the user once; without it reminders are simply not shown.
