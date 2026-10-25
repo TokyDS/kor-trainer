@@ -4,35 +4,14 @@
 
 <PageTitle>KorTrainer</PageTitle>
 
-<StatusViews IsLoading="_today is null && _error is null" Error="@_error" OnRetry="LoadAsync" />
+<StatusViews IsLoading="(_today is null || _plan is null) && _error is null" Error="@_error" OnRetry="LoadAsync" />
 
-@if (_today is { } today)
+@if (_today is { } today && _plan is { } plan)
 {
     var step = today.Step;
-    <nav class="day-nav" aria-label="Шаги плана">
-        @if (step.PreviousKey is { } previous)
-        {
-            <a class="btn small" href="@StepHref(previous, today.CurrentKey)" aria-label="Предыдущий шаг">←</a>
-        }
-        <span class="day-nav-label">
-            @(step.State switch
-            {
-                StepState.Current => "Текущий шаг",
-                StepState.Done => "Пройденный шаг",
-                _ => "Впереди — предпросмотр",
-            })
-        </span>
-        @if (step.NextKey is { } next)
-        {
-            <a class="btn small" href="@StepHref(next, today.CurrentKey)" aria-label="Следующий шаг">→</a>
-        }
-        @if (!today.IsCurrent)
-        {
-            <a class="btn small primary" href="/">К текущему шагу</a>
-        }
-    </nav>
+    int done = step.Tasks.Count(t => t.IsDone);
 
-    @if (today.IsCurrent && _reminder is { ShouldRemind: true } reminder)
+    @if (_reminder is { ShouldRemind: true } reminder)
     {
         <div class="notice warning reminder" role="status">
             <strong>@reminder.Title</strong>
@@ -40,221 +19,79 @@
         </div>
     }
 
-    <header class="today-hero @(today.IsCurrent ? string.Empty : "other-day")">
-        <div>
-            <p class="eyebrow">@step.StageTitle</p>
-            <h1>@step.Title</h1>
-            <p class="muted">Шаг @step.Number из @step.TotalSteps · @step.Goal</p>
-        </div>
+    <header class="map-hero">
+        <a class="continue" href="/step">
+            <span class="eyebrow">Продолжить · @step.StageTitle</span>
+            <strong class="continue-title">@step.Title</strong>
+            <span class="continue-meta">
+                <span class="progress-track small" aria-hidden="true"><span class="progress-fill" style="width: @(step.Tasks.Count == 0 ? 0 : done * 100 / step.Tasks.Count)%"></span></span>
+                <span class="muted small">@done из @step.Tasks.Count задач · шаг @step.Number из @step.TotalSteps</span>
+            </span>
+        </a>
         <div class="streak @(today.StudiedToday ? "lit" : string.Empty)" title="Дней с занятиями за последние 7 дней">
             <span class="streak-number">@today.ActiveDaysThisWeek<small>/7</small></span>
-            <span class="streak-label">@DaysWord(today.ActiveDaysThisWeek) за неделю</span>
+            <span class="streak-label">за неделю</span>
         </div>
     </header>
 
-    @if (today.IsCurrent)
+    <a class="quick-start" href="/quick">
+        <span class="quick-glyph" aria-hidden="true">10′</span>
+        <span class="quick-text">
+            <strong>10 минут</strong>
+            <span>Повторить слова и сделать упражнения шага — одной кнопкой</span>
+        </span>
+    </a>
+    @if (_mistakes is { Due: > 0 } mistakes)
     {
-        <a class="quick-start" href="/quick">
-            <span class="quick-glyph" aria-hidden="true">10′</span>
-            <span class="quick-text">
-                <strong>10 минут</strong>
-                <span>Повторить слова и сделать упражнения шага — одной кнопкой</span>
-            </span>
+        <a class="mistakes-link" href="/mistakes">
+            <span>Работа над ошибками</span>
+            <span class="badge">@mistakes.Due</span>
         </a>
-        @if (_mistakes is { Due: > 0 } mistakes)
-        {
-            <a class="mistakes-link" href="/mistakes">
-                <span>Работа над ошибками</span>
-                <span class="badge">@mistakes.Due</span>
-            </a>
-        }
     }
 
-    @if (today.ReadyForNext)
-    {
-        <div class="notice success step-done" role="status">
-            <strong>Шаг пройден!</strong>
-            <p>Дальше: @step.NextTitle. Можно перейти сейчас или ещё позаниматься здесь — как удобно.</p>
-            <button type="button" class="btn primary" disabled="@_saving" @onclick="AdvanceAsync">Перейти дальше</button>
-        </div>
-    }
-
-    <div class="today-grid">
-        <section class="card tasks" aria-labelledby="tasks-heading">
-            <div class="section-head">
-                <h2 id="tasks-heading">Задачи шага</h2>
-                <span class="muted">@step.Tasks.Count(t => t.IsDone) из @step.Tasks.Count</span>
-            </div>
-            <p class="muted small">
-                Делайте в своём темпе: прогресс копится, пока шаг открыт, хоть за один вечер, хоть за неделю.
-                @if (step.Lesson is not null)
-                {
-                    <span>Пункты урока открываются по очереди.</span>
-                }
-            </p>
-            <ol class="task-list">
-                @foreach (var task in step.Tasks)
-                {
-                    <li class="task @(task.IsDone ? "done" : string.Empty) @(task.IsLocked ? "locked" : string.Empty)">
-                        <span class="check" aria-hidden="true">@(task.IsDone ? "✓" : string.Empty)</span>
-                        <div class="task-body">
-                            <span class="task-title">@task.Title</span>
-                            <span class="visually-hidden">@(task.IsDone ? "выполнено" : task.IsLocked ? "откроется после предыдущих" : "не выполнено")</span>
-                            @if (!task.IsReading && task.Target > 0)
-                            {
-                                <span class="task-progress">
-                                    <span class="progress-track small"><span class="progress-fill" style="width: @(task.Progress * 100 / task.Target)%"></span></span>
-                                    <span class="muted">@task.Progress / @task.Target</span>
-                                </span>
-                            }
-                        </div>
-                        @if (task.IsLocked)
-                        {
-                            <span class="task-lock muted small">после предыдущих</span>
-                        }
-                        else if (task.Route is not null)
-                        {
-                            <a class="btn small @(task.IsDone ? string.Empty : "primary")" href="@task.Route">
-                                @(task.IsDone ? (task.IsReading ? "Перечитать" : "Ещё") : task.IsReading ? "Читать" : "Начать")
-                            </a>
-                        }
-                    </li>
-                }
-            </ol>
-
-            @if (today.IsCurrent && !today.ReadyForNext && step.NextKey is not null)
-            {
-                <div class="step-skip">
-                    @if (_confirmSkip)
-                    {
-                        <p class="small">Не все задачи выполнены — ничего страшного, к ним можно вернуться. Перейти к шагу «@step.NextTitle»?</p>
-                        <div class="actions">
-                            <button type="button" class="btn primary small" disabled="@_saving" @onclick="AdvanceAsync">Да, дальше</button>
-                            <button type="button" class="btn small" @onclick="() => _confirmSkip = false">Остаться</button>
-                        </div>
-                    }
-                    else
-                    {
-                        <button type="button" class="link-button" @onclick="() => _confirmSkip = true">Материал уже знаком? Перейти дальше</button>
-                    }
-                </div>
-            }
-        </section>
-
-        @if (step.Lesson is { } lesson)
-        {
-            <section class="card lesson" aria-labelledby="lesson-heading">
-                <p class="eyebrow">Конспект урока</p>
-                <h2 id="lesson-heading">@lesson.Title</h2>
-                <ul>
-                    @foreach (var point in lesson.KeyPoints)
-                    {
-                        <li>@point</li>
-                    }
-                </ul>
-            </section>
-        }
-
-        <section class="card vocab-mini" aria-labelledby="vocab-heading">
-            <h2 id="vocab-heading">Словарь</h2>
-            <dl class="stats-row">
-                <div><dt>к повторению</dt><dd>@today.Vocabulary.DueNow</dd></div>
-                <div><dt>в изучении</dt><dd>@(today.Vocabulary.Learning + today.Vocabulary.Young)</dd></div>
-                <div><dt>выучено</dt><dd>@today.Vocabulary.Mature</dd></div>
-            </dl>
-            <a class="btn primary" href="/vocab/review">Повторять слова</a>
-        </section>
-
-        <section class="card quick" aria-labelledby="quick-heading">
-            <h2 id="quick-heading">Быстрый переход</h2>
-            <div class="quick-links">
-                @foreach (var link in step.QuickLinks)
-                {
-                    <a class="chip" href="@link.Route">@link.Title</a>
-                }
-            </div>
-        </section>
-    </div>
-
-    @if (_saveError is not null)
-    {
-        <p class="notice error">@_saveError</p>
-    }
+    <h2 class="map-heading">План до TOPIK</h2>
+    <p class="muted small">Нажмите на шаг, чтобы открыть его задачи. Пройденные можно повторить, следующие — посмотреть заранее.</p>
+    <PathMap Plan="plan" FoldDone="true" ScrollToCurrent="false" />
 }
 
 @code {
     private const int ReminderHour = 18;
 
     private TodayDto? _today;
+    private PlanDto? _plan;
     private ReminderDto? _reminder;
     private MistakeSummaryDto? _mistakes;
     private string? _error;
-    private string? _saveError;
-    private bool _saving;
-    private bool _confirmSkip;
 
+    /// <summary>Old links (<c>/?step=level1-2</c>) open the step's own page.</summary>
     [SupplyParameterFromQuery(Name = "step")]
     public string? StepParameter { get; set; }
 
-    // The page is reused when only ?step= changes, so reload on every parameter change.
-    protected override Task OnParametersSetAsync() => LoadAsync();
+    protected override async Task OnInitializedAsync()
+    {
+        if (StepParameter is { Length: > 0 } key)
+        {
+            Navigation.NavigateTo($"/step/{Uri.EscapeDataString(key)}", replace: true);
+            return;
+        }
 
-    private static string StepHref(string key, string currentKey) => key == currentKey ? "/" : $"/?step={Uri.EscapeDataString(key)}";
+        await LoadAsync();
+    }
 
     private async Task LoadAsync()
     {
         _error = null;
-        _confirmSkip = false;
         try
         {
-            _today = await Api.GetTodayAsync(StepParameter);
+            _today = await Api.GetTodayAsync(null);
+            _plan = await Api.GetPlanAsync();
             // Evening nudge, mirroring the desktop and phone reminders.
-            _reminder = _today.IsCurrent && DateTime.Now.Hour >= ReminderHour ? await Api.GetReminderAsync() : null;
-            _mistakes = _today.IsCurrent ? await Api.GetMistakeSummaryAsync() : null;
+            _reminder = DateTime.Now.Hour >= ReminderHour ? await Api.GetReminderAsync() : null;
+            _mistakes = await Api.GetMistakeSummaryAsync();
         }
         catch (Exception ex) when (ex is ApiException or HttpRequestException)
         {
             _error = ex.Message;
         }
     }
-
-    private async Task AdvanceAsync()
-    {
-        if (_today is null)
-        {
-            return;
-        }
-
-        await SaveAsync(async () =>
-        {
-            _today = await Api.AdvanceAsync(_today.Step.Key);
-            _confirmSkip = false;
-            Navigation.NavigateTo("/");
-        });
-    }
-
-    private async Task SaveAsync(Func<Task> action)
-    {
-        _saving = true;
-        _saveError = null;
-        try
-        {
-            await action();
-        }
-        catch (Exception ex) when (ex is ApiException or HttpRequestException)
-        {
-            _saveError = ex.Message;
-        }
-        finally
-        {
-            _saving = false;
-        }
-    }
-
-    private static string DaysWord(int n) => (n % 10, n % 100) switch
-    {
-        (1, not 11) => "день",
-        (2 or 3 or 4, not (12 or 13 or 14)) => "дня",
-        _ => "дней",
-    };
 }

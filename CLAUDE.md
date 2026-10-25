@@ -117,6 +117,8 @@ back end in-process. Never reference EF or ASP.NET from Domain.
    distractor says why it is wrong (`Conjugator.ExplainedMistakes`, `ParticleResult.WrongWhy`); particle gaps ask only
    for the particle (책___ 아니에요 → 이 / 가), except contracted pronouns (저 + 가 = 제가). Feedback can unfold the
    item's rule (`RuleRecap`). Lesson scenes with optional speaking were tried and taken out for now (git history).
+   Home (`/`) is the plan map (`PathMap` with finished stages folded) with «Продолжить»; a step's tasks live at
+   `/step` (current) and `/step/{key}`; old `/?step=` links redirect.
 
 The deck has ~5,900 words (curated + NIKL A/B/C). Next ideas: offline answer queue, phone↔laptop sync, review of
 machine translations.

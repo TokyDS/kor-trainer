@@ -1,5 +1,7 @@
 @inherits LayoutComponentBase
 @inject AppState State
+@inject NavigationManager Navigation
+@implements IDisposable
 
 <div class="shell">
     <aside class="sidebar" aria-label="Разделы">
@@ -7,7 +9,14 @@
         <nav>
             @foreach (var item in NavItems)
             {
-                <NavLink class="nav-link" href="@item.Href" Match="@(item.Href == "/" ? NavLinkMatch.All : NavLinkMatch.Prefix)">@item.Title</NavLink>
+                @if (item.Href == "/")
+                {
+                    <a class="nav-link @(IsStudy ? "active" : string.Empty)" href="/">@item.Title</a>
+                }
+                else
+                {
+                    <NavLink class="nav-link" href="@item.Href">@item.Title</NavLink>
+                }
             }
         </nav>
     </aside>
@@ -21,7 +30,7 @@
     </main>
 
     <nav class="tabbar" aria-label="Разделы">
-        <NavLink class="tab" href="/" Match="NavLinkMatch.All"><span class="tab-icon" lang="ko">공부</span>Учёба</NavLink>
+        <a class="tab @(IsStudy ? "active" : string.Empty)" href="/"><span class="tab-icon" lang="ko">공부</span>Учёба</a>
         <NavLink class="tab" href="/hangul"><span class="tab-icon" lang="ko">한</span>Хангыль</NavLink>
         <NavLink class="tab" href="/vocab"><span class="tab-icon" lang="ko">말</span>Слова</NavLink>
         <NavLink class="tab" href="/more"><span class="tab-icon">⋯</span>Ещё</NavLink>
@@ -46,11 +55,24 @@
         ("Настройки", "/settings"),
     ];
 
+    /// <summary>The study tab covers the map (<c>/</c>) and the step pages (<c>/step…</c>).</summary>
+    private bool IsStudy => Navigation.ToBaseRelativePath(Navigation.Uri).Split('?', '#')[0] is var path
+        && (path.Length == 0 || path == "step" || path.StartsWith("step/", StringComparison.Ordinal));
+
     protected override async Task OnInitializedAsync()
     {
         State.Changed += OnStateChanged;
+        Navigation.LocationChanged += OnLocationChanged;
         await State.InitializeAsync();
     }
 
+    public void Dispose()
+    {
+        State.Changed -= OnStateChanged;
+        Navigation.LocationChanged -= OnLocationChanged;
+    }
+
     private void OnStateChanged() => InvokeAsync(StateHasChanged);
+
+    private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e) => InvokeAsync(StateHasChanged);
 }

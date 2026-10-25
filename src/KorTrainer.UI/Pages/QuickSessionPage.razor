@@ -4,7 +4,7 @@
 <PageTitle>10 минут — KorTrainer</PageTitle>
 
 <header class="page-header">
-    <a class="back" href="/">← К шагу</a>
+    <a class="back" href="/">← Назад</a>
     <h1>10 минут</h1>
     @if (_parts is { } parts)
     {
@@ -43,7 +43,7 @@
             <p class="big-number">@Minutes <small>мин</small></p>
             <p class="muted">@SummaryText Всё это уже засчитано в задачи шага.</p>
             <div class="actions">
-                <a class="btn primary" href="/">К задачам шага</a>
+                <a class="btn primary" href="/step">К задачам шага</a>
                 <button type="button" class="btn" @onclick="LoadAsync">Ещё 10 минут</button>
             </div>
         </div>
