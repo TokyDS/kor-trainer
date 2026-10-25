@@ -37,7 +37,8 @@
         {
             <div class="notice error" role="alert">Сервер недоступен: @State.LoadError</div>
         }
-        @Body
+        @* A new page fades in; query changes on the same page (?step, ?drill) keep it. *@
+        <div class="page" @key="PagePath">@Body</div>
     </main>
 
     <nav class="tabbar" aria-label="Разделы">
@@ -98,14 +99,24 @@
         await RefreshTabAsync();
     }
 
+    private string PagePath => Navigation.ToBaseRelativePath(Navigation.Uri).Split('?', '#')[0];
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        if (firstRender)
+        {
+            await Browser.InvokeVoidAsync("rememberScroll");
+        }
+
         // The app on the phone has its back end inside: no network banner there.
         if (firstRender && !Host.IsEmbedded)
         {
             _self = DotNetObjectReference.Create(this);
             await Browser.InvokeVoidAsync("watchOnline", _self);
         }
+
+        // Back to a page: where it was scrolled to.
+        await Browser.InvokeVoidAsync("restoreScroll");
     }
 
     [JSInvokable]

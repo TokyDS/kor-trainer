@@ -9,7 +9,16 @@
         @if (IsKorean(token.Text))
         {
             <button type="button" class="tap-word @(token.Marked ? "marked" : string.Empty) @(_open == index ? "open" : string.Empty)" lang="ko"
-                    @onclick="() => TapAsync(index, token.Text)">@token.Text</button>
+                    @onclick="() => TapAsync(index, token.Text)">
+                @if (ColourGrammar && Split(token.Text) is { } parts)
+                {
+                    @parts.Stem<span class="@parts.Kind">@parts.Suffix</span>@parts.Tail
+                }
+                else
+                {
+                    @token.Text
+                }
+            </button>
         }
         else
         {
@@ -48,6 +57,10 @@
     [Parameter, EditorRequired]
     public string Text { get; set; } = string.Empty;
 
+    /// <summary>Colour particles and verb endings (authored rule examples only: the guess is by spelling).</summary>
+    [Parameter]
+    public bool ColourGrammar { get; set; }
+
     /// <summary>A part of the text to highlight, e.g. the form a rule teaches.</summary>
     [Parameter]
     public string? Mark { get; set; }
@@ -61,6 +74,42 @@
             bool marked = at >= 0 && match.Index < at + Mark!.Length && match.Index + match.Length > at && !string.IsNullOrWhiteSpace(match.Value);
             yield return ((match.Value, marked), index++);
         }
+    }
+
+    // Longest first, so 에서 wins over 서 and 이에요 over 에요.
+    private static readonly string[] Endings =
+        ["았어요", "었어요", "했어요", "이에요", "습니다", "으세요", "으니까", "아요", "어요", "해요", "예요", "세요", "니까", "지만", "으면", "고", "면"];
+
+    private static readonly string[] ParticleSuffixes = ["에서", "으로", "하고", "은", "는", "이", "가", "을", "를", "와", "과", "로", "에", "도"];
+
+    // Words that merely end like a particle: 같이 «вместе», 많이 «много», 아이 «ребёнок».
+    private static readonly HashSet<string> NotSplit = ["같이", "많이", "아이", "오이", "고기", "누가"];
+
+    /// <summary>«학생이에요.» → 학생 + 이에요 (ending) + «.»; null when nothing known ends the word.</summary>
+    private static (string Stem, string Suffix, string Tail, string Kind)? Split(string token)
+    {
+        int end = token.Length;
+        while (end > 0 && !KorTrainer.Domain.Hangul.Syllable.IsSyllable(token[end - 1]))
+        {
+            end--;
+        }
+
+        string word = token[..end];
+        string tail = token[end..];
+        if (NotSplit.Contains(word))
+        {
+            return null;
+        }
+
+        foreach (var (list, kind) in new[] { (Endings, "gram-ending"), (ParticleSuffixes, "gram-particle") })
+        {
+            if (list.FirstOrDefault(x => word.Length > x.Length && word.EndsWith(x, StringComparison.Ordinal)) is { } suffix)
+            {
+                return (word[..^suffix.Length], suffix, tail, kind);
+            }
+        }
+
+        return null;
     }
 
     private static bool IsKorean(string text) => text.Any(KorTrainer.Domain.Hangul.Syllable.IsSyllable);

@@ -1345,3 +1345,14 @@ del.diff-extra { color: var(--ink-faint); }
 /* A hint before answering: the first step of the rule for this question. */
 .hint-button { margin-top: var(--space-2); }
 .hint { margin: var(--space-2) 0 0; padding: var(--space-2) var(--space-3); border-radius: var(--radius-sm); background: var(--warn-soft); font-size: 0.9rem; }
+
+/* Grammar in colour inside rule examples: particles celadon, endings red (TapKorean ColourGrammar). */
+.gram-particle { color: var(--celadon); font-weight: 700; }
+.gram-ending { color: var(--accent); font-weight: 700; }
+.gram-legend { margin: 0 0 var(--space-2); }
+
+/* A new page arrives with a short rise; nothing moves when the system asks for less motion. */
+@media (prefers-reduced-motion: no-preference) {
+    .page { animation: page-in 180ms ease-out; }
+}
+@keyframes page-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }

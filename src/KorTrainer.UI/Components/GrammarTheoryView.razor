@@ -21,13 +21,14 @@
 
     <section class="card theory-examples" aria-labelledby="examples-heading">
         <h2 id="examples-heading">Примеры</h2>
+        <p class="muted small gram-legend"><span class="gram-particle">■</span> частица · <span class="gram-ending">■</span> окончание · нажмите на слово — перевод</p>
         <ul>
             @foreach (var example in Theory.Examples)
             {
                 <li>
                     <div class="theory-example-line">
                         @* Every word can be tapped for its sound and meaning; the form the rule teaches is marked. *@
-                        <span class="theory-sentence"><TapKorean Text="@example.Sentence" Mark="@example.Form" /></span>
+                        <span class="theory-sentence"><TapKorean Text="@example.Sentence" Mark="@example.Form" ColourGrammar="true" /></span>
                         <SpeakButton Text="@example.Sentence" ShowKeyHint="false" />
                     </div>
                     <span class="muted">@example.Translation</span>

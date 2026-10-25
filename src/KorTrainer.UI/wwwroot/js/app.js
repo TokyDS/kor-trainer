@@ -399,6 +399,41 @@ export function detachSwipe(element) {
     swipes.delete(element);
 }
 
+// --- Scroll memory ----------------------------------------------------------------
+
+const scrollPositions = new Map();
+let restorePending = false;
+let scrollWatched = false;
+
+/** Remembers how far each page was scrolled; a back step (popstate) asks for it to come back. */
+export function rememberScroll() {
+    if (scrollWatched) {
+        return;
+    }
+    scrollWatched = true;
+    window.addEventListener('scroll', () => scrollPositions.set(location.pathname + location.search, window.scrollY), { passive: true });
+    window.addEventListener('popstate', () => { restorePending = true; });
+}
+
+/** After a back step, scrolls to where the page was, once its content is tall enough (data may still be arriving). */
+export function restoreScroll() {
+    if (!restorePending) {
+        return;
+    }
+    restorePending = false;
+    const y = scrollPositions.get(location.pathname + location.search) ?? 0;
+    let tries = 0;
+    const attempt = () => {
+        if (document.documentElement.scrollHeight - window.innerHeight >= y || tries >= 20) {
+            window.scrollTo(0, y);
+            return;
+        }
+        tries++;
+        setTimeout(attempt, 50);
+    };
+    requestAnimationFrame(attempt);
+}
+
 // --- Network ----------------------------------------------------------------------
 
 /** Reports the browser's online state now and on every change. */
