@@ -61,12 +61,14 @@ public sealed class HangulService(IAppDbContext db, SettingsService settingsServ
 
         var maxStage = await MaxWordStageAsync(cancellationToken);
         var words = await db.Words
-            .Where(w => w.Stage <= maxStage)
-            .Select(w => new { w.Korean, w.Russian })
+            .Select(w => new { w.Korean, w.Russian, Opened = w.Stage <= maxStage })
             .ToListAsync(cancellationToken);
+        // Words of later stages fill up before made-up ones: every deck word has a recording, a made-up word does not.
+        var own = words.Where(w => w.Opened).Select(w => (w.Korean, (string?)w.Russian)).ToList();
+        var reserve = words.Where(w => !w.Opened).Select(w => (w.Korean, (string?)w.Russian)).ToList();
         var generator = new HangulExerciseGenerator(random);
         return generator
-            .Reading((HangulLevel)level, count, words.Select(w => (w.Korean, (string?)w.Russian)).ToList())
+            .Reading((HangulLevel)level, count, own, reserve)
             .Select(i => new ReadingItemDto(i.Text, i.SyllableCount, i.Pronounced, i.Translation, Romanizer.Romanize(i.Text)))
             .ToList();
     }

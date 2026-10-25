@@ -268,13 +268,22 @@ public sealed class HangulExerciseGenerator(Random random)
     }
 
     /// <summary>Words (or pseudo-words) a learner of the given level can already read.</summary>
-    public IReadOnlyList<ReadingItem> Reading(HangulLevel level, int count, IReadOnlyList<(string Korean, string? Translation)> words)
+    /// <param name="words">The learner's own words, read first.</param>
+    /// <param name="reserve">
+    /// Other real words to fill up with when too few of the learner's words fit the level: unlike pseudo-words,
+    /// they have recordings, so the answer is voiced like everything else.
+    /// </param>
+    public IReadOnlyList<ReadingItem> Reading(
+        HangulLevel level,
+        int count,
+        IReadOnlyList<(string Korean, string? Translation)> words,
+        IReadOnlyList<(string Korean, string? Translation)>? reserve = null)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(count);
-        var items = words
-            .Where(w => IsReadableAt(w.Korean, level))
-            .DistinctBy(w => w.Korean)
-            .Shuffled(random)
+        var own = words.Where(w => IsReadableAt(w.Korean, level)).DistinctBy(w => w.Korean).Shuffled(random).ToList();
+        var taken = own.Select(w => w.Korean).ToHashSet(StringComparer.Ordinal);
+        var extra = (reserve ?? []).Where(w => !taken.Contains(w.Korean) && IsReadableAt(w.Korean, level)).DistinctBy(w => w.Korean).Shuffled(random);
+        var items = own.Concat(extra)
             .Take(count)
             .Select(w => ToReadingItem(w.Korean, w.Translation))
             .ToList();
