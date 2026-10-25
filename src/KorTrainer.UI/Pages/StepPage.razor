@@ -40,10 +40,6 @@
             <h1>@step.Title</h1>
             <p class="muted">Шаг @step.Number из @step.TotalSteps · @step.Goal</p>
         </div>
-        <div class="streak @(today.StudiedToday ? "lit" : string.Empty)" title="Дней с занятиями за последние 7 дней">
-            <span class="streak-number">@today.ActiveDaysThisWeek<small>/7</small></span>
-            <span class="streak-label">@DaysWord(today.ActiveDaysThisWeek) за неделю</span>
-        </div>
     </header>
 
     @if (today.ReadyForNext)
@@ -68,15 +64,49 @@
                     <span>Пункты урока открываются по очереди.</span>
                 }
             </p>
-            <ol class="task-list">
-                @foreach (var task in step.Tasks)
+            @{
+                // On the current step the next open task leads; done ones shrink to chips, the rest wait below.
+                var focus = today.IsCurrent ? step.Tasks.FirstOrDefault(t => !t.IsDone && !t.IsLocked) : null;
+                var listed = step.Tasks.Select((t, i) => (Task: t, Number: i + 1))
+                    .Where(x => focus is null || (!x.Task.IsDone && x.Task != focus))
+                    .ToList();
+            }
+            @if (focus is not null)
+            {
+                @if (step.Tasks.Any(t => t.IsDone))
                 {
-                    <li class="task @(task.IsDone ? "done" : string.Empty) @(task.IsLocked ? "locked" : string.Empty)">
+                    <ul class="done-chips" aria-label="Сделано">
+                        @foreach (var done in step.Tasks.Where(t => t.IsDone))
+                        {
+                            <li><a href="@done.Route">✓ @done.Title</a></li>
+                        }
+                    </ul>
+                }
+                <div class="focus-task">
+                    <p class="eyebrow">Сейчас · пункт @(step.Tasks.ToList().IndexOf(focus) + 1) из @step.Tasks.Count</p>
+                    <strong class="focus-title">@focus.Title</strong>
+                    @if (!focus.IsReading && focus.Target > 0)
+                    {
+                        <span class="task-progress">
+                            <span class="progress-track"><span class="progress-fill" style="width: @(focus.Progress * 100 / focus.Target)%"></span></span>
+                            <span class="muted">@focus.Progress / @focus.Target</span>
+                        </span>
+                    }
+                    @if (focus.Route is not null)
+                    {
+                        <a class="btn primary" href="@focus.Route">@(focus.IsReading ? "Читать" : focus.Progress > 0 ? "Продолжить" : "Начать")</a>
+                    }
+                </div>
+            }
+            <ol class="task-list @(focus is not null ? "compact" : string.Empty)">
+                @foreach (var (task, number) in listed)
+                {
+                    <li class="task @(task.IsDone ? "done" : string.Empty) @(task.IsLocked ? "locked" : string.Empty)" data-n="@number">
                         <span class="check" aria-hidden="true">@(task.IsDone ? "✓" : string.Empty)</span>
                         <div class="task-body">
                             <span class="task-title">@task.Title</span>
                             <span class="visually-hidden">@(task.IsDone ? "выполнено" : task.IsLocked ? "откроется после предыдущих" : "не выполнено")</span>
-                            @if (!task.IsReading && task.Target > 0)
+                            @if (!task.IsReading && task.Target > 0 && focus is null)
                             {
                                 <span class="task-progress">
                                     <span class="progress-track small"><span class="progress-fill" style="width: @(task.Progress * 100 / task.Target)%"></span></span>
@@ -90,7 +120,7 @@
                         }
                         else if (task.Route is not null)
                         {
-                            <a class="btn small @(task.IsDone ? string.Empty : "primary")" href="@task.Route">
+                            <a class="btn small" href="@task.Route">
                                 @(task.IsDone ? (task.IsReading ? "Перечитать" : "Ещё") : task.IsReading ? "Читать" : "Начать")
                             </a>
                         }
@@ -223,11 +253,4 @@
             _saving = false;
         }
     }
-
-    private static string DaysWord(int n) => (n % 10, n % 100) switch
-    {
-        (1, not 11) => "день",
-        (2 or 3 or 4, not (12 or 13 or 14)) => "дня",
-        _ => "дней",
-    };
 }

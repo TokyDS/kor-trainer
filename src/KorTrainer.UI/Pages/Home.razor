@@ -28,10 +28,20 @@
                 <span class="muted small">@done из @step.Tasks.Count задач · шаг @step.Number из @step.TotalSteps</span>
             </span>
         </a>
-        <div class="streak @(today.StudiedToday ? "lit" : string.Empty)" title="Дней с занятиями за последние 7 дней">
-            <span class="streak-number">@today.ActiveDaysThisWeek<small>/7</small></span>
-            <span class="streak-label">за неделю</span>
-        </div>
+        @if (today.Week is { Count: > 0 } week)
+        {
+            <ol class="week-strip" aria-label="Дни занятий за последнюю неделю">
+                @foreach (var day in week)
+                {
+                    <li class="@(day.Studied ? "studied" : string.Empty) @(day.IsToday ? "today" : string.Empty)"
+                        title="@(day.Studied ? "были занятия" : "без занятий")">
+                        <span class="week-cell" aria-hidden="true"></span>
+                        <span>@day.Label</span>
+                        <span class="visually-hidden">@(day.Studied ? "занимались" : "нет")</span>
+                    </li>
+                }
+            </ol>
+        }
     </header>
 
     <a class="quick-start" href="/quick">

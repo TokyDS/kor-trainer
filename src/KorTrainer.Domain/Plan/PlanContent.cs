@@ -211,6 +211,21 @@ internal static class PlanContent
         _ => [],
     };
 
+    /// <summary>A lesson's topic in a few words, for the map under «Урок N».</summary>
+    public static string LessonTopic(int day) => day switch
+    {
+        1 => "ㅏ ㅓ ㅗ и слог",
+        2 => "ㅑ ㅘ, три ряда согласных",
+        3 => "патчим и 연음",
+        4 => "приветствия",
+        5 => "이에요/예요",
+        6 => "이/가 아니에요",
+        7 => "числа 일 이 삼",
+        8 => "числа 하나 둘 셋, счётные слова",
+        9 => "은/는, о себе",
+        _ => "повторение уроков",
+    };
+
     public static IReadOnlyList<QuickLink> QuickLinks(PlanStage stage, int day) => stage switch
     {
         PlanStage.NotStarted => [new("Памятка по хангылю", "/hangul/guide?level=1")],

@@ -45,8 +45,20 @@ public sealed class TodayService(
             current.Step.Key,
             StudyRhythm.ActiveDays(activeDays, today),
             activeDays.Contains(today),
-            vocabulary);
+            vocabulary,
+            StudyRhythm.Week(activeDays, today).Select(d => new StudyDayDto(Weekday(d.Date), d.Studied, d.Date == today)).ToList());
     }
+
+    private static string Weekday(DateOnly date) => date.DayOfWeek switch
+    {
+        DayOfWeek.Monday => "пн",
+        DayOfWeek.Tuesday => "вт",
+        DayOfWeek.Wednesday => "ср",
+        DayOfWeek.Thursday => "чт",
+        DayOfWeek.Friday => "пт",
+        DayOfWeek.Saturday => "сб",
+        _ => "вс",
+    };
 
     /// <summary>Moves on to the next step (the learner decides; unfinished tasks do not block it).</summary>
     public async Task<TodayDto> AdvanceAsync(AdvanceRequest request, CancellationToken cancellationToken)
@@ -59,8 +71,13 @@ public sealed class TodayService(
     public async Task<PlanDto> GetPlanAsync(CancellationToken cancellationToken)
     {
         var current = await cursor.GetAsync(cancellationToken);
+        var due = (await vocabularyService.GetSummaryAsync(cancellationToken)).DueNow;
+        var tasks = await evaluator.EvaluateAsync(
+            current.Step, new StepWindow(current.Progress.StartedUtc, DateTime.MaxValue, StepState.Current, due), cancellationToken);
         var steps = current.Roadmap.Steps
-            .Select(s => new PlanStepSummaryDto(s.Key, s.Index + 1, s.Stage, s.Title, StateOf(s, current)))
+            .Select(s => s == current.Step
+                ? new PlanStepSummaryDto(s.Key, s.Index + 1, s.Stage, s.Title, StepState.Current, Roadmap.TopicOf(s), tasks.Count(t => t.IsDone), tasks.Count)
+                : new PlanStepSummaryDto(s.Key, s.Index + 1, s.Stage, s.Title, StateOf(s, current), Roadmap.TopicOf(s)))
             .ToList();
         var stages = current.Roadmap.Steps
             .GroupBy(s => s.Stage)

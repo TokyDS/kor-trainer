@@ -44,7 +44,7 @@
                     <li style="left: @Px(x); top: @Px(y)">
                         @if (step.State == StepState.Current)
                         {
-                            <a @ref="_current" class="path-node current" href="/step" aria-label="@step.Title — текущий шаг">@step.Number</a>
+                            <a @ref="_current" class="path-node current" href="/step" style="--p: @Percent(step)" aria-label="@step.Title — текущий шаг@(step.Done is { } d ? $", сделано {d} из {step.Total}" : string.Empty)">@step.Number</a>
                             <span class="path-here @(x < Width / 2.0 ? "right" : "left")">Вы здесь</span>
                         }
                         else
@@ -53,7 +53,13 @@
                                 @(step.State == StepState.Done ? "✓" : step.Number.ToString(CultureInfo.InvariantCulture))
                             </a>
                         }
-                        <span class="path-caption">@Caption(step.Title)</span>
+                        <span class="path-caption">
+                            @Caption(step.Title)@(step.Done is { } done ? $" · {done} из {step.Total}" : string.Empty)
+                            @if (step.Topic is { Length: > 0 } topic)
+                            {
+                                <small class="path-topic" lang="@(topic.Any(KorTrainer.Domain.Hangul.Syllable.IsSyllable) ? "ko" : null)">@topic</small>
+                            }
+                        </span>
                     </li>
                 }
             </ol>
@@ -116,6 +122,10 @@
     /// <summary>How many nodes of the stage the walked line reaches: every done step and the current one.</summary>
     private static int Walked(IReadOnlyList<PlanStepSummaryDto> steps) =>
         steps.Count(s => s.State is StepState.Done or StepState.Current);
+
+    /// <summary>Share of the current step's tasks done, for the ring around its node.</summary>
+    private static int Percent(PlanStepSummaryDto step) =>
+        step is { Done: { } done, Total: > 0 and var total } ? done * 100 / total : 0;
 
     private static string Num(double value) => value.ToString("0.#", CultureInfo.InvariantCulture);
 

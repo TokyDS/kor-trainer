@@ -74,6 +74,30 @@ public sealed class Roadmap
 
     public PlanStep? Previous(PlanStep step) => step.Index > 0 ? Steps[step.Index - 1] : null;
 
+    /// <summary>A few words on what the step is about, for the map: «이에요/예요», «이/가, 을/를», «TOPIK II».</summary>
+    public static string TopicOf(PlanStep step)
+    {
+        ArgumentNullException.ThrowIfNull(step);
+        if (step.Lesson is { } lesson)
+        {
+            return PlanContent.LessonTopic(lesson.Day);
+        }
+
+        var grammar = step.Tasks
+            .Where(t => t.Target.Module == StudyModule.Grammar && t.Target.ExerciseType is not null)
+            .Select(t => GrammarCatalog.Find(t.Target.ExerciseType!)?.Title)
+            .OfType<string>()
+            .ToList();
+        return step.Stage switch
+        {
+            PlanStage.MockExam => "пробный экзамен",
+            PlanStage.TopikPrep => "TOPIK II: письмо, чтение, аудирование",
+            PlanStage.Maintenance => "поддержание формы",
+            _ when grammar.Count > 0 => string.Join(", ", grammar),
+            _ => "повторение грамматики",
+        };
+    }
+
     /// <summary>Grammar topics practiced by this step or an earlier one, in catalog order.</summary>
     public IReadOnlyList<GrammarTopic> GrammarUnlocked(PlanStep step)
     {

@@ -52,12 +52,14 @@ public sealed record PlanStepDto(
 /// <summary>The home screen: a step of the plan (the current one unless browsing) and today's context.</summary>
 /// <param name="CurrentKey">The learner's current step, to return to while browsing.</param>
 /// <param name="ActiveDaysThisWeek">Days with study among the last seven, today included.</param>
+/// <param name="Week">The last seven days, today last: a quiet picture of the rhythm, no streak.</param>
 public sealed record TodayDto(
     PlanStepDto Step,
     string CurrentKey,
     int ActiveDaysThisWeek,
     bool StudiedToday,
-    VocabularySummaryDto Vocabulary)
+    VocabularySummaryDto Vocabulary,
+    IReadOnlyList<StudyDayDto>? Week = null)
 {
     public bool IsCurrent => Step.Key == CurrentKey;
 
@@ -65,7 +67,11 @@ public sealed record TodayDto(
     public bool ReadyForNext => IsCurrent && Step.AllTasksDone && Step.NextKey is not null;
 }
 
-public sealed record PlanStepSummaryDto(string Key, int Number, PlanStage Stage, string Title, StepState State);
+/// <param name="Topic">What the step is about in a few words: «이에요/예요».</param>
+/// <param name="Done">Tasks done so far; only for the current step.</param>
+/// <param name="Total">Tasks of the step; only for the current step.</param>
+public sealed record PlanStepSummaryDto(
+    string Key, int Number, PlanStage Stage, string Title, StepState State, string? Topic = null, int? Done = null, int? Total = null);
 
 public sealed record StageDto(PlanStage Stage, string Title, string Goal, int StepCount, int DoneCount);
 
@@ -76,6 +82,9 @@ public sealed record AdvanceRequest(string From);
 
 /// <param name="Material">What was read to the end: an id from <see cref="StudyMaterials"/>.</param>
 public sealed record MarkReadRequest(string Material);
+
+/// <param name="Label">Short Russian weekday: пн, вт …</param>
+public sealed record StudyDayDto(string Label, bool Studied, bool IsToday);
 
 /// <param name="ShouldRemind">A gentle nudge is due: no study yet today and reminders are on.</param>
 public sealed record ReminderDto(bool ShouldRemind, string Title, string Message, bool StudiedToday, int ActiveDaysThisWeek, int WordsDue);

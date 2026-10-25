@@ -127,6 +127,19 @@ public sealed class RoadmapTests
         Speaking(_roadmap.Find("lesson-1")!).Should().BeEmpty();
     }
 
+    [Theory]
+    [InlineData("lesson-1", "ㅏ ㅓ ㅗ и слог")]
+    [InlineData("lesson-5", "이에요/예요")]
+    [InlineData("lesson-7", "числа 일 이 삼")]
+    [InlineData("level1-1", "이/가")]
+    [InlineData("mock-exam", "пробный экзамен")]
+    public void TopicOf_NamesWhatTheStepIsAbout(string key, string topic) =>
+        Roadmap.TopicOf(_roadmap.Find(key)!).Should().Contain(topic);
+
+    [Fact]
+    public void EveryStep_HasATopic() =>
+        _roadmap.Steps.Should().AllSatisfy(s => Roadmap.TopicOf(s).Should().NotBeNullOrWhiteSpace(s.Key));
+
     [Fact]
     public void GrammarRules_ToRead_HaveATheory()
     {
