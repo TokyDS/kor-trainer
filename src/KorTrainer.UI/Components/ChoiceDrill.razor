@@ -2,6 +2,8 @@
 @inherits KeyboardComponentBase
 @inject IKorTrainerApi Api
 @inject AppState State
+@inject DevicePreferences Preferences
+@inject IHaptics Haptics
 
 <section class="drill">
     @if (OnFinished.HasDelegate)
@@ -31,6 +33,38 @@
                 <h2>Подход завершён</h2>
                 <p class="big-number">@_firstTryCorrect / @_uniqueCount</p>
                 <p class="muted">правильно с первого раза · @AccuracyText</p>
+                @if (_missed.Count > 0)
+                {
+                    <div class="missed">
+                        <strong>Ошибки этого подхода</strong>
+                        <ul>
+                            @for (int m = 0; m < _missed.Count; m++)
+                            {
+                                int missIndex = m;
+                                var miss = _missed[m];
+                                <li>
+                                    <span class="missed-line">
+                                        <span lang="ko">@miss.Options[miss.CorrectIndex].Text</span>
+                                        <span class="muted small">@(miss.Prompt.Length > LongPromptLength ? string.Empty : miss.Prompt)</span>
+                                        @if (RuleOf(miss) is not null)
+                                        {
+                                            <button type="button" class="link-button small" @onclick="() => _missedRule = _missedRule == missIndex ? null : missIndex">правило</button>
+                                        }
+                                    </span>
+                                    @if (_missedRule == missIndex && RuleOf(miss) is { } missRule)
+                                    {
+                                        <RuleRecap Steps="missRule.Steps" Pitfall="@missRule.Pitfall" Open="true" />
+                                    }
+                                </li>
+                            }
+                        </ul>
+                        <span class="muted small">Они вернутся в «Работе над ошибками» через 1, 3 и 7 дней.</span>
+                    </div>
+                }
+                @if (!OnFinished.HasDelegate)
+                {
+                    <NextTaskCard />
+                }
                 <div class="actions">
                     @if (OnFinished.HasDelegate)
                     {
@@ -88,25 +122,35 @@
             @if (_selected is { } selected)
             {
                 bool correct = selected == item.CorrectIndex;
-                <div class="feedback @(correct ? "ok" : "bad")" role="status">
-                    <strong>@(correct ? "Верно!" : "Неверно.")</strong>
+                @* Pinned to the bottom of the screen: the verdict and «Дальше» stay under the thumb, details unfold on demand. *@
+                <div class="feedback @(correct ? "ok" : "bad")" role="status" @onclick="HoldAutoAdvance">
+                    <div class="feedback-head">
+                        @if (correct)
+                        {
+                            <strong>Верно!</strong>
+                        }
+                        else
+                        {
+                            <strong>Неверно — нужно <span lang="ko">@item.Options[item.CorrectIndex].Text</span></strong>
+                        }
+                        <button type="button" class="btn primary" @onclick="NextAsync" @onclick:stopPropagation="true">Дальше <kbd>Enter</kbd></button>
+                    </div>
+                    @if (_autoAdvancing)
+                    {
+                        <div class="auto-advance" aria-hidden="true"><span></span></div>
+                    }
                     @if (!correct && item.Options[selected].Why is { } why)
                     {
                         <p class="feedback-why">Вы выбрали <span lang="ko">@item.Options[selected].Text</span>: @why</p>
                     }
-                    <p>@(correct ? item.Explanation : $"Как правильно: {item.Explanation}")</p>
-                    @if (RuleOf(item) is { } rule)
-                    {
-                        @if (_showRule)
+                    <details class="feedback-more" open="@_showRule">
+                        <summary>@(correct ? "Почему так" : "Разбор и правило")</summary>
+                        <p>@item.Explanation</p>
+                        @if (RuleOf(item) is { } rule)
                         {
-                            <RuleRecap Steps="rule.Steps" Pitfall="@rule.Pitfall" Open="true" />
+                            <RuleRecap Steps="rule.Steps" Pitfall="@rule.Pitfall" Open="_showRule" />
                         }
-                        else
-                        {
-                            <button type="button" class="link-button rule-link" @onclick="() => _showRule = true">Правило: @rule.Title</button>
-                        }
-                    }
-                    <button type="button" class="btn primary" @onclick="NextAsync">Дальше <kbd>Enter</kbd></button>
+                    </details>
                 </div>
             }
 
@@ -145,6 +189,13 @@
     private int _position;
     private int? _selected;
     private bool _showRule;
+    private readonly List<ChoiceExerciseDto> _missed = [];
+    private int? _missedRule;
+    private bool _autoAdvancing;
+    private int _advanceVersion;
+
+    /// <summary>How long a right answer stays on screen before the next item when moving on by itself.</summary>
+    private static readonly TimeSpan AutoAdvanceDelay = TimeSpan.FromMilliseconds(1100);
     private bool _loading = true;
     private bool _reloading;
     private bool _finished;
@@ -246,6 +297,8 @@
             _set = await Load();
             _items = [.. _set.Items];
             _retried.Clear();
+            _missed.Clear();
+            _missedRule = null;
             _position = 0;
             _selected = null;
             _finished = false;
@@ -286,12 +339,15 @@
             _firstTryCorrect++;
         }
 
-        // A missed item comes back once at the end of the set.
+        // A missed item comes back once at the end of the set and is listed in the summary.
         if (firstTry && !correct)
         {
             _retried.Add(item.ItemKey);
             _items.Add(item);
+            _missed.Add(item);
         }
+
+        await SignalAsync(correct);
 
         if (!item.AutoSpeak && item.SpeakText is not null)
         {
@@ -309,6 +365,42 @@
         {
             _syncError = ex.Message;
         }
+        if (correct && Preferences.AutoAdvance)
+        {
+            await AutoAdvanceAsync();
+        }
+    }
+
+    /// <summary>A soft sound for a right answer, a buzz for a wrong one, as this device is set up.</summary>
+    private async Task SignalAsync(bool correct)
+    {
+        if (correct && Preferences.Sound)
+        {
+            await Browser.InvokeVoidAsync("chime");
+        }
+        else if (!correct && Preferences.Vibrate)
+        {
+            await Haptics.BuzzAsync();
+        }
+    }
+
+    /// <summary>A right answer moves on by itself after a moment, unless the learner touches the feedback.</summary>
+    private async Task AutoAdvanceAsync()
+    {
+        int version = ++_advanceVersion;
+        _autoAdvancing = true;
+        StateHasChanged();
+        await Task.Delay(AutoAdvanceDelay);
+        if (version == _advanceVersion && _autoAdvancing && _selected is not null)
+        {
+            await NextAsync();
+        }
+    }
+
+    private void HoldAutoAdvance()
+    {
+        _autoAdvancing = false;
+        _advanceVersion++;
     }
 
     /// <summary>Before answering a click answers; afterwards it plays the option, so similar sounds can be compared.</summary>
@@ -325,6 +417,7 @@
         }
         else if (IsKorean(item.Options[index].Text))
         {
+            HoldAutoAdvance();
             await State.SpeakAsync(item.Options[index].Text, slow: item.AutoSpeak);
         }
     }
@@ -346,6 +439,7 @@
         _position++;
         _selected = null;
         _showRule = false;
+        HoldAutoAdvance();
         if (_position >= _items.Count)
         {
             _finished = true;

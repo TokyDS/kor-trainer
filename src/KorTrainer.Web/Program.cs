@@ -15,5 +15,7 @@ builder.Services.AddScoped<ISpeechOutput, BrowserSpeechOutput>();
 builder.Services.AddScoped<ISpeechInput, BrowserSpeechInput>();
 builder.Services.AddScoped<IBackupExporter, WebBackupExporter>();
 builder.Services.AddScoped<AppState>();
+builder.Services.AddScoped<DevicePreferences>();
+builder.Services.AddScoped<IHaptics, BrowserHaptics>();
 
 await builder.Build().RunAsync();

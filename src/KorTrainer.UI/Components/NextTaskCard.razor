@@ -1,0 +1,60 @@
+@* After a set: what comes next in the current step, so a lesson flows on without going back to the list. *@
+@inject IKorTrainerApi Api
+@inject NavigationManager Navigation
+
+@if (_step is { } step)
+{
+    @if (_next is { } next)
+    {
+        @if (IsHere(next))
+        {
+            <div class="next-task">
+                <p class="eyebrow">@step.Title</p>
+                <strong>Этот пункт ещё не закрыт: @next.Progress / @next.Target</strong>
+                <span class="muted small">Ещё подход — и дальше по уроку.</span>
+            </div>
+        }
+        else
+        {
+            <a class="next-task link" href="@next.Route">
+                <span class="eyebrow">Дальше · @step.Title</span>
+                <strong>@next.Title</strong>
+                <span class="muted small">@step.Tasks.Count(t => t.IsDone) из @step.Tasks.Count пунктов готово</span>
+                <span class="btn primary">Продолжить урок →</span>
+            </a>
+        }
+    }
+    else
+    {
+        <a class="next-task link" href="/step">
+            <span class="eyebrow">@step.Title</span>
+            <strong>Все пункты шага сделаны</strong>
+            <span class="btn primary">К шагу →</span>
+        </a>
+    }
+}
+
+@code {
+    private PlanStepDto? _step;
+    private PlanTaskDto? _next;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _step = (await Api.GetTodayAsync(null)).Step;
+            _next = _step.Tasks.FirstOrDefault(t => !t.IsDone && !t.IsLocked && t.Route is not null);
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException)
+        {
+            // The card is a shortcut; without it the summary keeps its own buttons.
+            _step = null;
+        }
+    }
+
+    /// <summary>The next task is the drill on screen: «Ещё подход» is the way on.</summary>
+    private bool IsHere(PlanTaskDto task) =>
+        PathOf(task.Route!) == PathOf("/" + Navigation.ToBaseRelativePath(Navigation.Uri));
+
+    private static string PathOf(string route) => route.Split('?', '#')[0].TrimEnd('/');
+}

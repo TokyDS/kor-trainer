@@ -328,3 +328,59 @@ export function blurActive() {
         document.activeElement.blur();
     }
 }
+
+// --- Device preferences and answer feedback ---------------------------------------
+
+const PREFERENCES_KEY = 'kortrainer-device';
+
+export function loadPreferences() {
+    try {
+        return localStorage.getItem(PREFERENCES_KEY);
+    } catch {
+        return null; // storage blocked: defaults apply
+    }
+}
+
+export function savePreferences(json) {
+    try {
+        localStorage.setItem(PREFERENCES_KEY, json);
+    } catch {
+        // Storage can be unavailable (private mode); the choice still applies for this visit.
+    }
+}
+
+/** Korean text size, as a factor of the default size. */
+export function applyKoreanScale(scale) {
+    document.documentElement.style.setProperty('--ko-scale', String(scale));
+}
+
+/** A short buzz where the browser supports vibration. */
+export function buzz() {
+    if (navigator.vibrate) {
+        navigator.vibrate(60);
+    }
+}
+
+let chimeContext;
+
+/** A soft two-note chime for a right answer. */
+export function chime() {
+    try {
+        chimeContext ??= new AudioContext();
+        const now = chimeContext.currentTime;
+        [[660, 0], [990, 0.09]].forEach(([frequency, offset]) => {
+            const tone = chimeContext.createOscillator();
+            const gain = chimeContext.createGain();
+            tone.type = 'sine';
+            tone.frequency.value = frequency;
+            gain.gain.setValueAtTime(0.0001, now + offset);
+            gain.gain.exponentialRampToValueAtTime(0.12, now + offset + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.0001, now + offset + 0.22);
+            tone.connect(gain).connect(chimeContext.destination);
+            tone.start(now + offset);
+            tone.stop(now + offset + 0.25);
+        });
+    } catch {
+        // No Web Audio: the answer is still shown.
+    }
+}

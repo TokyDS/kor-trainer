@@ -27,6 +27,7 @@
             {
                 <p class="muted">В среднем за всё время: @stats.AverageMsPerSyllable мс на слог, точность @((int)(stats.Accuracy * 100))%.</p>
             }
+            <NextTaskCard />
             <div class="actions">
                 <button type="button" class="btn primary" @onclick="LoadAsync">Ещё подход <kbd>Enter</kbd></button>
                 <a class="btn" href="/step">К задачам шага</a>

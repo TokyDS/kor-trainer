@@ -98,6 +98,8 @@ html, body {
 
 /* Korean wraps between words only (스키 never splits into 스 / 키); an over-long word still breaks rather than overflow. */
 [lang="ko"] { font-family: var(--font-hangul); word-break: keep-all; overflow-wrap: anywhere; }
+/* The learner's Korean text size (Настройки → На этом устройстве), set as --ko-scale on the root. */
+.hangul-text .text[lang="ko"], .reading-word, .sentence-ko, .theory-sentence, .diff { zoom: var(--ko-scale, 1); }
 
 h1, h2, h3 { line-height: 1.2; margin: 0 0 var(--space-3); }
 h1 { font-size: clamp(1.6rem, 1.2rem + 1.6vw, 2.3rem); letter-spacing: -0.01em; }
@@ -662,12 +664,37 @@ input[type="text"], input[type="search"], input[type="number"], input[type="date
     75% { transform: translateX(4px); }
 }
 
+/* The answer panel sits at the bottom of the screen, above the tab bar, so «Дальше» is always under the thumb. */
 .feedback {
+    position: sticky;
+    bottom: calc(68px + env(safe-area-inset-bottom));
+    z-index: 5;
     margin-top: var(--space-4);
-    padding: var(--space-4);
+    padding: var(--space-3) var(--space-4);
     border-radius: var(--radius-md);
+    box-shadow: var(--shadow);
+    max-height: 60vh;
+    overflow-y: auto;
     animation: rise 200ms ease-out;
 }
+@media (min-width: 900px) { .feedback { bottom: var(--space-4); } }
+.feedback-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
+.feedback-head .btn { flex: none; }
+.feedback-more summary { cursor: pointer; font-size: 0.85rem; color: var(--ink-soft); margin-top: var(--space-2); }
+.auto-advance { height: 3px; margin-top: var(--space-2); border-radius: 2px; background: color-mix(in srgb, var(--celadon) 25%, transparent); overflow: hidden; }
+.auto-advance span { display: block; height: 100%; width: 100%; background: var(--celadon); transform-origin: left; animation: advance 1.1s linear forwards; }
+@keyframes advance { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@media (prefers-reduced-motion: reduce) { .auto-advance span { animation: none; } }
+
+/* The summary of a set: mistakes with their rule, then the way on through the lesson. */
+.missed { display: grid; gap: var(--space-2); text-align: left; margin: var(--space-3) 0; }
+.missed ul { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-2); }
+.missed li { border-bottom: 1px dashed var(--rule); padding-bottom: var(--space-2); }
+.missed-line { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-2); }
+.missed-line [lang="ko"] { font-size: 1.1rem; }
+.next-task { display: grid; gap: var(--space-1); text-align: left; padding: var(--space-3) var(--space-4); margin: var(--space-3) 0; border-radius: var(--radius-md); background: var(--paper); border: 1px solid var(--rule); border-left: 4px solid var(--accent); color: var(--ink); text-decoration: none; }
+.next-task .eyebrow { margin: 0; }
+.next-task .btn { justify-self: start; margin-top: var(--space-2); }
 
 .feedback.ok { background: var(--celadon-soft); border-left: 4px solid var(--celadon); }
 .feedback.bad { background: var(--danger-soft); border-left: 4px solid var(--danger); }

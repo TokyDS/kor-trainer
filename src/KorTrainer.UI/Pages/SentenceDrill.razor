@@ -111,15 +111,19 @@
                     </div>
                 }
             </div>
-            <p class="muted tiny">Предложение: Tatoeba #@item.Id, автор @item.Author (CC BY 2.0 FR)@(item.MachineTranslated ? "; * машинный перевод" : string.Empty).</p>
+            @if (!IsWords)
+            {
+                <p class="muted tiny">Предложение: Tatoeba #@item.Id, автор @item.Author (CC BY 2.0 FR)@(item.MachineTranslated ? "; * машинный перевод" : string.Empty).</p>
+            }
         }
         else
         {
             <div class="card drill-summary">
                 <h2>Готово!</h2>
                 <p>Засчитано: @_passed из @set.Items.Count.</p>
+                <NextTaskCard />
                 <div class="actions">
-                    <button type="button" class="btn primary" @onclick="LoadAsync">Ещё 10 предложений</button>
+                    <button type="button" class="btn primary" @onclick="LoadAsync">@(IsWords ? "Ещё 10 слов" : "Ещё 10 предложений")</button>
                     <a class="btn" href="/listening">К аудированию</a>
                 </div>
             </div>

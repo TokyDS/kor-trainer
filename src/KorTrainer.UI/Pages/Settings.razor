@@ -3,6 +3,7 @@
 @inject AppState State
 @inject IKorTrainerApi Api
 @inject IBackupExporter Backup
+@inject DevicePreferences Device
 
 <PageTitle>Настройки — KorTrainer</PageTitle>
 
@@ -61,7 +62,7 @@
             <input type="checkbox" @bind="m.NativeRecordings" />
             <span>Записи носителей, где они есть</span>
         </label>
-        <small class="muted">По умолчанию всё озвучивает один голос (MeloTTS). Включите, чтобы слова с живой записью Lingua Libre звучали голосом носителя — голоса тогда будут разными.</small>
+        <small class="muted">По умолчанию всё озвучивает один синтезированный голос. Включите, чтобы слова с живой записью Lingua Libre звучали голосом носителя — голоса тогда будут разными.</small>
 
         <label>
             <span>Скорость речи: @m.SpeechRate.ToString("0.0#")</span>
@@ -77,6 +78,30 @@
             <p class="notice @(_isError ? "error" : "success") small">@_message</p>
         }
     </form>
+
+    <section class="card settings-form" aria-labelledby="device-heading">
+        <h2 id="device-heading">На этом устройстве</h2>
+        <small class="muted">Сохраняется сразу и только здесь: на телефоне и в браузере можно настроить по-разному.</small>
+
+        <label class="toggle">
+            <input type="checkbox" checked="@Device.AutoAdvance" @onchange="e => SetDeviceAsync(() => Device.AutoAdvance = (bool)e.Value!)" />
+            <span>После верного ответа — сразу дальше</span>
+        </label>
+        <label class="toggle">
+            <input type="checkbox" checked="@Device.Vibrate" @onchange="e => SetDeviceAsync(() => Device.Vibrate = (bool)e.Value!)" />
+            <span>Вибрация при ошибке</span>
+        </label>
+        <label class="toggle">
+            <input type="checkbox" checked="@Device.Sound" @onchange="e => SetDeviceAsync(() => Device.Sound = (bool)e.Value!)" />
+            <span>Звук при верном ответе</span>
+        </label>
+        <label>
+            <span>Размер корейского текста: @((int)Math.Round(Device.KoreanScale * 100))%</span>
+            <input type="range" min="@DevicePreferences.MinKoreanScale" max="@DevicePreferences.MaxKoreanScale" step="0.05"
+                   value="@Device.KoreanScale" @onchange="e => SetDeviceAsync(() => Device.KoreanScale = double.Parse((string)e.Value!, System.Globalization.CultureInfo.InvariantCulture))" />
+            <span class="hangul-text lg"><span class="text" lang="ko">한국어를 공부해요</span></span>
+        </label>
+    </section>
 
     <section class="card">
         <h2>Озвучка</h2>
@@ -126,6 +151,12 @@
 }
 
 @code {
+    private async Task SetDeviceAsync(Action change)
+    {
+        change();
+        await Device.SaveAsync();
+    }
+
     private const long MaxImportBytes = 20 * 1024 * 1024;
 
     private static readonly string[] TimeZones =

@@ -1,6 +1,7 @@
 @inherits LayoutComponentBase
 @inject AppState State
 @inject NavigationManager Navigation
+@inject DevicePreferences Preferences
 @implements IDisposable
 
 <div class="shell">
@@ -64,6 +65,7 @@
         State.Changed += OnStateChanged;
         Navigation.LocationChanged += OnLocationChanged;
         await State.InitializeAsync();
+        await Preferences.LoadAsync();
     }
 
     public void Dispose()
