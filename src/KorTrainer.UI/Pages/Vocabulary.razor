@@ -89,7 +89,15 @@
     private string _status = string.Empty;
     private int _pageNumber = 1;
 
-    protected override Task OnInitializedAsync() => LoadAsync();
+    /// <summary>A search started elsewhere (the box on the home screen or in «Ещё»).</summary>
+    [SupplyParameterFromQuery(Name = "q")]
+    public string? Query { get; set; }
+
+    protected override Task OnInitializedAsync()
+    {
+        _search = Query?.Trim() ?? string.Empty;
+        return LoadAsync();
+    }
 
     private async Task LoadAsync()
     {

@@ -59,6 +59,16 @@
         </a>
     }
 
+    @if (_week is { } totals)
+    {
+        <section class="week-summary" aria-label="Итоги недели">
+            <p class="eyebrow">Неделя</p>
+            <p>@totals.Reviews повторений слов · @totals.NewWords новых слов · @totals.Answers упражнений · @totals.StudyMinutes мин</p>
+        </section>
+    }
+
+    <WordSearchBox Id="home" />
+
     <h2 class="map-heading">План до TOPIK</h2>
     <p class="muted small">Нажмите на шаг, чтобы открыть его задачи. Пройденные можно повторить, следующие — посмотреть заранее.</p>
     <PathMap Plan="plan" FoldDone="true" ScrollToCurrent="@(From is not null)" Finished="@From" />
@@ -71,7 +81,13 @@
     private PlanDto? _plan;
     private ReminderDto? _reminder;
     private MistakeSummaryDto? _mistakes;
+    private DailyStatDto? _week;
     private string? _error;
+
+    private static DailyStatDto? WeekOf(IReadOnlyList<DailyStatDto> days) => days.Count == 0 || days.All(d => d.Answers + d.Reviews == 0)
+        ? null
+        : new DailyStatDto(days[^1].Date, days.Sum(d => d.StudyMinutes), days.Sum(d => d.Answers), days.Sum(d => d.Correct),
+            days.Sum(d => d.Reviews), days.Sum(d => d.NewWords));
 
     /// <summary>Old links (<c>/?step=level1-2</c>) open the step's own page.</summary>
     [SupplyParameterFromQuery(Name = "step")]
@@ -102,6 +118,8 @@
             // Evening nudge, mirroring the desktop and phone reminders.
             _reminder = DateTime.Now.Hour >= ReminderHour ? await Api.GetReminderAsync() : null;
             _mistakes = await Api.GetMistakeSummaryAsync();
+            // Sundays only: a quiet look back at the week, no comparisons.
+            _week = DateTime.Now.DayOfWeek == DayOfWeek.Sunday ? WeekOf(await Api.GetDailyStatsAsync(StudyRhythm.WeekDays)) : null;
         }
         catch (Exception ex) when (ex is ApiException or HttpRequestException)
         {

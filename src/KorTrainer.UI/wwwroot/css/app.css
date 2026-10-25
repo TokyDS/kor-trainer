@@ -1324,3 +1324,24 @@ del.diff-extra { color: var(--ink-faint); }
 .tap-word.open { border-bottom: 2px solid var(--accent); }
 .tap-popover { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-2); margin-top: var(--space-2); padding: var(--space-2) var(--space-3); border-radius: var(--radius-sm); background: var(--paper-sunken); font-size: 0.9rem; }
 .tap-popover strong { font-size: 1.05rem; }
+
+/* Word search from the home screen and «Ещё». */
+.word-search { display: flex; gap: var(--space-2); margin: var(--space-4) 0; }
+.word-search input { flex: 1; min-width: 0; font: inherit; padding: var(--space-2) var(--space-3); border-radius: var(--radius-sm); border: 1px solid var(--rule); background: var(--paper-raised); color: var(--ink); }
+.week-summary { padding: var(--space-3) var(--space-4); border-radius: var(--radius-md); background: var(--celadon-soft); margin-top: var(--space-3); }
+.week-summary p { margin: 0; }
+
+/* On a phone the question stays on top and the answers sit low, within the thumb's reach. */
+@media (max-width: 899px) {
+    .drill:has(> .options) {
+        display: flex;
+        flex-direction: column;
+        min-height: calc(100dvh - 88px - 3rem - env(safe-area-inset-bottom));
+    }
+    .drill > .options { margin-top: auto; }
+    .drill > .keys-hint { display: none; }
+}
+
+/* A hint before answering: the first step of the rule for this question. */
+.hint-button { margin-top: var(--space-2); }
+.hint { margin: var(--space-2) 0 0; padding: var(--space-2) var(--space-3); border-radius: var(--radius-sm); background: var(--warn-soft); font-size: 0.9rem; }
