@@ -24,17 +24,10 @@
         <ul>
             @foreach (var example in Theory.Examples)
             {
-                int at = example.Sentence.IndexOf(example.Form, StringComparison.Ordinal);
                 <li>
                     <div class="theory-example-line">
-                        @if (at < 0)
-                        {
-                            <span class="theory-sentence" lang="ko">@example.Sentence</span>
-                        }
-                        else
-                        {
-                            <span class="theory-sentence" lang="ko">@example.Sentence[..at]<mark>@example.Form</mark>@example.Sentence[(at + example.Form.Length)..]</span>
-                        }
+                        @* Every word can be tapped for its sound and meaning; the form the rule teaches is marked. *@
+                        <span class="theory-sentence"><TapKorean Text="@example.Sentence" Mark="@example.Form" /></span>
                         <SpeakButton Text="@example.Sentence" ShowKeyHint="false" />
                     </div>
                     <span class="muted">@example.Translation</span>

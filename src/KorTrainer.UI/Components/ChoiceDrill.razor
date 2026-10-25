@@ -145,7 +145,7 @@
                     }
                     <details class="feedback-more" open="@_showRule">
                         <summary>@(correct ? "Почему так" : "Разбор и правило")</summary>
-                        <p>@item.Explanation</p>
+                        <p><TapKorean Text="@item.Explanation" /></p>
                         @if (RuleOf(item) is { } rule)
                         {
                             <RuleRecap Steps="rule.Steps" Pitfall="@rule.Pitfall" Open="_showRule" />

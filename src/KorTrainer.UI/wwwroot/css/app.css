@@ -1317,3 +1317,10 @@ del.diff-extra { color: var(--ink-faint); }
 .flashcard.swipeable { touch-action: pan-y; cursor: grab; user-select: none; transition: transform 180ms ease-out; }
 .flashcard.swipeable.swiping { transition: none; cursor: grabbing; }
 .swipe-hint { text-align: center; margin: var(--space-2) 0 0; }
+
+/* Korean words that can be tapped for sound and meaning (TapKorean). */
+.tap-word { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; border-bottom: 1px dotted var(--ink-faint); }
+.tap-word.marked { background: var(--accent-soft); border-radius: 4px; padding: 0 3px; border-bottom: 0; }
+.tap-word.open { border-bottom: 2px solid var(--accent); }
+.tap-popover { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-2); margin-top: var(--space-2); padding: var(--space-2) var(--space-3); border-radius: var(--radius-sm); background: var(--paper-sunken); font-size: 0.9rem; }
+.tap-popover strong { font-size: 1.05rem; }

@@ -1,0 +1,110 @@
+@* Text in which every Korean word can be tapped: it is spoken and looked up in the deck (학생이에요 → 학생). *@
+@using System.Text.RegularExpressions
+@inject IKorTrainerApi Api
+@inject AppState State
+
+<span class="tap-korean">
+    @foreach (var (token, index) in Tokens())
+    {
+        @if (IsKorean(token.Text))
+        {
+            <button type="button" class="tap-word @(token.Marked ? "marked" : string.Empty) @(_open == index ? "open" : string.Empty)" lang="ko"
+                    @onclick="() => TapAsync(index, token.Text)">@token.Text</button>
+        }
+        else
+        {
+            @token.Text
+        }
+    }
+</span>
+@if (_open is not null)
+{
+    <span class="tap-popover" role="status">
+        @if (_found is { } word)
+        {
+            <strong lang="ko">@word.Korean</strong>
+            <span>@word.Russian</span>
+        }
+        else if (_looking)
+        {
+            <span class="muted">Ищу в словаре…</span>
+        }
+        else
+        {
+            <span class="muted">В словаре не нашлось — только озвучка.</span>
+        }
+        <button type="button" class="link-button small" @onclick="() => _open = null">закрыть</button>
+    </span>
+}
+
+@code {
+    private const int SearchPage = 50;
+    private static readonly Dictionary<string, WordDto?> Cache = new(StringComparer.Ordinal);
+
+    private int? _open;
+    private bool _looking;
+    private WordDto? _found;
+
+    [Parameter, EditorRequired]
+    public string Text { get; set; } = string.Empty;
+
+    /// <summary>A part of the text to highlight, e.g. the form a rule teaches.</summary>
+    [Parameter]
+    public string? Mark { get; set; }
+
+    private IEnumerable<((string Text, bool Marked) Token, int Index)> Tokens()
+    {
+        int at = Mark is { Length: > 0 } ? Text.IndexOf(Mark, StringComparison.Ordinal) : -1;
+        int index = 0;
+        foreach (Match match in Regex.Matches(Text, @"\s+|\S+"))
+        {
+            bool marked = at >= 0 && match.Index < at + Mark!.Length && match.Index + match.Length > at && !string.IsNullOrWhiteSpace(match.Value);
+            yield return ((match.Value, marked), index++);
+        }
+    }
+
+    private static bool IsKorean(string text) => text.Any(KorTrainer.Domain.Hangul.Syllable.IsSyllable);
+
+    private static string Clean(string token) => new(token.Where(KorTrainer.Domain.Hangul.Syllable.IsSyllable).ToArray());
+
+    private async Task TapAsync(int index, string token)
+    {
+        string word = Clean(token);
+        _open = index;
+        _found = null;
+        _looking = true;
+        _ = State.SpeakAsync(word).AsTask();
+        try
+        {
+            _found = await LookUpAsync(word);
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException)
+        {
+            _found = null; // the popover says nothing was found; the word was still spoken
+        }
+        finally
+        {
+            _looking = false;
+        }
+    }
+
+    /// <summary>The word itself, else shorter and shorter beginnings of it, as a noun or a verb (먹어요 → 먹 → 먹다).</summary>
+    private async Task<WordDto?> LookUpAsync(string word)
+    {
+        if (Cache.TryGetValue(word, out var cached))
+        {
+            return cached;
+        }
+
+        WordDto? found = null;
+        for (int length = word.Length; length >= 1 && found is null; length--)
+        {
+            string stem = word[..length];
+            var page = await Api.GetWordsAsync(null, null, null, stem, 1, SearchPage);
+            found = page.Items.FirstOrDefault(w => w.Korean == stem) ?? page.Items.FirstOrDefault(w => w.Korean == stem + "다");
+        }
+
+        Cache[word] = found;
+        return found;
+    }
+}
