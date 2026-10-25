@@ -4,14 +4,13 @@
 
 <PageTitle>Повторение правил — KorTrainer</PageTitle>
 
-<header class="page-header">
-    <a class="back" href="/">← Назад</a>
-    <h1>Повторение правил</h1>
-    <p class="muted">@(Current is null ? Rule : $"Правило {_index + 1} из {_queue.Count} · {RuleSchedule.CheckSize} вопросов, засчитывается первый подход")</p>
-</header>
-
 @if (Current is { } topic)
 {
+    @* During a check the header is one line: the answers must fit on the first screen. *@
+    <header class="page-header compact">
+        <a class="back" href="/">← Назад</a>
+        <p class="eyebrow">Повторение правил · @(_index + 1) из @_queue.Count · засчитывается первый подход</p>
+    </header>
     @if (GrammarTheories.Find(topic.Type) is { } theory)
     {
         <RuleRecap Steps="theory.Steps" Pitfall="@theory.Pitfall" />
@@ -22,6 +21,12 @@
 }
 else
 {
+    <header class="page-header">
+        <a class="back" href="/">← Назад</a>
+        <h1>Повторение правил</h1>
+        <p class="muted">@Rule</p>
+    </header>
+
     <StatusViews IsLoading="_summary is null && _error is null" Error="@_error" OnRetry="LoadAsync" />
 
     @if (_results.Count > 0)

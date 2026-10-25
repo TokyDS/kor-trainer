@@ -1335,12 +1335,20 @@ del.diff-extra { color: var(--ink-faint); }
 .week-summary { padding: var(--space-3) var(--space-4); border-radius: var(--radius-md); background: var(--celadon-soft); margin-top: var(--space-3); }
 .week-summary p { margin: 0; }
 
-/* On a phone the question stays on top and the answers sit low, within the thumb's reach. */
+/* On a phone the question stays on top and the answers sit low, within the thumb's reach, yet on the first
+   screen: the page fills the space above the tab bar, and the drill takes only what is left under anything
+   above it (a page header, the rule of a rule check, the parts of «10 минут»). */
 @media (max-width: 899px) {
-    .drill:has(> .options) {
+    .page:has(> .drill > .options) {
         display: flex;
         flex-direction: column;
-        min-height: calc(100dvh - 88px - 3rem - env(safe-area-inset-bottom));
+        min-height: calc(100dvh - var(--space-4) - 88px - env(safe-area-inset-bottom));
+    }
+    .page > .drill:has(> .options) {
+        width: 100%;
+        flex: 1 0 auto;
+        display: flex;
+        flex-direction: column;
     }
     .drill > .options { margin-top: auto; }
     .drill > .keys-hint { display: none; }
@@ -1363,6 +1371,11 @@ del.diff-extra { color: var(--ink-faint); }
 
 /* Korean inside Russian text (titles, task names) also wraps only between words. */
 body { word-break: keep-all; overflow-wrap: break-word; }
+
+/* Rule checks: a one-line header and a slim folded rule during a check, so the answers fit on the first screen. */
+.page-header.compact { margin-bottom: var(--space-3); }
+.page-header.compact .eyebrow { margin: 0; }
+.page-header.compact + .theory-recap { margin: 0 0 var(--space-3); padding-block: var(--space-2); }
 
 /* Rule checks: results of a check and the dates of the next ones. */
 .section-heading { margin: var(--space-5) 0 var(--space-2); font-size: 1.1rem; }
