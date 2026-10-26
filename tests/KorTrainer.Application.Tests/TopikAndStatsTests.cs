@@ -101,9 +101,9 @@ public sealed class TopikAndStatsTests
 
         forecast.WordsStudied.Should().Be(3);
         forecast.PacePerDay.Should().Be(3);
-        forecast.Goals.Select(g => g.Goal).Should().Equal(800, 1500, 3000);
+        forecast.Goals.Select(g => g.Goal).Should().Equal(860, 1560, 3060);
         forecast.Goals[0].Reached.Should().BeFalse();
-        forecast.Goals[0].ExpectedOn.Should().Be(new DateOnly(2026, 10, 13).AddDays(266), "797 words at 3 a day");
+        forecast.Goals[0].ExpectedOn.Should().Be(new DateOnly(2026, 10, 13).AddDays(286), "857 words at 3 a day");
         forecast.ExamDate.Should().Be(new DateOnly(2027, 4, 30));
         forecast.WordsByExam.Should().Be(3 + (3 * 199));
     }

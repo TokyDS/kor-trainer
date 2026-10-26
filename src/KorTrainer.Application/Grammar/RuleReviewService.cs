@@ -3,14 +3,13 @@ using KorTrainer.Application.Settings;
 using KorTrainer.Contracts;
 using KorTrainer.Domain.Common;
 using KorTrainer.Domain.Entities;
-using KorTrainer.Domain.Grammar;
 using KorTrainer.Domain.Srs;
 using Microsoft.EntityFrameworkCore;
 
 namespace KorTrainer.Application.Grammar;
 
 /// <summary>
-/// Spaced checks of grammar rules (<see cref="RuleSchedule"/>). A rule joins once the learner has answered
+/// Spaced checks of grammar and number rules (<see cref="RuleSchedule"/>). A rule joins once the learner has answered
 /// <see cref="MinAnswers"/> of its exercises; its first check is due the day after the first practice.
 /// The check itself is an ordinary drill of the topic; this service only keeps the schedule.
 /// </summary>
@@ -34,23 +33,23 @@ public sealed class RuleReviewService(IAppDbContext db, SettingsService settings
     public async Task<RuleReviewTopicDto> RecordCheckAsync(string type, RuleCheckRequest request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
-        var topic = GrammarCatalog.Find(type);
+        var topic = RuleTopics.Find(type);
         new Validator()
-            .Require(topic is not null, nameof(type), "Неизвестная тема грамматики.")
+            .Require(topic is not null, nameof(type), "Неизвестная тема.")
             .Require(request.Total is >= 1 and <= GrammarService.MaxCount, nameof(request.Total), $"Вопросов в проверке: от 1 до {GrammarService.MaxCount}.")
             .Require(request.Correct >= 0 && request.Correct <= request.Total, nameof(request.Correct), "Верных ответов не может быть больше, чем вопросов.")
             .ThrowIfInvalid();
 
         var today = await TodayAsync(cancellationToken);
         var row = await db.RuleReviews.SingleOrDefaultAsync(r => r.ExerciseType == type, cancellationToken);
-        if (row is null && await db.ExerciseAttempts.CountAsync(a => a.Module == StudyModule.Grammar && a.ExerciseType == type, cancellationToken) < MinAnswers)
+        if (row is null && await PracticeOf(topic!).CountAsync(cancellationToken) < MinAnswers)
         {
             throw ValidationFailedException.For(nameof(type), "Эта тема ещё не изучалась: сначала упражнения по ней.");
         }
 
         var state = row is not null
             ? new RuleState(row.Box, row.DueDate)
-            : RuleSchedule.Learned(await FirstPracticeAsync(type, cancellationToken) ?? today);
+            : RuleSchedule.Learned(await PracticeOf(topic!).OrderBy(a => a.LocalDate).Select(a => (DateOnly?)a.LocalDate).FirstOrDefaultAsync(cancellationToken) ?? today);
         var next = RuleSchedule.Checked(state, request.Correct, request.Total, today);
         if (next == state)
         {
@@ -72,18 +71,18 @@ public sealed class RuleReviewService(IAppDbContext db, SettingsService settings
     }
 
     /// <summary>Every practised rule with its schedule; a rule never checked starts from its first practice.</summary>
-    private async Task<List<(GrammarTopic Topic, RuleState State)>> StatesAsync(CancellationToken cancellationToken)
+    private async Task<List<(RuleTopic Topic, RuleState State)>> StatesAsync(CancellationToken cancellationToken)
     {
         var rows = await db.RuleReviews.AsNoTracking().ToDictionaryAsync(r => r.ExerciseType, cancellationToken);
         var practice = await PracticeDaysAsync(cancellationToken);
-        var states = new List<(GrammarTopic, RuleState)>();
-        foreach (var topic in GrammarCatalog.Topics)
+        var states = new List<(RuleTopic, RuleState)>();
+        foreach (var topic in RuleTopics.All)
         {
             if (rows.TryGetValue(topic.Type, out var row))
             {
                 states.Add((topic, new RuleState(row.Box, row.DueDate)));
             }
-            else if (practice.TryGetValue(topic.Type, out var days) && days.Sum(d => d.Answers) >= MinAnswers)
+            else if (practice.TryGetValue((topic.Module, topic.Type), out var days) && days.Sum(d => d.Answers) >= MinAnswers)
             {
                 states.Add((topic, RuleSchedule.Learned(days.Min(d => d.Date))));
             }
@@ -92,24 +91,20 @@ public sealed class RuleReviewService(IAppDbContext db, SettingsService settings
         return states;
     }
 
-    private async Task<Dictionary<string, List<(DateOnly Date, int Answers)>>> PracticeDaysAsync(CancellationToken cancellationToken) =>
+    private async Task<Dictionary<(StudyModule, string), List<(DateOnly Date, int Answers)>>> PracticeDaysAsync(CancellationToken cancellationToken) =>
         (await db.ExerciseAttempts
-            .Where(a => a.Module == StudyModule.Grammar)
-            .GroupBy(a => new { a.ExerciseType, a.LocalDate })
-            .Select(g => new { g.Key.ExerciseType, g.Key.LocalDate, Answers = g.Count() })
+            .Where(a => a.Module == StudyModule.Grammar || a.Module == StudyModule.Numbers)
+            .GroupBy(a => new { a.Module, a.ExerciseType, a.LocalDate })
+            .Select(g => new { g.Key.Module, g.Key.ExerciseType, g.Key.LocalDate, Answers = g.Count() })
             .ToListAsync(cancellationToken))
-        .GroupBy(x => x.ExerciseType, StringComparer.Ordinal)
-        .ToDictionary(g => g.Key, g => g.Select(x => (x.LocalDate, x.Answers)).ToList(), StringComparer.Ordinal);
+        .GroupBy(x => (x.Module, x.ExerciseType))
+        .ToDictionary(g => g.Key, g => g.Select(x => (x.LocalDate, x.Answers)).ToList());
 
-    private Task<DateOnly?> FirstPracticeAsync(string type, CancellationToken cancellationToken) =>
-        db.ExerciseAttempts
-            .Where(a => a.Module == StudyModule.Grammar && a.ExerciseType == type)
-            .OrderBy(a => a.LocalDate)
-            .Select(a => (DateOnly?)a.LocalDate)
-            .FirstOrDefaultAsync(cancellationToken);
+    private IQueryable<ExerciseAttempt> PracticeOf(RuleTopic topic) =>
+        db.ExerciseAttempts.Where(a => a.Module == topic.Module && a.ExerciseType == topic.Type);
 
-    private static RuleReviewTopicDto ToDto(GrammarTopic topic, RuleState state, DateOnly today) =>
-        new(topic.Type, topic.Title, state.Box, state.Due, state.Due <= today);
+    private static RuleReviewTopicDto ToDto(RuleTopic topic, RuleState state, DateOnly today) =>
+        new(topic.Type, topic.Title, state.Box, state.Due, state.Due <= today, topic.Module);
 
     private async Task<DateOnly> TodayAsync(CancellationToken cancellationToken)
     {

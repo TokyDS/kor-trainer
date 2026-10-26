@@ -18,7 +18,9 @@ public sealed class RoadmapTests
         _roadmap.Steps.Count(s => s.Stage is PlanStage.Hangul or PlanStage.FirstPhrases).Should().Be(Roadmap.LessonCount);
         _roadmap.Steps.Count(s => s.Stage == PlanStage.Level1).Should().Be(Roadmap.Level1Blocks);
         _roadmap.Steps.Count(s => s.Stage == PlanStage.Level2).Should().Be(Roadmap.Level2Blocks);
-        _roadmap.Steps.Should().ContainSingle(s => s.Stage == PlanStage.MockExam);
+        _roadmap.Steps.Where(s => s.Stage == PlanStage.MockExam).Select(s => s.Key)
+            .Should().Equal("mock-exam", "final-1", "final-2");
+        _roadmap.Steps.Count(s => s.Stage == PlanStage.TopikPrep).Should().Be(Roadmap.TopikPrepBlocks);
         _roadmap.Steps[^1].Stage.Should().Be(PlanStage.Maintenance);
     }
 
@@ -94,7 +96,7 @@ public sealed class RoadmapTests
             .Where(t => t.Target.Metric == TaskMetric.Read && t.Route!.StartsWith("/numbers/", StringComparison.Ordinal))
             .ToList();
 
-        rules.Should().HaveCount(3);
+        rules.Select(t => t.Route).Should().OnlyHaveUniqueItems().And.HaveCount(KorTrainer.Domain.Numbers.NumberTheories.All.Count);
         rules.Should().AllSatisfy(t => KorTrainer.Domain.Numbers.NumberTheories.Find(t.Route!["/numbers/".Length..]).Should().NotBeNull());
     }
 
@@ -122,6 +124,8 @@ public sealed class RoadmapTests
             .Should().AllSatisfy(s => s.Tasks.Should().Contain(t => t.Target.Module == StudyModule.Listening && t.Target.ExerciseType != ExerciseTypes.SayWord
                 && t.Target.ExerciseType != ExerciseTypes.Shadowing, s.Key));
         _roadmap.Steps.Where(s => s.Stage is PlanStage.Level2 or PlanStage.TopikPrep)
+            .Should().AllSatisfy(s => Speaking(s).Should().NotContain(ExerciseTypes.SayWord, s.Key));
+        _roadmap.Steps.Where(s => s.Stage == PlanStage.TopikPrep)
             .Should().AllSatisfy(s => Speaking(s).Should().Equal([ExerciseTypes.Shadowing], s.Key));
         Speaking(_roadmap.Find("level1-1")!).Should().Equal([ExerciseTypes.SayWord]);
         Speaking(_roadmap.Find("lesson-1")!).Should().BeEmpty();
@@ -172,17 +176,18 @@ public sealed class RoadmapTests
     }
 
     [Theory]
-    [InlineData("level1-1", 50)]
-    [InlineData("level1-16", 800)]
-    [InlineData("level2-1", 850)]
-    [InlineData("level2-14", 1500)]
-    [InlineData("topik-30", 3000)]
-    public void Blocks_AddFiftyWordsEach(string key, int words)
+    [InlineData("level1-1", 110)]
+    [InlineData("level1-16", 860)]
+    [InlineData("level2-1", 910)]
+    [InlineData("level2-14", 1560)]
+    [InlineData("topik-30", 3060)]
+    public void Blocks_AskForFiftyNewWords_OnTopOfTheLessons(string key, int deck)
     {
         var block = _roadmap.Find(key)!;
 
-        block.WordTarget.Should().Be(words);
-        block.Tasks.Should().Contain(t => t.Target.Metric == TaskMetric.WordsStudied && t.Target.Count == words);
+        block.WordTarget.Should().Be(deck);
+        block.Tasks.Should().Contain(t => t.Target.Metric == TaskMetric.NewWords && t.Target.Count == Roadmap.WordsPerBlock);
+        block.Tasks.Should().NotContain(t => t.Target.Metric == TaskMetric.WordsStudied, "a deck total is reached before the block even starts");
     }
 
     [Theory]
@@ -192,12 +197,13 @@ public sealed class RoadmapTests
     {
         var topics = GrammarCatalog.Topics.Where(t => t.Stage == stage).Select(t => t.Type).ToList();
 
-        var perBlock = Enumerable.Range(1, blocks)
-            .Select(k => _roadmap.Find($"{prefix}-{k}")!.Tasks.Single(t => t.Target.Module == StudyModule.Grammar))
-            .ToList();
+        var steps = Enumerable.Range(1, blocks).Select(k => _roadmap.Find($"{prefix}-{k}")!).ToList();
+        var perBlock = steps.Select(s => s.Tasks.Single(t => t.Target.Module == StudyModule.Grammar)).ToList();
 
         perBlock.Should().AllSatisfy(task => task.Key.Should().Be("grammar"));
         perBlock.Select(t => t.Target.ExerciseType).OfType<string>().Should().Equal(topics);
+        steps.Where(s => s.Tasks.Any(t => t.Key == "grammar" && t.Target.ExerciseType is not null))
+            .Should().AllSatisfy(s => s.Tasks.Select(t => t.Key).Should().ContainInOrder(["rule", "grammar"], s.Key));
         perBlock[0].Target.ExerciseType.Should().Be(topics[0], "a stage opens with a new rule");
         perBlock[^1].Target.ExerciseType.Should().BeNull("the last block of a stage reviews all of its grammar");
     }
@@ -210,6 +216,56 @@ public sealed class RoadmapTests
         blocks.Should().AllSatisfy(b => b.Tasks.Count.Should().BeLessThanOrEqualTo(7, b.Key));
         blocks.SelectMany(b => b.Tasks).Where(t => t.Target.Metric == TaskMetric.Answers)
             .Should().AllSatisfy(t => t.Target.Count.Should().BeLessThanOrEqualTo(15, t.Key));
+    }
+
+    [Fact]
+    public void LevelBlocks_BringTextsHanjaAndTopikReading_Gradually()
+    {
+        var level1 = _roadmap.Steps.Where(s => s.Stage == PlanStage.Level1).ToList();
+        var level2 = _roadmap.Steps.Where(s => s.Stage == PlanStage.Level2).ToList();
+        static bool Has(PlanStep step, string key) => step.Tasks.Any(t => t.Key == key);
+
+        level1.Count(s => Has(s, "text")).Should().BeGreaterThanOrEqualTo(level1.Count / 3);
+        level1.Take(4).Should().NotContain(s => s.Tasks.Any(t => t.Key == "hanja"));
+        level1.Skip(4).Should().Contain(s => s.Tasks.Any(t => t.Key == "hanja"));
+        level1.Take(7).Should().NotContain(s => s.Tasks.Any(t => t.Key == "topik"));
+        level1.Skip(7).Should().Contain(s => s.Tasks.Any(t => t.Key == "topik"));
+        level2.Count(s => Has(s, "topik")).Should().BeGreaterThanOrEqualTo(level2.Count / 2);
+        _roadmap.Find("lesson-10")!.Tasks.Should().Contain(t => t.Key == "text");
+    }
+
+    [Theory]
+    [InlineData("level1-6", ExerciseTypes.Time)]
+    [InlineData("level1-11", ExerciseTypes.Money)]
+    public void ReviewBlocks_TeachTimeAndMoney(string key, string type)
+    {
+        var tasks = _roadmap.Find(key)!.Tasks;
+
+        tasks.Should().Contain(t => t.Target.Material == StudyMaterials.NumberRule(type));
+        tasks.Should().Contain(t => t.Target.Metric == TaskMetric.Answers && t.Target.ExerciseType == type);
+    }
+
+    [Fact]
+    public void NumbersLeaveTheTopicBlocks()
+    {
+        var topicBlocks = _roadmap.Steps
+            .Where(s => s.Stage is PlanStage.Level1 or PlanStage.Level2)
+            .Where(s => s.Tasks.Any(t => t.Key == "grammar" && t.Target.ExerciseType is not null));
+
+        topicBlocks.Should().AllSatisfy(s => s.Tasks.Should().NotContain(t => t.Target.Module == StudyModule.Numbers, s.Key));
+    }
+
+    [Fact]
+    public void MockExam_IsTopikI_ThenWeakSpotsAndALastWeek()
+    {
+        var mock = _roadmap.Find("mock-exam")!;
+
+        mock.Title.Should().Contain("TOPIK I");
+        mock.Tasks.Should().NotContain(t => t.Target.Metric == TaskMetric.WritingMinutes, "TOPIK I has no writing");
+        mock.Tasks.Should().Contain(t => t.Target.Module == StudyModule.Topik && t.Target.Count == 40);
+        mock.Tasks.Should().Contain(t => t.Target.Module == StudyModule.Listening && t.Target.Count == 30);
+        _roadmap.Next(mock)!.Key.Should().Be("final-1");
+        _roadmap.Next(_roadmap.Find("final-2")!)!.Key.Should().Be("topik-1");
     }
 
     [Fact]

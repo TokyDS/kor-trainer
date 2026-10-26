@@ -29,8 +29,29 @@ internal static class CommonTasks
         new("listening", $"Аудирование: {count} упражнений", TaskTarget.Answers(StudyModule.Listening, count), "/listening");
 
     public static PlanTask Shadowing(int count) =>
-        new("shadowing", $"Повторить вслух: {count} фраз", TaskTarget.Answers(StudyModule.Listening, count, ExerciseTypes.Shadowing),
+        new("shadowing", $"Повторить вслух: {RussianPlural.Count(count, "фразу", "фразы", "фраз")}", TaskTarget.Answers(StudyModule.Listening, count, ExerciseTypes.Shadowing),
             "/listening/shadowing");
+
+    public static PlanTask Dictation(int count) =>
+        new("dictation", $"Диктант: {RussianPlural.Count(count, "предложение", "предложения", "предложений")}", TaskTarget.Answers(StudyModule.Listening, count, ExerciseTypes.Dictation),
+            "/listening/dictation");
+
+    /// <summary>A graded text of the learner's level with its comprehension questions.</summary>
+    public static PlanTask Text(int answers) =>
+        new("text", $"Текст для чтения: {RussianPlural.Count(answers, "ответ", "ответа", "ответов")} на вопросы", TaskTarget.Answers(StudyModule.Reading, answers, ExerciseTypes.TextReading), "/read");
+
+    /// <summary>Roots of the words already studied: the hub lets the learner pick either hanja drill.</summary>
+    public static PlanTask Hanja(int answers) =>
+        new("hanja", $"Ханча: {answers} упражнений на корни слов", TaskTarget.Answers(StudyModule.Hanja, answers), "/hanja");
+
+    public static PlanTask TopikReading(int answers) =>
+        new("topik", $"TOPIK I, чтение: {RussianPlural.Count(answers, "задание", "задания", "заданий")}", TaskTarget.Answers(StudyModule.Topik, answers), "/topik/reading/mixed");
+
+    public static PlanTask MixedGrammar(int answers) =>
+        new("grammar", $"Грамматика вперемешку: {answers} упражнений", TaskTarget.Answers(StudyModule.Grammar, answers), "/grammar/mixed");
+
+    public static PlanTask MixedNumbers(int answers) =>
+        new("numbers", $"Числа вперемешку: {answers} упражнений", TaskTarget.Answers(StudyModule.Numbers, answers), "/numbers/mixed");
 }
 
 /// <summary>Russian learning content of the plan: stage names, lesson notes and lesson tasks.</summary>
@@ -201,9 +222,10 @@ internal static class PlanContent
         ],
         10 =>
         [
-            new("grammar", "Грамматика вперемешку: 20 упражнений", TaskTarget.Answers(StudyModule.Grammar, 20), "/grammar/mixed"),
-            new("numbers", "Числа вперемешку: 20 упражнений", TaskTarget.Answers(StudyModule.Numbers, 20), "/numbers/mixed"),
+            CommonTasks.MixedGrammar(20),
+            CommonTasks.MixedNumbers(20),
             CommonTasks.Reading(15),
+            CommonTasks.Text(3),
             CommonTasks.ListenWords(15),
             CommonTasks.SayWords(8),
             CommonTasks.ReviewDue,
@@ -269,8 +291,8 @@ internal static class PlanContent
         PlanStage.FirstPhrases => "Первые фразы",
         PlanStage.Level1 => "Этап 1: уровень 1",
         PlanStage.Level2 => "Этап 2: уровень 2",
-        PlanStage.MockExam => "Пробный экзамен",
-        PlanStage.TopikPrep => "Этап 3: подготовка к TOPIK II",
+        PlanStage.MockExam => "Финиш: TOPIK I",
+        PlanStage.TopikPrep => "Этап 3: к TOPIK II",
         PlanStage.Maintenance => "Поддержание",
         _ => stage.ToString(),
     };
@@ -280,10 +302,10 @@ internal static class PlanContent
         PlanStage.NotStarted => "Начните с первого урока.",
         PlanStage.Hangul => "Читать любой слог без подсказок.",
         PlanStage.FirstPhrases => "Приветствия, «это …», числа, рассказ о себе.",
-        PlanStage.Level1 => "Уровень 1, около 800 слов.",
-        PlanStage.Level2 => "Уровень 2: соединительные окончания, -고 싶다, -(으)ㄹ 수 있다, -아/어야 하다, -습니다; 1500–2000 слов.",
-        PlanStage.MockExam => "Пробный экзамен и решение: TOPIK I или TOPIK II.",
-        PlanStage.TopikPrep => "TOPIK II: письмо 51–54, чтение, аудирование.",
+        PlanStage.Level1 => "Уровень 1 TOPIK I: основы грамматики, время и деньги, первые тексты; около 850 слов.",
+        PlanStage.Level2 => "Уровень 2 TOPIK I: соединительные окончания, -고 싶다, -(으)ㄹ 수 있다, -아/어야 하다; задания в формате экзамена; около 1550 слов.",
+        PlanStage.MockExam => "Пробный TOPIK I по чтению и аудированию, затем добор слабых мест перед экзаменом.",
+        PlanStage.TopikPrep => "После экзамена: к уровню 3 — письмо 51–54, чтение, аудирование, до 3000 слов.",
         PlanStage.Maintenance => "Не терять форму: повторения и грамматика.",
         _ => string.Empty,
     };
@@ -295,20 +317,20 @@ internal static class PlanContent
         new("notes", "Прочитать конспект урока", TaskTarget.Read(StudyMaterials.Lesson(day)), $"/lesson/{day}");
 
     /// <summary>The rule opens the drill page; reading it to the end starts the drill.</summary>
-    private static PlanTask Rule(string type, string title) =>
+    internal static PlanTask Rule(string type, string title) =>
         new("rule", $"Разобрать правило {title}", TaskTarget.Read(StudyMaterials.GrammarRule(type)), $"/grammar/{type}");
 
     private static PlanTask Hangul(string type, string title, int count, int level) =>
         new(type, $"{title}: {count}", TaskTarget.Answers(StudyModule.Hangul, count, type), $"/hangul/{type}?level={level}");
 
     /// <summary>Straight to the exercises: the lesson reads the rule in the task before.</summary>
-    private static PlanTask Grammar(string type, string title, int count) =>
+    internal static PlanTask Grammar(string type, string title, int count) =>
         new(type, $"Грамматика {title}: {count} упражнений", TaskTarget.Answers(StudyModule.Grammar, count, type), $"/grammar/{type}?drill=true");
 
     /// <summary>The rule opens the number drill's page; reading it to the end starts the drill.</summary>
-    private static PlanTask NumberRule(string key, string type, string title) =>
+    internal static PlanTask NumberRule(string key, string type, string title) =>
         new(key, $"Разобрать правило {title}", TaskTarget.Read(StudyMaterials.NumberRule(type)), $"/numbers/{type}");
 
-    private static PlanTask Numbers(string type, string title, int count) =>
+    internal static PlanTask Numbers(string type, string title, int count) =>
         new(type, $"{title}: {count} упражнений", TaskTarget.Answers(StudyModule.Numbers, count, type), $"/numbers/{type}?drill=true");
 }

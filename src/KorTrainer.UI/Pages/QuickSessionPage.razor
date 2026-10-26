@@ -32,7 +32,7 @@
         }
         else if (part.Kind == PartKind.Rule)
         {
-            <ChoiceDrill @key="_index" Load="() => Api.GetGrammarExercisesAsync(part.Rule!.Type, part.Size)" OnFinished="NextAsync"
+            <ChoiceDrill @key="_index" Load="() => LoadRuleAsync(part)" OnFinished="NextAsync"
                          OnScored="score => RecordRuleAsync(part.Rule!, score)"
                          FinishLabel="@(_index + 1 < list.Count ? $"Дальше: {list[_index + 1].Title}" : "Завершить")" />
         }
@@ -138,6 +138,10 @@
             _ => Api.GetGrammarExercisesAsync(drill.Type, part.Size),
         };
     }
+
+    private Task<ExerciseSetDto> LoadRuleAsync(Part part) => part.Rule!.Module == StudyModule.Numbers
+        ? Api.GetNumberExercisesAsync(part.Rule.Type, part.Size)
+        : Api.GetGrammarExercisesAsync(part.Rule.Type, part.Size);
 
     /// <summary>The rule that has waited longest; the session goes on without one if the checks cannot be read.</summary>
     private async Task<RuleReviewTopicDto?> DueRuleAsync()

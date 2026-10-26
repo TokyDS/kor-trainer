@@ -21,13 +21,13 @@ public sealed class ForecastTests
 
         forecast.Select(f => f.Goal.Words).Should().Equal(Roadmap.Level1Words, Roadmap.Level2Words, Roadmap.TopikWords);
         forecast[0].Reached.Should().BeFalse();
-        forecast[0].ExpectedOn.Should().Be(Today.AddDays(60));
-        forecast[1].ExpectedOn.Should().Be(Today.AddDays(130));
+        forecast[0].ExpectedOn.Should().Be(Today.AddDays(66));
+        forecast[1].ExpectedOn.Should().Be(Today.AddDays(136));
     }
 
     [Fact]
     public void Project_RoundsPartialDaysUp() =>
-        Forecast.Project(wordsStudied: 795, pacePerDay: 2, Today)[0].ExpectedOn.Should().Be(Today.AddDays(3));
+        Forecast.Project(wordsStudied: Roadmap.Level1Words - 5, pacePerDay: 2, Today)[0].ExpectedOn.Should().Be(Today.AddDays(3));
 
     [Fact]
     public void Project_ReachedGoalsHaveNoDate()

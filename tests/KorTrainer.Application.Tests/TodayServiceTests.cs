@@ -227,7 +227,7 @@ public sealed class TodayServiceTests
         await t.SetPlanStepAsync("level1-1");
         await IntroduceWordsAsync(t, 3);
 
-        var words = (await t.Today.GetTodayAsync(Ct)).Step.Tasks.Single(x => x.Key == "words");
+        var words = (await t.Today.GetTodayAsync(Ct)).Step.Tasks.Single(x => x.Key == "vocab-new");
 
         words.Progress.Should().Be(3);
         words.Target.Should().Be(Roadmap.WordsPerBlock);

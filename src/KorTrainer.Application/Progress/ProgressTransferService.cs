@@ -293,7 +293,7 @@ public sealed class ProgressTransferService(IAppDbContext db, SettingsService se
             Enum.IsDefined(m.Module) && IsKey(m.ExerciseType) && IsKey(m.ItemKey)
             && m.Payload is { Length: > 0 and <= MistakeLimits.MaxPayloadLength } && m.Box >= 0 && m.Lapses >= 0);
         CheckSection(validator, snapshot.RuleReviews, nameof(snapshot.RuleReviews), r =>
-            Domain.Grammar.GrammarCatalog.Find(r.ExerciseType) is not null && r.Box is >= 0 and <= RuleSchedule.MaxBox && r.Lapses >= 0);
+            RuleTopics.Find(r.ExerciseType) is not null && r.Box is >= 0 and <= RuleSchedule.MaxBox && r.Lapses >= 0);
         CheckSection(validator, snapshot.TranslationFlags, nameof(snapshot.TranslationFlags), f =>
             IsKey(f.DeckKey) && f.Russian is { Length: <= TranslationFlagLimits.MaxTranslationLength }
             && (f.Note is null || f.Note.Length is > 0 and <= TranslationFlagLimits.MaxNoteLength));

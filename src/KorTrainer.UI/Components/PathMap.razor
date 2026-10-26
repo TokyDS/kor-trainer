@@ -19,6 +19,10 @@
             <div>
                 <h2 id="stage-@stage.Stage">@stage.Title</h2>
                 <p class="muted small">@stage.Goal · @Progress(stage)</p>
+                @if (stage.DoneCount < stage.StepCount && ExpectedOn(stage.Stage) is { } expected)
+                {
+                    <p class="small path-eta">В нынешнем темпе — ориентир: @expected.ToString("MMMM yyyy", Russian)</p>
+                }
                 @if (folded)
                 {
                     <button type="button" class="link-button small" @onclick="() => _unfolded.Add(stage.Stage)">Показать шаги</button>
@@ -85,6 +89,25 @@
     /// <summary>Fold finished stages to their heading, so the current step sits near the top.</summary>
     [Parameter]
     public bool FoldDone { get; set; }
+
+    /// <summary>Vocabulary goals at the recent pace: a stage shows roughly when its words would be reached.</summary>
+    [Parameter]
+    public ForecastDto? Forecast { get; set; }
+
+    private static readonly System.Globalization.CultureInfo Russian = System.Globalization.CultureInfo.GetCultureInfo("ru-RU");
+
+    /// <summary>Only the word stages have a goal; the date is a guide, never a deadline.</summary>
+    private DateOnly? ExpectedOn(PlanStage stage)
+    {
+        int? words = stage switch
+        {
+            PlanStage.Level1 => Roadmap.Level1Words,
+            PlanStage.Level2 => Roadmap.Level2Words,
+            PlanStage.TopikPrep => Roadmap.TopikWords,
+            _ => null,
+        };
+        return Forecast?.Goals.FirstOrDefault(g => g.Goal == words && !g.Reached)?.ExpectedOn;
+    }
 
     /// <summary>A step just finished: it lights up and the current node arrives, once.</summary>
     [Parameter]

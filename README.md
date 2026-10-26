@@ -10,7 +10,7 @@
 [![Blazor](https://img.shields.io/badge/Blazor-WebAssembly%20%2B%20Hybrid-5C2D91?logo=blazor&logoColor=white)](https://dotnet.microsoft.com/apps/aspnet/web-apps/blazor)
 [![Android](https://img.shields.io/badge/Android-.NET%20MAUI-3DDC84?logo=android&logoColor=white)](https://dotnet.microsoft.com/apps/maui)
 [![EF Core + SQLite](https://img.shields.io/badge/EF%20Core-SQLite-003B57?logo=sqlite&logoColor=white)](https://learn.microsoft.com/ef/core/)
-[![Tests](https://img.shields.io/badge/tests-1%2C050%20passing-2f7d6f)](#development)
+[![Tests](https://img.shields.io/badge/tests-1%2C056%20passing-2f7d6f)](#development)
 [![Docker](https://img.shields.io/badge/Docker-compose-2496ED?logo=docker&logoColor=white)](#quick-start)
 [![License: MIT](https://img.shields.io/badge/license-MIT-c0392f)](LICENSE)
 
@@ -23,7 +23,7 @@ Russian interface · English code · romanization off by default: you learn to r
 <table>
   <tr>
     <td align="center"><img src="docs/screenshots/home.webp" width="200" alt="Home screen" /><br /><sub><b>Home</b>: continue, 10 minutes, due checks</sub></td>
-    <td align="center"><img src="docs/screenshots/path.webp" width="200" alt="The plan as a path" /><br /><sub><b>The plan</b>: 72 self-paced steps</sub></td>
+    <td align="center"><img src="docs/screenshots/path.webp" width="200" alt="The plan as a path" /><br /><sub><b>The plan</b>: 74 self-paced steps</sub></td>
     <td align="center"><img src="docs/screenshots/rule.webp" width="200" alt="A grammar rule" /><br /><sub><b>Rule first</b>: grammar in colour</sub></td>
     <td align="center"><img src="docs/screenshots/feedback.webp" width="200" alt="Feedback on a wrong answer" /><br /><sub><b>Every mistake explained</b></sub></td>
   </tr>
@@ -63,10 +63,16 @@ Android app.
 
 ### 🗺️ A plan that waits for you
 
-- **72 self-paced steps**: three Hangul lessons, seven lessons of first phrases, then small blocks of 50 words,
-  most of them with one new grammar topic, up to a mock exam and TOPIK II writing. A block takes about five days
-  at ten new words a day, so progress stays visible. Nothing moves forward because days pass; a step is done
-  when its tasks are.
+- **74 self-paced steps towards TOPIK I**: three Hangul lessons, seven lessons of first phrases, then small blocks
+  of 50 new words. Most blocks bring one new grammar topic, and the rest review it (that is where telling the time
+  and paying come in). A block takes about five days at ten new words a day and 30–40 minutes of study. Nothing
+  moves forward because days pass; a step is done when its tasks are.
+- **Practice rotates** so every block stays short: graded texts, listening, saying words and phrases aloud,
+  hanja roots from level 1 block 5, and TOPIK I reading items from block 8 onwards.
+- **A finish line**: a mock TOPIK I (40 reading and 30 listening items, no writing, as in the real exam), then
+  «Слабые места» and «Последняя неделя». TOPIK II preparation comes after the exam.
+- **A gentle time guide** on the map: at your recent pace, roughly when each level's words are reached. It is
+  a guide, never a deadline.
 - **Every task is done in the app**, and progress is counted from your answers. Lesson tasks open one after
   another: new words → the rule → the drill → listening → saying words aloud → review.
 - **«10 минут»** starts a short session with one tap: due cards, due mistakes, a due rule check, the step's
@@ -123,7 +129,7 @@ money, with an instant "how do I read this" converter.
 |---|---|
 | Words | SM-2: learning steps, ease, lapses |
 | Mistakes | a wrong answer comes back after 1, 3 and 7 days |
-| Rules | a five-question check after 1, 3, 7, 14, 30 days, then every two months; 4 of 5 keeps it |
+| Rules | grammar and number topics: a five-question check after 1, 3, 7, 14, 30 days, then every two months; 4 of 5 keeps it |
 | Weak topics | topics under 85 % right in 30 days are drilled in «10 минут» |
 
 ### 📱 The phone app
@@ -233,7 +239,7 @@ more clearly, but its terms allow **personal use only**: never commit, publish o
 
 ```bash
 dotnet build                     # TreatWarningsAsErrors is on for every project
-dotnet test                      # 1,050 tests: xUnit v3 on Microsoft.Testing.Platform, AwesomeAssertions
+dotnet test                      # 1,056 tests: xUnit v3 on Microsoft.Testing.Platform, AwesomeAssertions
 dotnet test -- --coverage --coverage-output-format cobertura
 dotnet tool restore
 dotnet ef migrations add <Name> -p src/KorTrainer.Infrastructure -s src/KorTrainer.Api -o Persistence/Migrations
@@ -252,12 +258,12 @@ dotnet ef migrations add <Name> -p src/KorTrainer.Infrastructure -s src/KorTrain
 |---|---|
 | lessons 1–3 | Hangul: basic letters → compound vowels and consonant series → batchim and 연음 |
 | lessons 4–10 | first phrases: greetings, 이에요/예요, 이/가 아니에요, numbers, counters, introducing yourself |
-| 16 blocks | stage 1: up to 800 words, a new grammar topic in most blocks (이/가, 을/를, -아/어요, 안, …) |
-| 14 blocks | stage 2: level 2 endings (-고, -아서, -(으)니까, 못, -(으)면, …), up to 1,500 words |
-| 1 step | mock exam and the TOPIK I / II decision |
-| 30 blocks | stage 3: TOPIK II writing 51–54 and reading in turn, listening, up to 3,000 words |
+| 16 blocks | level 1: about 860 words, a new grammar topic in most blocks (이/가, 을/를, -아/어요, 안, …), time and money, first texts, hanja |
+| 14 blocks | level 2: endings (-고, -아서, -(으)니까, 못, -(으)면, …), TOPIK I reading in every other block, about 1,560 words |
+| 3 steps | finish line: mock TOPIK I, weak spots, a light last week |
+| 30 blocks | after the exam, towards TOPIK II: writing 51–54 and reading in turn, listening, about 3,060 words |
 
-Blocks hold 50 words each. Every step takes as long as it takes; a forecast on the statistics page shows where your current pace leads.
+Blocks hold 50 new words each. Every step takes as long as it takes; the map shows roughly where your recent pace leads.
 
 ## Data sources and licences
 

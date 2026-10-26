@@ -78,7 +78,7 @@
 
     <h2 class="map-heading">План до TOPIK</h2>
     <p class="muted small">Нажмите на шаг, чтобы открыть его задачи. Пройденные можно повторить, следующие — посмотреть заранее.</p>
-    <PathMap Plan="plan" FoldDone="true" ScrollToCurrent="@(From is not null)" Finished="@From" />
+    <PathMap Plan="plan" FoldDone="true" ScrollToCurrent="@(From is not null)" Finished="@From" Forecast="_forecast" />
 }
 
 @code {
@@ -89,6 +89,7 @@
     private ReminderDto? _reminder;
     private MistakeSummaryDto? _mistakes;
     private RuleReviewSummaryDto? _rules;
+    private ForecastDto? _forecast;
     private DailyStatDto? _week;
     private string? _error;
 
@@ -133,6 +134,16 @@
         catch (Exception ex) when (ex is ApiException or HttpRequestException)
         {
             _error = ex.Message;
+        }
+
+        try
+        {
+            _forecast = await Api.GetForecastAsync();
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException)
+        {
+            // The map works without the time guide.
+            _forecast = null;
         }
     }
 }

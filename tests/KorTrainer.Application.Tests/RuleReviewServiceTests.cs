@@ -34,6 +34,21 @@ public sealed class RuleReviewServiceTests
     }
 
     [Fact]
+    public async Task NumberTopics_AreCheckedLikeGrammar()
+    {
+        await using var t = await TestDatabase.CreateAsync();
+        await t.Activity.RecordAttemptsAsync(Answers(ExerciseTypes.Time, 5, StudyModule.Numbers), Ct);
+        t.Time.Advance(TimeSpan.FromDays(1));
+
+        var topic = (await t.RuleReviews.GetSummaryAsync(Ct)).Topics.Should().ContainSingle().Subject;
+        var checkedTopic = await t.RuleReviews.RecordCheckAsync(ExerciseTypes.Time, new RuleCheckRequest(5, 5), Ct);
+
+        topic.Module.Should().Be(StudyModule.Numbers);
+        topic.IsDue.Should().BeTrue();
+        checkedTopic.Box.Should().Be(1);
+    }
+
+    [Fact]
     public async Task AFewAnswers_OrAnotherModule_DoNotMakeARule()
     {
         await using var t = await TestDatabase.CreateAsync();

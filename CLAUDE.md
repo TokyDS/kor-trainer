@@ -127,6 +127,14 @@ back end in-process. Never reference EF or ASP.NET from Domain.
    (`TranslationFlag` keeps the translation as flagged, `TranslationFlagService`, «Перевод неточный?» in `WordDetails`,
    `/vocab/flags`) and weekly phone copies (`IAutoBackup`; `Mobile/Services/DownloadsAutoBackup` writes
    Downloads/KorTrainer through MediaStore on `OnPause`). Rule checks and flags are part of the backup.
+13. ✅ The plan towards TOPIK I (spring 2027, 30–40 min a day): level blocks count `NewWords(50)` (not deck totals,
+   which the lesson words already exceed), add the rule before the drill, and rotate practice (`Roadmap.Practice`:
+   texts, listening, speaking, hanja from block 5, TOPIK I items from block 8; level 2 alternates texts with
+   TOPIK I reading, dictation and hanja). Review blocks bring time and money (level 1) or mixed numbers; numbers left
+   the topic blocks and joined rule checks (`Srs/RuleTopics`: grammar + number theories, `RuleReviewTopicDto.Module`).
+   The finish is `mock-exam` (TOPIK I format, no writing), `final-1` «Слабые места», `final-2` «Последняя неделя»;
+   TOPIK II blocks follow. The map shows a time guide per word stage from `Forecast` (`PathMap.Forecast`).
+   TOPIK I-format listening (dialogues) is still missing; it is the next content task.
 
 The deck has ~5,900 words (curated + NIKL A/B/C). Next ideas: offline answer queue, phone↔laptop sync, review of
 machine translations.

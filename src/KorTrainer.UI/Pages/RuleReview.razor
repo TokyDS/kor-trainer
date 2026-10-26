@@ -1,5 +1,6 @@
 @page "/rules"
 @using KorTrainer.Domain.Grammar
+@using KorTrainer.Domain.Numbers
 @inject IKorTrainerApi Api
 
 <PageTitle>Повторение правил — KorTrainer</PageTitle>
@@ -11,11 +12,11 @@
         <a class="back" href="/">← Назад</a>
         <p class="eyebrow">Повторение правил · @(_index + 1) из @_queue.Count · засчитывается первый подход</p>
     </header>
-    @if (GrammarTheories.Find(topic.Type) is { } theory)
+    @if (Recap(topic) is { } recap)
     {
-        <RuleRecap Steps="theory.Steps" Pitfall="@theory.Pitfall" />
+        <RuleRecap Steps="recap.Steps" Pitfall="@recap.Pitfall" />
     }
-    <ChoiceDrill @key="topic.Type" Load="() => Api.GetGrammarExercisesAsync(topic.Type, RuleSchedule.CheckSize)"
+    <ChoiceDrill @key="topic.Type" Load="() => LoadCheckAsync(topic)"
                  OnScored="score => RecordAsync(topic, score)" OnFinished="NextAsync"
                  FinishLabel="@(_index + 1 < _queue.Count ? "Следующее правило" : "Итоги")" />
 }
@@ -153,6 +154,18 @@ else
             await LoadAsync();
         }
     }
+
+    /// <summary>Five questions of the topic, from the grammar or the number drills.</summary>
+    private Task<ExerciseSetDto> LoadCheckAsync(RuleReviewTopicDto topic) => topic.Module == StudyModule.Numbers
+        ? Api.GetNumberExercisesAsync(topic.Type, RuleSchedule.CheckSize)
+        : Api.GetGrammarExercisesAsync(topic.Type, RuleSchedule.CheckSize);
+
+    private static (IReadOnlyList<string> Steps, string Pitfall)? Recap(RuleReviewTopicDto topic) => topic.Module switch
+    {
+        StudyModule.Numbers when NumberTheories.Find(topic.Type) is { } n => (n.Steps, n.Pitfall),
+        _ when GrammarTheories.Find(topic.Type) is { } g => (g.Steps, g.Pitfall),
+        _ => null,
+    };
 
     private static string When(RuleReviewTopicDto topic) => topic.IsDue
         ? "проверить сегодня"
