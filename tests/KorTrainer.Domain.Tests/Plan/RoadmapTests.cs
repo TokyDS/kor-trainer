@@ -172,12 +172,12 @@ public sealed class RoadmapTests
     }
 
     [Theory]
-    [InlineData("level1-1", 100)]
-    [InlineData("level1-8", 800)]
-    [InlineData("level2-1", 900)]
-    [InlineData("level2-7", 1500)]
-    [InlineData("topik-15", 3000)]
-    public void Blocks_AddAHundredWordsEach(string key, int words)
+    [InlineData("level1-1", 50)]
+    [InlineData("level1-16", 800)]
+    [InlineData("level2-1", 850)]
+    [InlineData("level2-14", 1500)]
+    [InlineData("topik-30", 3000)]
+    public void Blocks_AddFiftyWordsEach(string key, int words)
     {
         var block = _roadmap.Find(key)!;
 
@@ -188,19 +188,28 @@ public sealed class RoadmapTests
     [Theory]
     [InlineData(PlanStage.Level1, "level1", Roadmap.Level1Blocks)]
     [InlineData(PlanStage.Level2, "level2", Roadmap.Level2Blocks)]
-    public void LevelBlocks_IntroduceEveryStageTopicInOrder_OneOrTwoPerBlock(PlanStage stage, string prefix, int blocks)
+    public void LevelBlocks_IntroduceEveryStageTopicInOrder_AtMostOnePerBlock(PlanStage stage, string prefix, int blocks)
     {
         var topics = GrammarCatalog.Topics.Where(t => t.Stage == stage).Select(t => t.Type).ToList();
 
         var perBlock = Enumerable.Range(1, blocks)
-            .Select(k => _roadmap.Find($"{prefix}-{k}")!.Tasks
-                .Where(t => t.Target.Module == StudyModule.Grammar)
-                .ToList())
+            .Select(k => _roadmap.Find($"{prefix}-{k}")!.Tasks.Single(t => t.Target.Module == StudyModule.Grammar))
             .ToList();
 
-        perBlock.Should().AllSatisfy(tasks => tasks.Count.Should().BeInRange(1, 2));
-        perBlock.Should().AllSatisfy(tasks => tasks[0].Key.Should().Be("grammar"));
-        perBlock.SelectMany(tasks => tasks).Select(t => t.Target.ExerciseType).Should().Equal(topics);
+        perBlock.Should().AllSatisfy(task => task.Key.Should().Be("grammar"));
+        perBlock.Select(t => t.Target.ExerciseType).OfType<string>().Should().Equal(topics);
+        perBlock[0].Target.ExerciseType.Should().Be(topics[0], "a stage opens with a new rule");
+        perBlock[^1].Target.ExerciseType.Should().BeNull("the last block of a stage reviews all of its grammar");
+    }
+
+    [Fact]
+    public void LevelBlocks_StayShort()
+    {
+        var blocks = _roadmap.Steps.Where(s => s.Stage is PlanStage.Level1 or PlanStage.Level2).ToList();
+
+        blocks.Should().AllSatisfy(b => b.Tasks.Count.Should().BeLessThanOrEqualTo(7, b.Key));
+        blocks.SelectMany(b => b.Tasks).Where(t => t.Target.Metric == TaskMetric.Answers)
+            .Should().AllSatisfy(t => t.Target.Count.Should().BeLessThanOrEqualTo(15, t.Key));
     }
 
     [Fact]
@@ -213,8 +222,8 @@ public sealed class RoadmapTests
             .Should().Contain([ExerciseTypes.TopicParticle, ExerciseTypes.SubjectParticle])
             .And.NotContain(ExerciseTypes.ObjectParticle);
         _roadmap.GrammarUnlocked(_roadmap.Find("level1-2")!).Select(t => t.Type)
-            .Should().Contain([ExerciseTypes.ObjectParticle, ExerciseTypes.PolitePresent])
-            .And.NotContain(ExerciseTypes.Past);
+            .Should().Contain(ExerciseTypes.ObjectParticle)
+            .And.NotContain(ExerciseTypes.PolitePresent);
         _roadmap.GrammarUnlocked(_roadmap.Steps[^1]).Should().HaveCount(GrammarCatalog.Topics.Count);
     }
 
@@ -244,13 +253,14 @@ public sealed class RoadmapTests
         _roadmap.Find("day-42").Should().BeNull();
 
     [Fact]
-    public void TopikBlocks_RotateTheWritingTasks()
+    public void TopikBlocks_AlternateWritingAndReading_AndRotateTheWritingTasks()
     {
-        var writing = Enumerable.Range(1, 3)
+        var writing = new[] { 1, 3, 5 }
             .Select(k => _roadmap.Find($"topik-{k}")!.Tasks.Single(t => t.Key == "writing").Route)
             .ToList();
 
         writing.Should().OnlyHaveUniqueItems();
+        _roadmap.Find("topik-2")!.Tasks.Should().Contain(t => t.Key == "reading").And.NotContain(t => t.Key == "writing");
     }
 
     [Fact]
@@ -258,7 +268,7 @@ public sealed class RoadmapTests
     {
         var block = _roadmap.Find("level2-3")!;
 
-        block.Title.Should().Be("Блок 3 из 7");
+        block.Title.Should().Be("Блок 3 из 14");
         block.StageTitle.Should().Be("Этап 2: уровень 2");
         block.QuickLinks.Should().NotBeEmpty();
     }

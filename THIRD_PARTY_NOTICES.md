@@ -12,4 +12,4 @@ The [MIT License](LICENSE) covers the code. The data bundled in `src/KorTrainer.
   (CC0 or CC BY-SA 4.0), recordings are downloaded on demand, and every file is credited on the in-app
   `/credits` page.
 
-See "Data sources" in [README.md](README.md#data-sources) for how each source is used.
+See "Data sources and licences" in [README.md](README.md#data-sources-and-licences) for how each source is used.

@@ -7,7 +7,7 @@ namespace KorTrainer.Domain.Plan;
 /// <summary>One step of the plan, done at the learner's own pace.</summary>
 /// <param name="Index">Position in <see cref="Roadmap.Steps"/>, from 0.</param>
 /// <param name="Key">Stable id stored with the learner's progress: <c>lesson-3</c>, <c>level1-2</c>, <c>mock-exam</c>, …</param>
-/// <param name="Title">Name within the stage: "Урок 3: …" or "Блок 2 из 8".</param>
+/// <param name="Title">Name within the stage: "Урок 3: …" or "Блок 2 из 16".</param>
 /// <param name="WordTarget">Words in the deck the block works towards (blocks only).</param>
 public sealed record PlanStep(
     int Index,
@@ -24,17 +24,18 @@ public sealed record PlanStep(
 
 /// <summary>
 /// The study plan towards TOPIK as an ordered list of steps instead of calendar days: ten lessons
-/// (Hangul and first phrases), blocks of about a hundred words with one grammar topic each for
-/// levels 1 and 2, a mock exam, TOPIK II preparation and maintenance. The learner moves on when ready.
+/// (Hangul and first phrases), blocks of fifty words for levels 1 and 2 (most bring one new grammar
+/// topic, the rest review), a mock exam, TOPIK II preparation and maintenance. Small blocks keep progress
+/// visible; the learner moves on when ready. Block keys only grow at the end (level1-17 …), never change.
 /// </summary>
 public sealed class Roadmap
 {
     public const int LessonCount = 10;
     public const int HangulLessons = 3;
-    public const int WordsPerBlock = 100;
-    public const int Level1Blocks = 8;
-    public const int Level2Blocks = 7;
-    public const int TopikPrepBlocks = 15;
+    public const int WordsPerBlock = 50;
+    public const int Level1Blocks = 16;
+    public const int Level2Blocks = 14;
+    public const int TopikPrepBlocks = 30;
 
     /// <summary>Words studied at the end of level 1, level 2 and TOPIK II preparation.</summary>
     public const int Level1Words = Level1Blocks * WordsPerBlock;
@@ -42,6 +43,8 @@ public sealed class Roadmap
     public const int TopikWords = Level2Words + TopikPrepBlocks * WordsPerBlock;
 
     private const int WritingRotationLength = 3;
+    private const int GrammarAnswers = 15;
+    private const int NumberAnswers = 10;
     private const int MockReadingItems = 40;
     private const int MockListeningItems = 30;
     private const int TextAnswers = 10;
@@ -130,7 +133,7 @@ public sealed class Roadmap
         {
             int block = k;
             Add(index => LevelBlock(index, PlanStage.Level1, "level1", block, Level1Blocks, block * WordsPerBlock, level1Topics,
-                new PlanTask("numbers", "Числа: 15 упражнений", TaskTarget.Answers(StudyModule.Numbers, 15), "/numbers/mixed")));
+                new PlanTask("numbers", $"Числа: {NumberAnswers} упражнений", TaskTarget.Answers(StudyModule.Numbers, NumberAnswers), "/numbers/mixed")));
         }
 
         var level2Topics = TopicsOf(PlanStage.Level2);
@@ -138,7 +141,7 @@ public sealed class Roadmap
         {
             int block = k;
             Add(index => LevelBlock(index, PlanStage.Level2, "level2", block, Level2Blocks, Level1Words + block * WordsPerBlock, level2Topics,
-                new PlanTask("numbers", "Время и деньги: 15 упражнений", TaskTarget.Answers(StudyModule.Numbers, 15), "/numbers/mixed")));
+                new PlanTask("numbers", $"Время и деньги: {NumberAnswers} упражнений", TaskTarget.Answers(StudyModule.Numbers, NumberAnswers), "/numbers/mixed")));
         }
 
         Add(MockExamStep);
@@ -174,17 +177,17 @@ public sealed class Roadmap
     {
         var introduced = TopicsOfBlock(topics, block, blocks);
         List<PlanTask> grammar = introduced.Count == 0
-            ? [new PlanTask("grammar", "Грамматика вперемешку: 30 упражнений", TaskTarget.Answers(StudyModule.Grammar, 30), "/grammar/mixed")]
-            : introduced.Select((t, i) => GrammarTask(i == 0 ? "grammar" : $"grammar-{i + 1}", t, introduced.Count == 1 ? 20 : 15)).ToList();
+            ? [new PlanTask("grammar", $"Грамматика вперемешку: {GrammarAnswers} упражнений", TaskTarget.Answers(StudyModule.Grammar, GrammarAnswers), "/grammar/mixed")]
+            : introduced.Select((t, i) => GrammarTask(i == 0 ? "grammar" : $"grammar-{i + 1}", t, GrammarAnswers)).ToList();
 
         // Listening in every block; speaking grows from single words (level 1) to repeated phrases (level 2);
         // timed reading every other block keeps the blocks short.
         List<PlanTask> practice = (stage, block % 2 == 1) switch
         {
-            (PlanStage.Level1, true) => [CommonTasks.Reading(10), CommonTasks.ListenWords(15), CommonTasks.SayWords(10)],
-            (PlanStage.Level1, false) => [CommonTasks.Listening(20), CommonTasks.Shadowing(5)],
-            (_, true) => [CommonTasks.Reading(10), CommonTasks.Listening(20), CommonTasks.Shadowing(8)],
-            _ => [CommonTasks.Listening(20), CommonTasks.Shadowing(8)],
+            (PlanStage.Level1, true) => [CommonTasks.Reading(5), CommonTasks.ListenWords(10), CommonTasks.SayWords(5)],
+            (PlanStage.Level1, false) => [CommonTasks.Listening(10), CommonTasks.Shadowing(3)],
+            (_, true) => [CommonTasks.Reading(5), CommonTasks.Listening(10), CommonTasks.Shadowing(4)],
+            _ => [CommonTasks.Listening(10), CommonTasks.Shadowing(4)],
         };
 
         string topic = introduced.Count > 0 ? $" · грамматика: {string.Join(", ", introduced.Select(t => t.Title))}" : " · повторение грамматики";
@@ -219,15 +222,18 @@ public sealed class Roadmap
         PlanContent.QuickLinks(PlanStage.MockExam, 0),
         new WordUnlock(PlanStage.Level2, int.MaxValue));
 
+    /// <summary>Odd blocks write (51–52, 53, 54 in turn), even blocks read; listening and shadowing in every one.</summary>
     private static PlanStep TopikBlock(int index, int block)
     {
         int words = Level2Words + block * WordsPerBlock;
-        var writing = (block % WritingRotationLength) switch
-        {
-            1 => new PlanTask("writing", "Письмо: задания 51–52 (15 минут)", new TaskTarget(TaskMetric.WritingMinutes, 15), "/topik/writing?task=51"),
-            2 => new PlanTask("writing", "Письмо: задание 53, описание графика (15 минут)", new TaskTarget(TaskMetric.WritingMinutes, 15), "/topik/writing?task=53"),
-            _ => new PlanTask("writing", "Письмо: эссе, задание 54 (30 минут)", new TaskTarget(TaskMetric.WritingMinutes, 30), "/topik/writing?task=54"),
-        };
+        PlanTask focus = block % 2 == 0
+            ? new("reading", "Чтение: 10 ответов к текстам", TaskTarget.Answers(StudyModule.Reading, TextAnswers, TextReading), "/read")
+            : ((block + 1) / 2 % WritingRotationLength) switch
+            {
+                1 => new PlanTask("writing", "Письмо: задания 51–52 (15 минут)", new TaskTarget(TaskMetric.WritingMinutes, 15), "/topik/writing?task=51"),
+                2 => new PlanTask("writing", "Письмо: задание 53, описание графика (15 минут)", new TaskTarget(TaskMetric.WritingMinutes, 15), "/topik/writing?task=53"),
+                _ => new PlanTask("writing", "Письмо: эссе, задание 54 (30 минут)", new TaskTarget(TaskMetric.WritingMinutes, 30), "/topik/writing?task=54"),
+            };
 
         return new PlanStep(
             index,
@@ -240,10 +246,9 @@ public sealed class Roadmap
             [
                 WordsTask(words),
                 CommonTasks.ReviewDue,
-                writing,
-                new("reading", "Чтение: 10 ответов к текстам", TaskTarget.Answers(StudyModule.Reading, TextAnswers, TextReading), "/read"),
-                new("listening", "Аудирование: 20 упражнений на слух", TaskTarget.Answers(StudyModule.Listening, 20), "/listening"),
-                CommonTasks.Shadowing(10),
+                focus,
+                new("listening", "Аудирование: 10 упражнений на слух", TaskTarget.Answers(StudyModule.Listening, 10), "/listening"),
+                CommonTasks.Shadowing(5),
             ],
             PlanContent.QuickLinks(PlanStage.TopikPrep, 0),
             new WordUnlock(PlanStage.TopikPrep, int.MaxValue),
@@ -268,11 +273,14 @@ public sealed class Roadmap
     private static PlanTask WordsTask(int words) =>
         new("words", $"Слова: довести колоду до {words}", new TaskTarget(TaskMetric.WordsStudied, words), "/vocab/review");
 
-    /// <summary>Spreads a stage's topics evenly over its blocks, in catalog order.</summary>
+    /// <summary>
+    /// Spreads a stage's topics evenly over its blocks, in catalog order, rounding up: the first block brings a new
+    /// topic and the blocks left over (when there are more blocks than topics) review what came before.
+    /// </summary>
     private static List<GrammarTopic> TopicsOfBlock(IReadOnlyList<GrammarTopic> topics, int block, int blocks)
     {
-        int from = (block - 1) * topics.Count / blocks;
-        int to = block * topics.Count / blocks;
+        int from = ((block - 1) * topics.Count + blocks - 1) / blocks;
+        int to = (block * topics.Count + blocks - 1) / blocks;
         return topics.Skip(from).Take(to - from).ToList();
     }
 

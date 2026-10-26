@@ -27,7 +27,7 @@ public sealed record PlanTaskDto(
     bool IsLocked = false);
 
 /// <param name="Number">Position in the plan, from 1.</param>
-/// <param name="Title">Name within the stage: "Урок 3: …" or "Блок 2 из 8".</param>
+/// <param name="Title">Name within the stage: "Урок 3: …" or "Блок 2 из 16".</param>
 public sealed record PlanStepDto(
     string Key,
     int Number,

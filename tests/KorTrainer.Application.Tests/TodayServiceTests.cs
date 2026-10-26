@@ -173,7 +173,7 @@ public sealed class TodayServiceTests
         var next = await t.Today.AdvanceAsync(new AdvanceRequest("lesson-10"), Ct);
 
         next.Step.Key.Should().Be("level1-1");
-        next.Step.Title.Should().Be("Блок 1 из 8");
+        next.Step.Title.Should().Be("Блок 1 из 16");
     }
 
     [Fact]
@@ -230,7 +230,7 @@ public sealed class TodayServiceTests
         var words = (await t.Today.GetTodayAsync(Ct)).Step.Tasks.Single(x => x.Key == "words");
 
         words.Progress.Should().Be(3);
-        words.Target.Should().Be(100);
+        words.Target.Should().Be(Roadmap.WordsPerBlock);
     }
 
     [Fact]

@@ -95,7 +95,7 @@ back end in-process. Never reference EF or ASP.NET from Domain.
    (`/vocab/hard`), graded reading with tap lookup (`/read`), TOPIK I reading items (`/topik/reading/{format}`).
 
 7. ✅ Next version: TOPIK I grammar (29 topics, `Conjugator` endings Future…BecauseGi, particles 와/과 and (으)로;
-   level blocks introduce 1–2 topics with task keys `grammar`, `grammar-2`) and the «10 минут» session
+   level blocks of 50 words introduce at most one topic, task key `grammar`; leftover blocks review) and the «10 минут» session
    (`Domain/Plan/QuickSession` picks drills from the step's task routes; `/quick` embeds `VocabReview` and
    `ChoiceDrill` through their `OnFinished` callbacks).
 8. ✅ Grammar gaps in Tatoeba sentences (`Exercises/GrammarClozeFinder`, cached per word scope in
